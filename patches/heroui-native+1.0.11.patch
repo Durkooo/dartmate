@@ -1,0 +1,52 @@
+diff --git a/node_modules/heroui-native/lib/module/components/switch/switch.animation.js b/node_modules/heroui-native/lib/module/components/switch/switch.animation.js
+index 39b5aa8..e5808a1 100644
+--- a/node_modules/heroui-native/lib/module/components/switch/switch.animation.js
++++ b/node_modules/heroui-native/lib/module/components/switch/switch.animation.js
+@@ -1,5 +1,6 @@
+ "use strict";
+ 
++import { Platform } from 'react-native';
+ import { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+ import { useThemeColor } from "../../helpers/external/hooks/index.js";
+ import { useAnimationSettings } from "../../helpers/internal/contexts/index.js";
+@@ -12,6 +13,11 @@ const [SwitchAnimationProvider, useSwitchAnimation] = createContext({
+ });
+ export { SwitchAnimationProvider, useSwitchAnimation };
+ 
++// Reanimated web writes animated styles to el.style unmapped, and `start`/`end`
++// aren't CSS properties, so the thumb never moved on web.
++const THUMB_START = Platform.OS === 'web' ? 'left' : 'start';
++const THUMB_END = Platform.OS === 'web' ? 'right' : 'end';
++
+ // --------------------------------------------------
+ 
+ /**
+@@ -157,24 +163,24 @@ export function useSwitchThumbAnimation(options) {
+     if (!isMounted) {
+       if (isSelected) {
+         return {
+-          end: offsetValue,
++          [THUMB_END]: offsetValue,
+           backgroundColor: backgroundColorValue[1]
+         };
+       }
+       return {
+-        start: offsetValue,
++        [THUMB_START]: offsetValue,
+         backgroundColor: backgroundColorValue[0]
+       };
+     }
+     const targetStart = isSelected ? contentContainerWidth.get() - computedWidth - offsetValue : offsetValue;
+     if (isAnimationDisabledValue) {
+       return {
+-        start: targetStart,
++        [THUMB_START]: targetStart,
+         backgroundColor: isSelected ? backgroundColorValue[1] : backgroundColorValue[0]
+       };
+     }
+     return {
+-      start: withSpring(targetStart, offsetSpringConfig),
++      [THUMB_START]: withSpring(targetStart, offsetSpringConfig),
+       backgroundColor: withTiming(isSelected ? backgroundColorValue[1] : backgroundColorValue[0], backgroundColorTimingConfig)
+     };
+   });

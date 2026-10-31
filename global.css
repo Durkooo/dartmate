@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import 'tailwindcss';
+@import 'uniwind';
+
+@import 'heroui-native/styles';
+
+/*
+ * HeroUI Native + Uniwind tokens
+ *
+ * HeroUI component variants compile to semantic utilities such as bg-accent,
+ * text-accent-foreground, bg-default, and text-foreground. The imported
+ * heroui-native/styles package defines the default semantic theme and maps it
+ * to --color-* Tailwind utilities.
+ *
+ * When changing brand colors, override semantic tokens inside Uniwind theme
+ * variants. Do not put --accent only in a plain :root block: web may look
+ * correct through CSS cascade order while Expo Go/native keeps HeroUI's
+ * default blue from the active light/dark theme table.
+ *
+ * Example:
+ *
+ * @layer theme {
+ *   :root {
+ *     @variant light {
+ *       --accent: oklch(0.63 0.18 148);
+ *       --accent-foreground: oklch(0.99 0 0);
+ *       --focus: var(--accent);
+ *     }
+ *
+ *     @variant dark {
+ *       --accent: oklch(0.63 0.18 148);
+ *       --accent-foreground: oklch(0.99 0 0);
+ *       --focus: var(--accent);
+ *     }
+ *   }
+ * }
+ */
+
+@source './node_modules/heroui-native/lib';
+
+/* Calculated HeroUI color tokens are registered for web in lib/registerColorTokens.ts. */
