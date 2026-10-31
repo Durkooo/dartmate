@@ -28,6 +28,7 @@ import { initPostHog } from '@/lib/posthog';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { palette } from '@/lib/darts';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -147,8 +148,21 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <HeroUINativeProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ title: 'Habits', headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: palette.paper },
+            headerTintColor: palette.ink,
+            headerTitleStyle: { fontFamily: 'Inter_600SemiBold' },
+            headerShadowVisible: false,
+            headerBackButtonDisplayMode: 'minimal',
+            contentStyle: { backgroundColor: palette.paper },
+          }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="new-match" options={{ title: 'Nový zápas' }} />
+          <Stack.Screen name="match" options={{ title: 'Zápas' }} />
+          <Stack.Screen name="friend/new" options={{ title: 'Pridať priateľa' }} />
+          <Stack.Screen name="chat/[id]" options={{ title: 'Konverzácia' }} />
         </Stack>
         <InstallPrompt />
       </HeroUINativeProvider>

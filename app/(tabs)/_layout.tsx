@@ -1,42 +1,59 @@
-import { Home } from 'lucide-react-native';
+import { Target, Users, MessageCircle } from 'lucide-react-native';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useThemeColor } from 'heroui-native';
-import { useUniwind } from 'uniwind';
+import { palette, feedback } from '@/lib/darts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
-  const { theme } = useUniwind();
-  const [background, foreground, border, accent, muted] = useThemeColor([
-    'background',
-    'foreground',
-    'border',
-    'accent',
-    'muted',
-  ]);
-
+  const insets = useSafeAreaInsets();
+  const bottom = Math.max(insets.bottom, 8);
   return (
     <>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      {/* eslint-disable-next-line react/style-prop-object -- Expo StatusBar accepts a string appearance, not a React Native style object. */}
+      <StatusBar style="dark" />
       <Tabs
         screenOptions={{
-          headerStyle: { backgroundColor: background },
-          headerTintColor: foreground,
-          headerTitleStyle: { color: foreground },
-          headerShadowVisible: false,
-          sceneStyle: { backgroundColor: background },
+          headerShown: false,
+          sceneStyle: { backgroundColor: palette.paper },
           tabBarStyle: {
-            backgroundColor: background,
-            borderTopColor: border,
+            backgroundColor: palette.white,
+            borderTopColor: palette.line,
+            height: 68 + bottom,
+            paddingTop: 8,
+            paddingBottom: bottom,
+            elevation: 0,
+            shadowOpacity: 0,
           },
-          tabBarActiveTintColor: accent,
-          tabBarInactiveTintColor: muted,
+          tabBarActiveTintColor: palette.ink,
+          tabBarInactiveTintColor: palette.muted,
+          tabBarLabelStyle: { fontFamily: 'Inter_600SemiBold', fontSize: 11, marginTop: 0 },
         }}
+        screenListeners={({ navigation, route }) => ({
+          tabPress: () => {
+            if (navigation.getState().routes[navigation.getState().index]?.key !== route.key)
+              feedback.selection();
+          },
+        })}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
-            tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 24} />,
+            title: 'Hra',
+            tabBarIcon: ({ color }) => <Target size={23} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen
+          name="friends"
+          options={{
+            title: 'Priatelia',
+            tabBarIcon: ({ color }) => <Users size={23} color={color} strokeWidth={1.8} />,
+          }}
+        />
+        <Tabs.Screen
+          name="messages"
+          options={{
+            title: 'Správy',
+            tabBarIcon: ({ color }) => <MessageCircle size={23} color={color} strokeWidth={1.8} />,
           }}
         />
       </Tabs>
