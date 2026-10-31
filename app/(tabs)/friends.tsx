@@ -16,6 +16,8 @@ import {
 } from '@/components/DartsUI';
 import { palette, useDarts } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
+import { loadContacts, useOnlineQuery } from '@/lib/online';
+import { OnlineError, Presence } from '@/components/OnlineUI';
 
 export default function Friends() {
   const [query, setQuery] = useState('');
@@ -28,6 +30,10 @@ export default function Friends() {
   const loading = usePlayers((s) => s.loading);
   const error = usePlayers((s) => s.error);
   const refresh = usePlayers((s) => s.refresh);
+  const social = useOnlineQuery(
+    session ? `friends:${session.user.id}` : null,
+    useCallback(() => loadContacts(), []),
+  );
   useFocusEffect(
     useCallback(() => {
       void refresh();
@@ -91,6 +97,12 @@ export default function Friends() {
                 </>
               )}
             </View>
+            <OnlineError error={social.error} retry={() => void social.refresh()} />
+            {session && (
+              <Button className="mb-4" variant="secondary" onPress={() => router.push('/online')}>
+                <Button.Label>Pozvánky a zápasy</Button.Label>
+              </Button>
+            )}
             <Input
               value={query}
               onChangeText={setQuery}
@@ -127,6 +139,12 @@ export default function Friends() {
                   <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
                     @{item.handle}
                   </Txt>
+                  <View className="mt-2">
+                    <Presence
+                      online={!!social.data?.find((c) => c.user_id === item.id)?.online}
+                      unknown={social.loading || !!social.error}
+                    />
+                  </View>
                 </View>
                 <ChevronRight size={20} color={palette.muted} strokeWidth={1.8} />
               </PressableFeedback>

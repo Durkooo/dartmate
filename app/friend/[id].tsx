@@ -6,6 +6,8 @@ import { Page, Heading, Txt, Avatar, LoadingRows, Empty } from '@/components/Dar
 import { usePlayers, playerError } from '@/lib/players';
 import { bilt } from '@/lib/bilt';
 import { feedback } from '@/lib/darts';
+import { loadContacts, useOnlineQuery } from '@/lib/online';
+import { OnlineError, Presence } from '@/components/OnlineUI';
 
 export default function PlayerFriend() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,6 +18,10 @@ export default function PlayerFriend() {
   const remoteError = usePlayers((s) => s.error);
   const refresh = usePlayers((s) => s.refresh);
   const friend = friends.find((f) => f.id === id);
+  const social = useOnlineQuery(
+    session ? `friend:${session.user.id}:${id}` : null,
+    useCallback(() => loadContacts(), []),
+  );
   const [confirm, setConfirm] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -71,11 +77,28 @@ export default function PlayerFriend() {
         <View className="mt-4 gap-5">
           <Avatar friend={friend} size={64} />
           <Heading>@{friend.handle}</Heading>
-          <Txt className="text-muted">
-            Priateľ je uložený v tvojom účte. Online zápasy, správy a videohovory zatiaľ nie sú
-            dostupné.
-          </Txt>
+          <Presence
+            online={!!social.data?.find((c) => c.user_id === id)?.online}
+            unknown={social.loading || !!social.error}
+          />
+          <OnlineError error={social.error} retry={() => void social.refresh()} />
           <Button
+            onPress={() =>
+              router.push({ pathname: '/conversation/[id]', params: { id: friend.id } })
+            }
+          >
+            <Button.Label>Napísať správu</Button.Label>
+          </Button>
+          <Button
+            variant="secondary"
+            onPress={() =>
+              router.push({ pathname: '/online/new', params: { friendId: friend.id } })
+            }
+          >
+            <Button.Label>Pozvať na online zápas</Button.Label>
+          </Button>
+          <Button
+            variant="outline"
             onPress={() => router.push({ pathname: '/new-match', params: { friendId: friend.id } })}
           >
             <Button.Label>Lokálny zápas</Button.Label>

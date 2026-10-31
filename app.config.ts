@@ -24,12 +24,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       deploymentTarget: '16.4',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription: 'Kamera slúži na voliteľný videohovor počas šípkového zápasu.',
+        NSMicrophoneUsageDescription: 'Mikrofón slúži na rozhovor so súperom počas zápasu.',
       },
       supportsTablet: true,
       bundleIdentifier: process.env.BILT_IOS_BUNDLE_ID ?? 'me.bilt.dartmate',
     },
     android: {
       package: process.env.BILT_ANDROID_PACKAGE ?? 'me.bilt.dartmate',
+      permissions: ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO'],
     },
     web: {
       bundler: 'metro',
@@ -41,7 +44,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       appStoreAppId: process.env.BILT_APP_STORE_APP_ID,
     },
-    plugins: ['expo-router', 'expo-font', ...nativePlugins],
+    plugins: [
+      'expo-router',
+      'expo-font',
+      'expo-splash-screen',
+      '@livekit/react-native-expo-plugin',
+      [
+        '@config-plugins/react-native-webrtc',
+        {
+          cameraPermission: 'Kamera slúži na voliteľný videohovor počas šípkového zápasu.',
+          microphonePermission: 'Mikrofón slúži na rozhovor so súperom počas zápasu.',
+        },
+      ],
+      ...nativePlugins,
+    ],
     experiments: {
       typedRoutes: true,
       reactCompiler: true,

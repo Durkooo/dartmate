@@ -1,11 +1,107 @@
 import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PressableFeedback } from 'heroui-native';
+import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
 import { Heading, Txt, Avatar, Empty, LoadingRows } from '@/components/DartsUI';
 import { useDarts } from '@/lib/darts';
+import { useCallback } from 'react';
+import { usePlayers } from '@/lib/players';
+import { loadContacts, loadOpenMatches, timeLabel, useOnlineQuery } from '@/lib/online';
+import { OnlineGate, OnlineError, Presence, OpenMatches } from '@/components/OnlineUI';
 
 export default function Messages() {
+  const session = usePlayers((s) => s.session);
+  const ready = usePlayers((s) => s.ready);
+  if (!ready)
+    return (
+      <View className="bg-background flex-1 p-5">
+        <LoadingRows />
+      </View>
+    );
+  return session ? <OnlineMessages userId={session.user.id} /> : <LocalMessages />;
+}
+function OnlineMessages({ userId }: { userId: string }) {
+  const query = useOnlineQuery(
+    `inbox:${userId}`,
+    useCallback(async () => {
+      const [contacts, matches] = await Promise.all([loadContacts(), loadOpenMatches()]);
+      return { contacts, matches };
+    }, []),
+  );
+  const insets = useSafeAreaInsets();
+  return (
+    <View className="bg-background flex-1" style={{ paddingTop: insets.top }}>
+      <FlatList
+        data={query.data?.contacts.filter((c) => c.last_body) ?? []}
+        keyExtractor={(c) => c.user_id ?? ''}
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: 32,
+          flexGrow: 1,
+          maxWidth: 600,
+          width: '100%',
+          alignSelf: 'center',
+        }}
+        ListHeaderComponent={
+          <View className="mb-5">
+            <View className="flex-row items-center justify-between gap-3">
+              <Heading>Správy</Heading>
+              <Button variant="secondary" size="sm" onPress={() => router.push('/friends')}>
+                <Button.Label>Napísať</Button.Label>
+              </Button>
+            </View>
+            <OnlineError error={query.error} retry={() => void query.refresh()} />
+            {query.data && <OpenMatches matches={query.data.matches} userId={userId} />}
+          </View>
+        }
+        renderItem={({ item }) => (
+          <PressableFeedback
+            className="border-border flex-row items-start gap-3 border-b py-5"
+            onPress={() =>
+              router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
+            }
+          >
+            <View className="flex-1 gap-2">
+              <View className="flex-row gap-3">
+                <Txt
+                  className="flex-1"
+                  numberOfLines={1}
+                  style={{ fontFamily: 'Inter_600SemiBold' }}
+                >
+                  @{item.nickname}
+                </Txt>
+                {item.last_message_at && (
+                  <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
+                )}
+              </View>
+              <Presence online={!!item.online} unknown={!!query.error} />
+              <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
+                {item.last_sender_id === userId ? 'Ty: ' : ''}
+                {item.last_body}
+              </Txt>
+            </View>
+          </PressableFeedback>
+        )}
+        ListEmptyComponent={
+          <OnlineGate>
+            {query.loading ? (
+              <LoadingRows />
+            ) : !query.error ? (
+              <Empty
+                chat
+                text="Tu nájdeš správy od priateľov."
+                action="Napísať priateľovi"
+                onPress={() => router.push('/friends')}
+              />
+            ) : null}
+          </OnlineGate>
+        }
+      />
+    </View>
+  );
+}
+
+function LocalMessages() {
   const friends = useDarts((s) => s.friends);
   const messages = useDarts((s) => s.messages);
   const hydrated = useDarts((s) => s.hydrated);
@@ -28,6 +124,9 @@ export default function Messages() {
         ListHeaderComponent={
           <View className="mb-5">
             <Heading>Správy</Heading>
+            <Button variant="secondary" className="mt-4" onPress={() => router.push('/account')}>
+              <Button.Label>Prihlásiť sa pre skutočné správy</Button.Label>
+            </Button>
             <Txt className="text-muted mt-3 text-[13px]">
               Ukážkové konverzácie · správy ostávajú u teba
             </Txt>

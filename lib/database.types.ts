@@ -7,6 +7,131 @@ declare module '@biltme/backend' {
   interface Database {
     public: {
       Tables: {
+        direct_messages: {
+          Row: {
+            id: number
+            request_id: string
+            sender_id: string
+            recipient_id: string
+            body: string
+            created_at: string
+          }
+          Insert: {
+            id?: number
+            request_id: string
+            sender_id: string
+            recipient_id: string
+            body: string
+            created_at?: string
+          }
+          Update: {
+            id?: number
+            request_id?: string
+            sender_id?: string
+            recipient_id?: string
+            body?: string
+            created_at?: string
+          }
+          Relationships: []
+        }
+        online_matches: {
+          Row: {
+            id: string
+            host_id: string
+            guest_id: string
+            host_nickname: string
+            guest_nickname: string
+            starting: number
+            double_out: boolean
+            status: 'invited' | 'active' | 'finished' | 'declined' | 'cancelled'
+            host_remaining: number
+            guest_remaining: number
+            next_player: string
+            winner_id: string | null
+            turn_count: number
+            created_at: string
+            updated_at: string
+            completed_at: string | null
+          }
+          Insert: {
+            id?: string
+            host_id: string
+            guest_id: string
+            host_nickname: string
+            guest_nickname: string
+            starting: number
+            double_out?: boolean
+            status?: 'invited' | 'active' | 'finished' | 'declined' | 'cancelled'
+            host_remaining: number
+            guest_remaining: number
+            next_player: string
+            winner_id?: string | null
+            turn_count?: number
+            created_at?: string
+            updated_at?: string
+            completed_at?: string | null
+          }
+          Update: {
+            id?: string
+            host_id?: string
+            guest_id?: string
+            host_nickname?: string
+            guest_nickname?: string
+            starting?: number
+            double_out?: boolean
+            status?: 'invited' | 'active' | 'finished' | 'declined' | 'cancelled'
+            host_remaining?: number
+            guest_remaining?: number
+            next_player?: string
+            winner_id?: string | null
+            turn_count?: number
+            created_at?: string
+            updated_at?: string
+            completed_at?: string | null
+          }
+          Relationships: []
+        }
+        online_turns: {
+          Row: {
+            match_id: string
+            turn_number: number
+            player_id: string
+            score: number
+            darts: number
+            bust: boolean
+            remaining: number
+            created_at: string
+          }
+          Insert: {
+            match_id: string
+            turn_number: number
+            player_id: string
+            score: number
+            darts: number
+            bust: boolean
+            remaining: number
+            created_at?: string
+          }
+          Update: {
+            match_id?: string
+            turn_number?: number
+            player_id?: string
+            score?: number
+            darts?: number
+            bust?: boolean
+            remaining?: number
+            created_at?: string
+          }
+          Relationships: [
+            {
+              foreignKeyName: 'online_turns_match_id_fkey'
+              columns: ['match_id']
+              isOneToOne: false
+              referencedRelation: 'online_matches'
+              referencedColumns: ['id']
+            },
+          ]
+        }
         player_friends: {
           Row: {
             owner_id: string
@@ -33,6 +158,24 @@ declare module '@biltme/backend' {
             },
           ]
         }
+        player_presence: {
+          Row: {
+            user_id: string
+            last_seen: string
+            is_active: boolean
+          }
+          Insert: {
+            user_id: string
+            last_seen?: string
+            is_active?: boolean
+          }
+          Update: {
+            user_id?: string
+            last_seen?: string
+            is_active?: boolean
+          }
+          Relationships: []
+        }
         player_profiles: {
           Row: {
             user_id: string
@@ -54,6 +197,12 @@ declare module '@biltme/backend' {
       }
       Views: { [_ in never]: never }
       Functions: {
+        can_contact_player: {
+          Args: {
+            peer: string
+          }
+          Returns: boolean
+        }
         find_player_by_nickname: {
           Args: {
             search_nickname: string
@@ -63,12 +212,127 @@ declare module '@biltme/backend' {
             nickname: string | null
           }[]
         }
+        invite_online_match: {
+          Args: {
+            peer: string
+            starting_score?: number
+            use_double_out?: boolean
+          }
+          Returns: Database['public']['Tables']['online_matches']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'online_matches'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
+        is_match_player: {
+          Args: {
+            mid: string
+          }
+          Returns: boolean
+        }
         list_player_friends: {
           Args: Record<PropertyKey, never>
           Returns: {
             user_id: string | null
             nickname: string | null
           }[]
+        }
+        list_social_contacts: {
+          Args: Record<PropertyKey, never>
+          Returns: {
+            user_id: string | null
+            nickname: string | null
+            online: boolean | null
+            last_seen: string | null
+            last_body: string | null
+            last_message_at: string | null
+            last_sender_id: string | null
+          }[]
+        }
+        my_online_statistics: {
+          Args: Record<PropertyKey, never>
+          Returns: {
+            matches: number | null
+            wins: number | null
+            losses: number | null
+            three_dart_average: number | null
+            highest_score: number | null
+            scores_180: number | null
+          }[]
+        }
+        online_checkout_possible: {
+          Args: {
+            total: number
+            dart_count: number
+            double_finish: boolean
+          }
+          Returns: boolean
+        }
+        online_turn_bust: {
+          Args: {
+            total: number
+            previous: number
+            double_out: boolean
+            finished_double: boolean
+          }
+          Returns: boolean
+        }
+        respond_online_match: {
+          Args: {
+            mid: string
+            decision: string
+          }
+          Returns: Database['public']['Tables']['online_matches']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'online_matches'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
+        send_direct_message: {
+          Args: {
+            peer: string
+            message_body: string
+            client_request: string
+          }
+          Returns: Database['public']['Tables']['direct_messages']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'direct_messages'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
+        submit_online_turn: {
+          Args: {
+            mid: string
+            expected_turn: number
+            turn_score: number
+            finished_double?: boolean
+            darts_thrown?: number
+          }
+          Returns: Database['public']['Tables']['online_matches']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'online_matches'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
+        touch_presence: {
+          Args: {
+            active?: boolean
+          }
+          Returns: Database['public']['Tables']['player_presence']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'player_presence'
+            isOneToOne: false
+            isSetofReturn: true
+          }
         }
       }
       Enums: { [_ in never]: never }

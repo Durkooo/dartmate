@@ -30,6 +30,7 @@ import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { palette } from '@/lib/darts';
 import { usePlayerSession } from '@/lib/players';
+import { useOnlinePresence } from '@/lib/online';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -58,6 +59,7 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   usePlayerSession();
+  useOnlinePresence();
   const [loaded, error] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -166,6 +168,11 @@ export default function RootLayout() {
           <Stack.Screen name="friend/new" options={{ title: 'Pridať priateľa' }} />
           <Stack.Screen name="friend/[id]" options={{ title: 'Priateľ' }} />
           <Stack.Screen name="account" options={{ title: 'Môj účet' }} />
+          <Stack.Screen name="online/index" options={{ title: 'Online zápasy' }} />
+          <Stack.Screen name="online/new" options={{ title: 'Pozvať na zápas' }} />
+          <Stack.Screen name="online/[id]" options={{ title: 'Online zápas' }} />
+          <Stack.Screen name="conversation/[id]" options={{ title: 'Správy' }} />
+          <Stack.Screen name="statistics" options={{ title: 'Štatistiky' }} />
           <Stack.Screen name="chat/[id]" options={{ title: 'Konverzácia' }} />
         </Stack>
         <InstallPrompt />
