@@ -29,6 +29,7 @@ import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { palette } from '@/lib/darts';
+import { usePlayerSession } from '@/lib/players';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -56,6 +57,7 @@ Uniwind.setTheme('light');
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  usePlayerSession();
   const [loaded, error] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -162,6 +164,8 @@ export default function RootLayout() {
           <Stack.Screen name="new-match" options={{ title: 'Nový zápas' }} />
           <Stack.Screen name="match" options={{ title: 'Zápas' }} />
           <Stack.Screen name="friend/new" options={{ title: 'Pridať priateľa' }} />
+          <Stack.Screen name="friend/[id]" options={{ title: 'Priateľ' }} />
+          <Stack.Screen name="account" options={{ title: 'Môj účet' }} />
           <Stack.Screen name="chat/[id]" options={{ title: 'Konverzácia' }} />
         </Stack>
         <InstallPrompt />

@@ -6,6 +6,7 @@ import { Check, Target, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Page, Heading, Txt, Avatar, LoadingRows, StorageNotice } from '@/components/DartsUI';
 import { feedback, palette, useDarts, type Friend } from '@/lib/darts';
+import { usePlayers } from '@/lib/players';
 
 const practice: Friend = {
   id: 'practice',
@@ -16,7 +17,9 @@ const practice: Friend = {
 };
 export default function NewMatch() {
   const { friendId } = useLocalSearchParams<{ friendId?: string }>();
-  const friends = useDarts((s) => s.friends);
+  const localFriends = useDarts((s) => s.friends);
+  const remoteFriends = usePlayers((s) => s.friends);
+  const friends = [...remoteFriends, ...localFriends];
   const game = useDarts((s) => s.game);
   const hydrated = useDarts((s) => s.hydrated);
   const startGame = useDarts((s) => s.startGame);
