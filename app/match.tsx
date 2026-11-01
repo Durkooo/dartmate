@@ -5,6 +5,7 @@ import { Button, PressableFeedback } from 'heroui-native';
 import { Video, X, Delete, Undo2, Check, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
+import { CheckoutDarts } from '@/components/CheckoutDarts';
 import {
   palette,
   feedback,
@@ -14,6 +15,7 @@ import {
   average,
   validScore,
   canFinish,
+  validCheckout,
 } from '@/lib/darts';
 
 export default function Match() {
@@ -25,6 +27,7 @@ export default function Match() {
   const discardGame = useDarts((s) => s.discardGame);
   const [input, setInput] = useState('');
   const [double, setDouble] = useState(false);
+  const [darts, setDarts] = useState<1 | 2 | 3>(3);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
   const [discard, setDiscard] = useState(false);
@@ -56,12 +59,18 @@ export default function Match() {
   const score = Number(input);
   const finishAttempt =
     !!input && score === currentScores[player] && game.doubleOut && canFinish(score, true);
+  const checkout =
+    !!input &&
+    score === currentScores[player] &&
+    validScore(score) &&
+    (!game.doubleOut || (finishAttempt && double));
   const finished = game.winner !== null;
   const append = (digit: string) => {
     if (input.length >= 3) return;
     setInput(input === '0' ? digit : input + digit);
     setError('');
     setDouble(false);
+    setDarts(3);
     feedback.selection();
   };
   const save = () => {
@@ -70,9 +79,15 @@ export default function Match() {
       feedback.error();
       return;
     }
-    submitTurn(score, double);
+    if (checkout && !validCheckout(score, darts, game.doubleOut)) {
+      setError('Toto skóre nemožno zatvoriť zvoleným počtom šípok. Skontroluj výber.');
+      feedback.error();
+      return;
+    }
+    submitTurn(score, double, checkout ? darts : 3);
     setInput('');
     setDouble(false);
+    setDarts(3);
     setError('');
     if (useDarts.getState().game?.turns.at(-1)?.bust) feedback.error();
     else feedback.success();
@@ -130,12 +145,15 @@ export default function Match() {
                   </Button>
                 </View>
                 <Txt style={{ fontFamily: 'Inter_600SemiBold' }} className="mt-3">
-                  Videohovor v ďalšej verzii
+                  Videohovor v online zápase
                 </Txt>
                 <Txt className="text-muted mt-2 text-[13px] leading-5">
-                  Živý prenos ešte nie je pripojený. Po pripojení online hrania tu uvidíš súpera aj
-                  jeho terč.
+                  Pre videohovor pozvi priateľa do online zápasu. Lokálna hra je určená na hranie
+                  pri jednom terči.
                 </Txt>
+                <Button className="mt-3" variant="secondary" onPress={() => router.push('/online')}>
+                  <Button.Label>Online zápasy</Button.Label>
+                </Button>
               </View>
             )}
             <View className="bg-ink overflow-hidden rounded-[22px]">
@@ -239,6 +257,7 @@ export default function Match() {
                       onPress={() => {
                         setInput(String(n));
                         setDouble(false);
+                        setDarts(3);
                         setError('');
                         feedback.selection();
                       }}
@@ -280,6 +299,7 @@ export default function Match() {
                       undo();
                       setInput('');
                       setDouble(false);
+                      setDarts(3);
                       setError('');
                       feedback.success();
                     }}
@@ -306,6 +326,7 @@ export default function Match() {
                     onPress={() => {
                       setInput(input.slice(0, -1));
                       setDouble(false);
+                      setDarts(3);
                       setError('');
                       feedback.selection();
                     }}
@@ -320,6 +341,7 @@ export default function Match() {
                     accessibilityState={{ checked: double }}
                     onPress={() => {
                       setDouble((v) => !v);
+                      setDarts(3);
                       feedback.selection();
                     }}
                   >
@@ -330,6 +352,17 @@ export default function Match() {
                     </View>
                     <Txt className="flex-1 text-[14px]">Posledná šípka trafila double</Txt>
                   </PressableFeedback>
+                )}
+                {checkout && (
+                  <View className="mb-4">
+                    <CheckoutDarts
+                      value={darts}
+                      onChange={(n) => {
+                        setDarts(n);
+                        setError('');
+                      }}
+                    />
+                  </View>
                 )}
                 {!!error && (
                   <Txt className="text-danger mb-3 text-[13px]" accessibilityRole="alert">

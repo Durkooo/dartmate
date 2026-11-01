@@ -36,7 +36,13 @@ export type Friend = {
   demo: boolean;
 };
 export type Message = { id: string; friendId: string; text: string; mine: boolean; time: string };
-export type Turn = { player: 0 | 1; score: number; bust: boolean; remaining: number };
+export type Turn = {
+  player: 0 | 1;
+  score: number;
+  bust: boolean;
+  remaining: number;
+  darts?: 1 | 2 | 3;
+};
 export type Game = {
   id: string;
   opponentId: string;
@@ -80,7 +86,9 @@ export function activePlayer(game: Game): 0 | 1 {
 export function average(game: Game, player: 0 | 1): string {
   const turns = game.turns.filter((t) => t.player === player);
   if (!turns.length) return '—';
-  return (turns.reduce((sum, t) => sum + (t.bust ? 0 : t.score), 0) / turns.length).toFixed(1);
+  const points = turns.reduce((sum, t) => sum + (t.bust ? 0 : t.score), 0);
+  const darts = turns.reduce((sum, t) => sum + (t.darts ?? 3), 0);
+  return ((points * 3) / darts).toFixed(1);
 }
 export function validScore(score: number) {
   return (
@@ -96,6 +104,24 @@ export function canFinish(score: number, doubleOut: boolean) {
     (score >= 2 && score <= 170 && ![159, 162, 163, 165, 166, 168, 169].includes(score))
   );
 }
+export function validCheckout(score: number, darts: 1 | 2 | 3, doubleOut: boolean): boolean {
+  const hits = [
+    ...new Set([
+      0,
+      25,
+      50,
+      ...Array.from({ length: 20 }, (_, i) => i + 1).flatMap((n) => [n, n * 2, n * 3]),
+    ]),
+  ];
+  const finishes = doubleOut
+    ? [...Array.from({ length: 20 }, (_, i) => (i + 1) * 2), 50]
+    : hits.filter((n) => n > 0);
+  let totals = new Set([0]);
+  for (let i = 1; i < darts; i++) {
+    totals = new Set([...totals].flatMap((sum) => hits.map((hit) => sum + hit)));
+  }
+  return finishes.some((finish) => totals.has(score - finish));
+}
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -109,7 +135,7 @@ interface DartsState {
   addFriend: (name: string, handle: string) => string;
   sendMessage: (friendId: string, text: string) => void;
   startGame: (friend: Friend, starting: 301 | 501, doubleOut: boolean) => void;
-  submitTurn: (score: number, finishedDouble: boolean) => void;
+  submitTurn: (score: number, finishedDouble: boolean, darts?: 1 | 2 | 3) => void;
   undo: () => void;
   archiveGame: () => void;
   discardGame: () => void;
@@ -160,7 +186,7 @@ export const useDarts = create<DartsState>()(
             date: new Date().toISOString(),
           },
         }),
-      submitTurn: (score, finishedDouble) => {
+      submitTurn: (score, finishedDouble, darts = 3) => {
         const game = get().game;
         if (!game || game.winner !== null || !validScore(score)) return;
         const player = activePlayer(game);
@@ -169,7 +195,9 @@ export const useDarts = create<DartsState>()(
           remaining < 0 ||
           (game.doubleOut &&
             (remaining === 1 || (remaining === 0 && (!finishedDouble || !canFinish(score, true)))));
+        if (!bust && remaining === 0 && !validCheckout(score, darts, game.doubleOut)) return;
         const turn: Turn = {
+          darts: !bust && remaining === 0 ? darts : 3,
           player,
           score,
           bust,

@@ -6,6 +6,7 @@ import { Video, Trophy } from 'lucide-react-native';
 import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError, Presence, SyncStatus } from '@/components/OnlineUI';
 import VideoCall from '@/components/VideoCall';
+import { CheckoutDarts } from '@/components/CheckoutDarts';
 import { bilt } from '@/lib/bilt';
 import { feedback, palette, validScore, canFinish } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
@@ -27,7 +28,7 @@ export default function OnlineGame() {
   );
   const [input, setInput] = useState('');
   const [double, setDouble] = useState(false);
-  const [darts, setDarts] = useState(3);
+  const [darts, setDarts] = useState<1 | 2 | 3>(3);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
@@ -361,25 +362,7 @@ export default function OnlineGame() {
                           </View>
                         )}
                         {checkout && (
-                          <>
-                            <Txt>Počet šípok pri ukončení</Txt>
-                            <View className="flex-row gap-2">
-                              {[1, 2, 3].map((n) => (
-                                <Button
-                                  key={n}
-                                  variant={darts === n ? 'primary' : 'secondary'}
-                                  className="flex-1"
-                                  isDisabled={disabled}
-                                  onPress={() => {
-                                    setDarts(n);
-                                    feedback.selection();
-                                  }}
-                                >
-                                  <Button.Label>{n}</Button.Label>
-                                </Button>
-                              ))}
-                            </View>
-                          </>
+                          <CheckoutDarts value={darts} onChange={setDarts} disabled={disabled} />
                         )}
                       </View>
                     )}

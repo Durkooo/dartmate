@@ -19,6 +19,12 @@ import { feedback, palette } from '@/lib/darts';
 import type { VideoCallProps } from '@/components/VideoCall';
 
 registerGlobals();
+let audioTransition = Promise.resolve();
+function serializeAudio(action: () => Promise<void>): Promise<void> {
+  const next = audioTransition.then(action);
+  audioTransition = next.catch(() => undefined);
+  return next;
+}
 function RoomContent({ room, onLeave }: { room: Room; onLeave: () => void }) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled } = useLocalParticipant();
@@ -119,18 +125,24 @@ export default function NativeVideoCall({ matchId, onLeave }: VideoCallProps) {
   }
   useEffect(() => {
     let mounted = true;
+    let ownsAudio = false;
     void (async () => {
       try {
         const data = await getVideoCredentials(request.matchId);
         if (!mounted) return;
-        await AudioSession.startAudioSession();
-        if (!mounted) {
-          await AudioSession.stopAudioSession();
-          return;
-        }
-        setCredentials(data);
+        await serializeAudio(async () => {
+          if (!mounted) return;
+          ownsAudio = true;
+          try {
+            await AudioSession.startAudioSession();
+          } catch (e) {
+            await AudioSession.stopAudioSession().catch(() => undefined);
+            ownsAudio = false;
+            throw e;
+          }
+          if (mounted) setCredentials(data);
+        });
       } catch (e) {
-        await AudioSession.stopAudioSession().catch(() => undefined);
         if (mounted) {
           setError(e instanceof Error ? e.message : 'Video sa nepodarilo pripojiť.');
           feedback.error();
@@ -139,9 +151,18 @@ export default function NativeVideoCall({ matchId, onLeave }: VideoCallProps) {
     })();
     return () => {
       mounted = false;
-      void room.disconnect();
-      void AudioSession.stopAudioSession();
+      void serializeAudio(async () => {
+        try {
+          await room.disconnect();
+        } finally {
+          if (ownsAudio) {
+            ownsAudio = false;
+            await AudioSession.stopAudioSession();
+          }
+        }
+      }).catch(() => undefined);
     };
+    // eslint-disable-next-line react/exhaustive-effect-dependencies -- room is stable state, but react-hooks/exhaustive-deps requires it here.
   }, [request, room]);
   if (!credentials)
     return (
