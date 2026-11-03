@@ -137,6 +137,39 @@ export default function OnlineGame() {
         <OnlineGate>{null}</OnlineGate>
       </Page>
     );
+  const host = m?.host_id === userId;
+  const myRemaining = host ? (m?.host_remaining ?? 0) : (m?.guest_remaining ?? 0);
+  const peerRemaining = host ? (m?.guest_remaining ?? 0) : (m?.host_remaining ?? 0);
+  const peerName = m && userId ? opponentName(m, userId) : '';
+  const peerId = m && userId ? opponentId(m, userId) : '';
+  const myName = host ? (m?.host_nickname ?? '') : (m?.guest_nickname ?? '');
+  const contact = query.data?.contacts.find((c) => c.user_id === peerId);
+  const mine = !!m && m.next_player === userId && m.status === 'active';
+  const checkout =
+    !!input &&
+    Number(input) === myRemaining &&
+    canFinish(Number(input), m.double_out) &&
+    (!m.double_out || double);
+  const showDouble =
+    !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
+  const contactOnline = !!contact?.online && !query.error;
+  const disabled = pending || !!query.error || !mine;
+  const turns = query.data?.turns ?? [];
+  // Čakám na súpera → jeho video veľké; inak (hádžem) kompaktné počítadlo
+  // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
+  const waiting = !!m && m.status === 'active' && !mine;
+  const videoVisible = !!video && !!m && m.status === 'active' && focused && foreground;
+  // VŠETKY háky musia byť pred každým podmieneným returnom – inak pri
+  // prechode loading → dáta zlyhá React (error #310: meniaci sa počet hákov).
+  const videoRef = useRef<ScrollView>(null);
+
+  // Po prestriedaní ťahu vyrolovať stránku čo najvyššie,
+  // aby bolo skóre vidno pre oboch hráčov.
+  const turnCount = m?.turn_count ?? 0;
+  useEffect(() => {
+    videoRef.current?.scrollTo({ y: 0, animated: true });
+  }, [turnCount]);
+
   if (query.loading)
     return (
       <Page fallbackHref="/online">
@@ -156,37 +189,6 @@ export default function OnlineGame() {
         )}
       </Page>
     );
-
-  const host = m.host_id === userId;
-  const myRemaining = host ? m.host_remaining : m.guest_remaining;
-  const peerRemaining = host ? m.guest_remaining : m.host_remaining;
-  const peerName = opponentName(m, userId);
-  const peerId = opponentId(m, userId);
-  const myName = host ? m.host_nickname : m.guest_nickname;
-  const contact = query.data?.contacts.find((c) => c.user_id === peerId);
-  const mine = m.next_player === userId && m.status === 'active';
-  const checkout =
-    !!input &&
-    Number(input) === myRemaining &&
-    canFinish(Number(input), m.double_out) &&
-    (!m.double_out || double);
-  const showDouble =
-    !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
-  const contactOnline = !!contact?.online && !query.error;
-  const disabled = pending || !!query.error || !mine;
-  const turns = query.data?.turns ?? [];
-  // Čakám na súpera → jeho video veľké; inak (hádžem) kompaktné počítadlo
-  // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
-  const waiting = m.status === 'active' && !mine;
-  const videoVisible = video && m.status === 'active' && focused && foreground;
-  const videoRef = useRef<ScrollView>(null);
-
-  // Po prestriedaní ťahu vyrolovať stránku čo najvyššie,
-  // aby bolo skóre vidno pre oboch hráčov.
-  const turnCount = m.turn_count;
-  useEffect(() => {
-    videoRef.current?.scrollTo({ y: 0, animated: true });
-  }, [turnCount]);
 
   return (
     <KeyboardAvoidingView
