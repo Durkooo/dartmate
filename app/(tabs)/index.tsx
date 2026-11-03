@@ -5,10 +5,24 @@ import { ArrowUpRight, Target, Video, ChevronRight, Trophy } from 'lucide-react-
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { usePlayers } from '@/lib/players';
 import { loadContacts, loadOpenMatches, useOnlineQuery } from '@/lib/online';
 import { OpenMatches, OnlineError, Presence } from '@/components/OnlineUI';
+
+function sortedContacts(
+  contacts: { user_id: string | null; nickname: string | null; online: boolean | null }[],
+) {
+  // Online prví, potom podľa abecedy (bez diakritiky, malé písmená).
+  return [...contacts].sort((a, b) => {
+    const ao = a.online ? 0 : 1;
+    const bo = b.online ? 0 : 1;
+    if (ao !== bo) return ao - bo;
+    const an = (a.nickname ?? '').toLowerCase();
+    const bn = (b.nickname ?? '').toLowerCase();
+    return an.localeCompare(bn, 'sk');
+  });
+}
 
 export default function Home() {
   const compact = useWindowDimensions().width < 360;
@@ -24,13 +38,17 @@ export default function Home() {
       return { contacts, matches };
     }, []),
   );
+  const friendsOnline = useMemo(
+    () => (social.data ? sortedContacts(social.data.contacts) : []),
+    [social.data],
+  );
   return (
     <Page safeTop>
       <View className="mb-7 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <Target size={28} color={palette.ink} strokeWidth={1.8} />
           <Txt className="text-[28px]" style={{ fontFamily: 'Inter_700Bold', letterSpacing: -1 }}>
-            oche
+            DartMate
           </Txt>
         </View>
         <Button variant="secondary" size="sm" onPress={() => router.push('/account')}>
@@ -38,8 +56,61 @@ export default function Home() {
         </Button>
       </View>
       <StorageNotice />
-      <Heading className="mb-5">Ideš na šípky?</Heading>
-      <View className="bg-ink overflow-hidden rounded-[24px] p-5">
+      {/* 1) PARTIA: online prví, potom podľa abecedy */}
+      <View className="flex-row items-center justify-between">
+        <Heading className="text-[20px]">Tvoja partia</Heading>
+        <Button variant="ghost" size="sm" onPress={() => router.push('/friends')}>
+          <Button.Label>Všetci</Button.Label>
+          <ChevronRight size={16} color={palette.ink} />
+        </Button>
+      </View>
+      {session ? (
+        social.loading ? (
+          <LoadingRows />
+        ) : friendsOnline.length ? (
+          friendsOnline.slice(0, 5).map((contact) => (
+            <PressableFeedback
+              key={contact.user_id}
+              className="border-border gap-2 border-b py-4"
+              onPress={() =>
+                router.push({
+                  pathname: '/conversation/[id]',
+                  params: { id: contact.user_id ?? '' },
+                })
+              }
+            >
+              <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+                @{contact.nickname}
+              </Txt>
+              <Presence online={!!contact.online} unknown={!!social.error} />
+            </PressableFeedback>
+          ))
+        ) : (
+          <Button variant="outline" className="mt-4" onPress={() => router.push('/friend/new')}>
+            <Button.Label>Pridať priateľa podľa nicku</Button.Label>
+          </Button>
+        )
+      ) : (
+        <>
+          <Txt className="text-muted mt-1 text-[12px]">
+            Ukážkoví hráči na vyskúšanie lokálneho zápasu
+          </Txt>
+          {hydrated ? (
+            friends
+              .slice(0, 3)
+              .map((friend) => <FriendRow key={friend.id} friend={friend} action="play" />)
+          ) : (
+            <LoadingRows />
+          )}
+        </>
+      )}
+      <OnlineError error={social.error} retry={() => void social.refresh()} />
+      {/* 2) POZVÁNKY a rozhrané zápasy */}
+      {social.data && session && (
+        <OpenMatches matches={social.data.matches} userId={session.user.id} />
+      )}
+      {/* 3) RÁMIK pod pozvánkami */}
+      <View className="bg-ink mt-4 overflow-hidden rounded-[24px] p-5">
         <View className="flex-row items-start justify-between gap-2">
           <View className="flex-1">
             <Txt
@@ -86,61 +157,6 @@ export default function Home() {
           Kamera je voliteľná · skóre zadávaš ručne
         </Txt>
       </View>
-      <Button variant="secondary" className="mb-4" onPress={() => router.push('/statistics')}>
-        <Trophy size={18} color={palette.ink} strokeWidth={1.8} />
-        <Button.Label>Moje štatistiky</Button.Label>
-      </Button>
-      <OnlineError error={social.error} retry={() => void social.refresh()} />
-      {social.data && session && (
-        <OpenMatches matches={social.data.matches} userId={session.user.id} />
-      )}
-      <View className="flex-row items-center justify-between">
-        <Heading className="text-[20px]">Tvoja partia</Heading>
-        <Button variant="ghost" size="sm" onPress={() => router.push('/friends')}>
-          <Button.Label>Všetci</Button.Label>
-          <ChevronRight size={16} color={palette.ink} />
-        </Button>
-      </View>
-      {session ? (
-        social.loading ? (
-          <LoadingRows />
-        ) : social.data?.contacts.length ? (
-          social.data.contacts.slice(0, 3).map((contact) => (
-            <PressableFeedback
-              key={contact.user_id}
-              className="border-border gap-2 border-b py-4"
-              onPress={() =>
-                router.push({
-                  pathname: '/conversation/[id]',
-                  params: { id: contact.user_id ?? '' },
-                })
-              }
-            >
-              <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
-                @{contact.nickname}
-              </Txt>
-              <Presence online={!!contact.online} unknown={!!social.error} />
-            </PressableFeedback>
-          ))
-        ) : (
-          <Button variant="outline" className="mt-4" onPress={() => router.push('/friend/new')}>
-            <Button.Label>Pridať priateľa podľa nicku</Button.Label>
-          </Button>
-        )
-      ) : (
-        <>
-          <Txt className="text-muted mt-1 text-[12px]">
-            Ukážkoví hráči na vyskúšanie lokálneho zápasu
-          </Txt>
-          {hydrated ? (
-            friends
-              .slice(0, 3)
-              .map((friend) => <FriendRow key={friend.id} friend={friend} action="play" />)
-          ) : (
-            <LoadingRows />
-          )}
-        </>
-      )}
       {game && (
         <Button className="mt-5" variant="secondary" onPress={() => router.push('/match')}>
           <Button.Label>Pokračovať v lokálnom zápase</Button.Label>
