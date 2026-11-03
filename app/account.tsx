@@ -159,6 +159,9 @@ export default function Account() {
               <Button onPress={() => router.push('/friend/new')}>
                 <Button.Label>Pridať priateľa podľa nicku</Button.Label>
               </Button>
+              <Button variant="secondary" onPress={() => router.push('/statistics')}>
+                <Button.Label>Moje štatistiky</Button.Label>
+              </Button>
             </>
           ) : !remoteError ? (
             <>
