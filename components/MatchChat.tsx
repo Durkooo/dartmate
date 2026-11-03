@@ -7,6 +7,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Empty, Heading, LoadingRows, Txt } from '@/components/DartsUI';
 import { OnlineError } from '@/components/OnlineUI';
 import { bilt } from '@/lib/bilt';
+import { notifyRecipient } from '@/lib/sendPush';
 import { feedback } from '@/lib/darts';
 import { useOnlineQuery, uuidPattern, timeLabel } from '@/lib/online';
 import { playerError, usePlayers } from '@/lib/players';
@@ -58,6 +59,8 @@ function MatchChatContent({ userId, peerId, peerName }: MatchChatProps) {
       setText('');
       request.current = null;
       feedback.success();
+      const myNickname = usePlayers.getState().profile?.nickname;
+      if (myNickname) notifyRecipient(peerId, `@${myNickname}`, body, `/conversation/${userId}`);
       await query.refresh();
     } catch (e) {
       if (usePlayers.getState().session?.user.id === userId) {
