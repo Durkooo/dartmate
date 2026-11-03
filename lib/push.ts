@@ -98,3 +98,39 @@ export async function wasPushAsked(): Promise<boolean> {
     return true;
   }
 }
+
+/** iPhone bez nainštalovanej PWA: Web Push tam Apple nedovolí. */
+export function needsIosInstall(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const ios = /iPhone|iPad|iPod/i.test(ua);
+  if (!ios) return false;
+  const standalone =
+    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    (typeof window.matchMedia === 'function' &&
+      window.matchMedia('(display-mode: standalone)').matches);
+  return !standalone;
+}
+
+/**
+ * Vypne upozornenia: zruší subscription v prehliadači a zmaže ho z DB,
+ * aby backend nemal kam posielať.
+ */
+export async function disablePushSubscription(userId: string): Promise<'ok' | 'error'> {
+  try {
+    if (pushSupported()) {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub?.endpoint) {
+        await bilt.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+        await sub.unsubscribe();
+      }
+    }
+    const keys = await AsyncStorage.getAllKeys();
+    const mine = keys.filter((k) => k.startsWith(SUB_SENT_KEY + userId + ':'));
+    if (mine.length) await AsyncStorage.multiRemove(mine);
+    return 'ok';
+  } catch {
+    return 'error';
+  }
+}
