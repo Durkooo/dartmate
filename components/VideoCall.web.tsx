@@ -21,7 +21,7 @@ function snapshotTracks(room: Room): MediaTrack[] {
   return tracks;
 }
 
-export default function VideoCall({ matchId, onLeave }: VideoCallProps) {
+export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('Pripájam…');
@@ -119,6 +119,7 @@ export default function VideoCall({ matchId, onLeave }: VideoCallProps) {
       void session.disconnect();
     };
   }, [request]);
+  const remoteHeight = large ? 300 : 170;
   useEffect(() => {
     if (!room) return undefined;
     const elements: { track: Track; element: HTMLMediaElement }[] = [];
@@ -129,7 +130,7 @@ export default function VideoCall({ matchId, onLeave }: VideoCallProps) {
       if (element instanceof HTMLVideoElement) {
         element.playsInline = true;
         element.style.width = '100%';
-        element.style.height = '170px';
+        element.style.height = local ? '170px' : `${remoteHeight}px`;
         element.style.objectFit = 'contain';
       }
       if (local) element.muted = true;
@@ -147,7 +148,7 @@ export default function VideoCall({ matchId, onLeave }: VideoCallProps) {
         element.remove();
       }
     };
-  }, [room, tracks]);
+  }, [room, tracks, remoteHeight]);
   const control = async (action: () => Promise<unknown>) => {
     if (!room || pending) return;
     setPending(true);
@@ -187,7 +188,7 @@ export default function VideoCall({ matchId, onLeave }: VideoCallProps) {
           <div
             ref={remoteHost}
             style={{
-              minHeight: 170,
+              minHeight: remoteHeight,
               backgroundColor: palette.ink,
               borderRadius: 10,
               overflow: 'hidden',
