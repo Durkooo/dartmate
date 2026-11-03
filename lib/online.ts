@@ -40,11 +40,12 @@ export async function loadOpenMatches() {
   if (error) throw new Error(error.message);
   return data ?? [];
 }
-export async function inviteMatch(peer: string, starting: number, doubleOut: boolean) {
+export async function inviteMatch(peer: string, starting: number, doubleOut: boolean, legsToWin = 1) {
   const { data, error } = await bilt.rpc('invite_online_match', {
     peer,
     starting_score: starting,
     use_double_out: doubleOut,
+    legs_to_win: Math.min(9, Math.max(1, Math.floor(legsToWin))),
   });
   if (error) throw new Error(error.message);
   if (!data?.[0])
