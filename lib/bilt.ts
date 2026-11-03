@@ -15,13 +15,15 @@ function makeStub(): any {
     data: { session: null, user: null, subscription: { unsubscribe() {} } },
     error: { message: MISSING_MSG },
   };
+  const promise = () => Promise.resolve(result);
   const handler: ProxyHandler<any> = {
     get(_t, prop) {
-      if (prop === 'then') {
-        return (resolve: (v: unknown) => void) => resolve(result);
-      }
+      if (prop === 'then') return (a?: any, b?: any) => promise().then(a, b);
+      if (prop === 'catch') return (b?: any) => promise().catch(b);
+      if (prop === 'finally') return (f?: any) => promise().finally(f);
       if (prop === 'data') return result.data;
       if (prop === 'error') return result.error;
+      if (prop === 'unsubscribe') return () => {};
       return stub;
     },
     apply() {
