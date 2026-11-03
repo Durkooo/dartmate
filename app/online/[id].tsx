@@ -264,8 +264,10 @@ export default function OnlineGame() {
         {/* Status / chyby spojenia pod skóre (kompaktné, bez času) */}
         <OnlineError error={query.error} retry={() => void query.refresh()} />
 
-        {/* 2) KLÁVESNICA pod skóre (len raz) */}
-        {m.status === 'active' && (
+        {/* 2) KLÁVESNICA pod skóre – len keď hádžem (mine).
+            Čakajúcemu sa klávesnica schová a na jej mieste je video.
+            (Klávesnica mimo ťahu je aj tak neaktívna, len by zavadzala.) */}
+        {m.status === 'active' && mine && (
           <View className="gap-4">
             <NumberPad
               value={input}
@@ -304,15 +306,26 @@ export default function OnlineGame() {
           </View>
         )}
 
-        {/* 3) VIDEO medzi číselníkom a chatom.
-            Trvalá miestnosť počas celého zápasu – mení sa len veľkosť:
-            čakajúci vidí cez číselník veľké video súpera, hádžuci pod
-            číselníkom malé okno (po zápise sa video zväčší, súperovi zmenší). */}
-        {videoVisible && (
+        {/* 3) VIDEO namiesto klávesnice, keď čakám na súpera;
+            keď hádžem ja, len malé okno pod klávesnicou.
+            Trvalá miestnosť počas celého zápasu – mení sa len veľkosť
+            (čakajúci = veľké video súpera, hádžuci = malé).
+            Po zápise skóre sa role prehodia: mne sa video zmenší
+            a ukáže klávesnica, súperovi naopak. */}
+        {videoVisible && waiting && (
           <VideoCall
             matchId={id}
             onLeave={() => setVideo(false)}
-            large={waiting}
+            large
+            micWanted={micWanted}
+            onMicChange={setMicWanted}
+          />
+        )}
+        {videoVisible && !waiting && (
+          <VideoCall
+            matchId={id}
+            onLeave={() => setVideo(false)}
+            large={false}
             micWanted={micWanted}
             onMicChange={setMicWanted}
           />
