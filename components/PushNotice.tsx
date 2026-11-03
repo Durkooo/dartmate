@@ -9,14 +9,16 @@ import { usePlayers } from '@/lib/players';
 import {
   disablePushSubscription,
   ensurePushSubscription,
+  needsAndroidChrome,
   needsIosInstall,
+  pushHintLine,
   pushPermission,
   pushSupported,
   requestPushPermission,
   wasPushAsked,
 } from '@/lib/push';
 
-type Status = 'loading' | 'prompt' | 'on' | 'denied' | 'unsupported' | 'ios-install';
+type Status = 'loading' | 'prompt' | 'on' | 'denied' | 'unsupported' | 'ios-install' | 'android-chrome';
 
 /**
  * Ovládanie upozornení na nové správy v sekcii Priatelia.
@@ -37,6 +39,10 @@ export function PushNotice() {
     }
     if (needsIosInstall()) {
       setStatus('ios-install');
+      return;
+    }
+    if (needsAndroidChrome()) {
+      setStatus('android-chrome');
       return;
     }
     if (!pushSupported()) {
@@ -105,6 +111,21 @@ export function PushNotice() {
     );
   }
 
+  if (status === 'android-chrome') {
+    return (
+      <View className="bg-surface mb-4 gap-2 rounded-xl p-4">
+        <View className="flex-row items-center gap-2">
+          <BellRing size={18} color={palette.ink} strokeWidth={1.8} />
+          <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Upozornenia na Androide</Txt>
+        </View>
+        <Txt className="text-muted text-[13px] leading-5">
+          Tento prehliadač upozornenia nevie. Otvor DartMate v prehliadači Chrome (najlepšie s
+          appkou pridanou na plochu) a zapni ich tam.
+        </Txt>
+      </View>
+    );
+  }
+
   if (status === 'denied') {
     return (
       <View className="bg-surface mb-4 gap-2 rounded-xl p-4">
@@ -150,8 +171,8 @@ export function PushNotice() {
         <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Upozorniť na nové správy</Txt>
       </View>
       <Txt className="text-muted text-[13px] leading-5">
-        Keď ti priateľ napíše, vyskočí ti systémové upozornenie – aj keď máš appku zavretú. Na
-        iPhone funguje len ak máš appku pridanú na plochu.
+        Keď ti priateľ napíše, vyskočí ti systémové upozornenie – aj keď máš appku zavretú.
+        {pushHintLine()}
       </Txt>
       {failed && (
         <Txt className="text-danger text-[13px]">
