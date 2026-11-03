@@ -1,0 +1,434 @@
+import { useCallback, useEffect, useState } from 'react';
+import { AppState, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { Button, Switch } from 'heroui-native';
+import { Video, Trophy } from 'lucide-react-native';
+import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
+import { OnlineGate, OnlineError, Presence, SyncStatus } from '@/components/OnlineUI';
+import VideoCall from '@/components/VideoCall';
+import { CheckoutDarts } from '@/components/CheckoutDarts';
+import { NumberPad } from '@/components/NumberPad';
+import { MatchChat } from '@/components/MatchChat';
+import { bilt } from '@/lib/bilt';
+import { feedback, palette, validScore, canFinish } from '@/lib/darts';
+import { playerError, usePlayers } from '@/lib/players';
+import {
+  appIsActive,
+  loadMatch,
+  opponentId,
+  opponentName,
+  respondMatch,
+  useOnlineQuery,
+} from '@/lib/online';
+
+export default function OnlineGame() {
+  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const userId = usePlayers((s) => s.session?.user.id);
+  const query = useOnlineQuery(
+    userId ? `match:${userId}:${id}` : null,
+    useCallback(() => loadMatch(id), [id]),
+  );
+  const [input, setInput] = useState('');
+  const [double, setDouble] = useState(false);
+  const [darts, setDarts] = useState<1 | 2 | 3>(3);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [video, setVideo] = useState(false);
+  const [abandon, setAbandon] = useState(false);
+  const [showTurns, setShowTurns] = useState(false);
+  const [foreground, setForeground] = useState(appIsActive());
+  const [focused, setFocused] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+
+  const m = query.data?.match;
+  const [previousTurn, setPreviousTurn] = useState({ turnCount: m?.turn_count, id, userId });
+  if (
+    previousTurn.turnCount !== m?.turn_count ||
+    previousTurn.id !== id ||
+    previousTurn.userId !== userId
+  ) {
+    setPreviousTurn({ turnCount: m?.turn_count, id, userId });
+    setInput('');
+    setDouble(false);
+    setDarts(3);
+  }
+
+  useEffect(() => {
+    const change = () => setForeground(appIsActive());
+    const sub = AppState.addEventListener('change', change);
+    if (Platform.OS === 'web') document.addEventListener('visibilitychange', change);
+    return () => {
+      sub.remove();
+      if (Platform.OS === 'web') document.removeEventListener('visibilitychange', change);
+    };
+  }, []);
+
+  const respond = async (decision: 'accept' | 'decline' | 'cancel' | 'abandon') => {
+    if (pending) return;
+    setPending(true);
+    setError('');
+    try {
+      await respondMatch(id, decision);
+      await query.refresh();
+      feedback.success();
+      setAbandon(false);
+    } catch (e) {
+      setError(
+        playerError({
+          message: e instanceof Error ? e.message : 'Zápas sa nepodarilo aktualizovať.',
+        }),
+      );
+      feedback.error();
+      await query.refresh();
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!m || pending) return;
+    const score = Number(input);
+    if (!input || !/^\d{1,3}$/.test(input) || !validScore(score)) {
+      setError('Zadaj možné skóre od 0 do 180.');
+      feedback.error();
+      return;
+    }
+    setPending(true);
+    setError('');
+    try {
+      const { data, error: e } = await bilt.rpc('submit_online_turn', {
+        mid: id,
+        expected_turn: m.turn_count,
+        turn_score: score,
+        finished_double: double,
+        darts_thrown: darts,
+      });
+      if (e) throw new Error(e.message);
+      if (!data?.[0])
+        throw new Error('Ťah sa nezapísal. Skontroluj skóre, počet šípok a kto je na ťahu.');
+      await query.refresh();
+      setInput('');
+      setDouble(false);
+      setDarts(3);
+      feedback.success();
+    } catch (e) {
+      setError(
+        playerError({ message: e instanceof Error ? e.message : 'Skóre sa nepodarilo odoslať.' }),
+      );
+      feedback.error();
+      await query.refresh();
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (!userId)
+    return (
+      <Page fallbackHref="/online" fallbackLabel="Späť na online zápasy">
+        <OnlineGate>{null}</OnlineGate>
+      </Page>
+    );
+  if (query.loading)
+    return (
+      <Page fallbackHref="/online">
+        <LoadingRows />
+      </Page>
+    );
+  if (!m)
+    return (
+      <Page fallbackHref="/online" fallbackLabel="Späť na online zápasy">
+        <OnlineError error={query.error} retry={() => void query.refresh()} />
+        {!query.error && (
+          <Empty
+            text="Zápas nie je dostupný pre tento účet."
+            action="Online zápasy"
+            onPress={() => router.replace('/online')}
+          />
+        )}
+      </Page>
+    );
+
+  const host = m.host_id === userId;
+  const myRemaining = host ? m.host_remaining : m.guest_remaining;
+  const peerRemaining = host ? m.guest_remaining : m.host_remaining;
+  const peerName = opponentName(m, userId);
+  const peerId = opponentId(m, userId);
+  const myName = host ? m.host_nickname : m.guest_nickname;
+  const contact = query.data?.contacts.find((c) => c.user_id === peerId);
+  const mine = m.next_player === userId && m.status === 'active';
+  const checkout =
+    !!input &&
+    Number(input) === myRemaining &&
+    canFinish(Number(input), m.double_out) &&
+    (!m.double_out || double);
+  const showDouble =
+    !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
+  const disabled = pending || !!query.error || !mine;
+  const turns = query.data?.turns ?? [];
+  // Kamera sa ukazuje len čakajúcemu hráčovi (nie je na ťahu).
+  const waiting = m.status === 'active' && !mine;
+  const showVideo = video && waiting && focused && foreground;
+
+  return (
+    <KeyboardAvoidingView
+      className="bg-background flex-1"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={90}
+    >
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: 32,
+          gap: 16,
+          maxWidth: 600,
+          width: '100%',
+          alignSelf: 'center',
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Info riadok */}
+        <View>
+          <View className="flex-row items-center justify-between gap-3">
+            <Txt className="flex-1" style={{ fontFamily: 'Inter_600SemiBold' }}>
+              {m.starting} · {m.double_out ? 'Double out' : 'Straight out'}
+            </Txt>
+            <Presence online={!!contact?.online} unknown={!!query.error || !contact} />
+          </View>
+          <SyncStatus error={query.error} syncedAt={query.syncedAt} />
+          <OnlineError error={query.error} retry={() => void query.refresh()} />
+        </View>
+
+        {/* 1) POČÍTADLO alebo KAMERA čakajúceho */}
+        {showVideo ? (
+          <VideoCall matchId={id} onLeave={() => setVideo(false)} large />
+        ) : (
+          <View className="bg-ink overflow-hidden rounded-[22px]">
+          <View className="flex-row p-4">
+            {[
+              { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
+              {
+                key: 'peer',
+                name: `@${peerName}`,
+                score: peerRemaining,
+                active: !mine && m.status === 'active',
+              },
+            ].map((p) => (
+              <View key={p.key} className="flex-1 items-center px-2">
+                <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
+                  {p.active ? '● ' : ''}
+                  {p.name}
+                </Txt>
+                <Txt
+                  className={
+                    p.active
+                      ? 'text-accent text-[54px] leading-[66px]'
+                      : 'text-[54px] leading-[66px] text-white'
+                  }
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.15}
+                  style={{
+                    fontFamily: 'Inter_700Bold',
+                    fontVariant: ['tabular-nums'],
+                    letterSpacing: -3,
+                  }}
+                >
+                  {p.score}
+                </Txt>
+              </View>
+            ))}
+          </View>
+          <View className="bg-accent px-4 py-3">
+            <Txt className="text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+              {m.status === 'invited'
+                ? 'Čaká na prijatie'
+                : m.status === 'finished'
+                  ? m.winner_id === userId
+                    ? 'Vyhral si!'
+                    : `@${peerName} vyhráva!`
+                  : m.status === 'active'
+                    ? mine
+                      ? 'Si na ťahu – spočítaj šípky a odošli'
+                      : `Na ťahu: @${peerName}`
+                    : m.status === 'declined'
+                      ? 'Pozvánka odmietnutá'
+                      : 'Zápas zrušený'}
+            </Txt>
+          </View>
+          </View>
+        )}
+
+        {/* Tlačidlo kamery pod počítadlom */}
+        {m.status === 'active' && (
+          <Button
+            variant="secondary"
+            onPress={() => {
+              setVideo((v) => !v);
+              feedback.selection();
+            }}
+          >
+            <Video size={19} strokeWidth={1.8} color={palette.ink} />
+            <Button.Label>
+              {video ? 'Vypnúť kameru na terč' : 'Zapnúť kameru na terč'}
+            </Button.Label>
+          </Button>
+        )}
+
+        {/* Pozvánka */}
+        {m.status === 'invited' && (
+          <View className="gap-3">
+            <Heading className="text-[20px]">
+              {host ? 'Pozvánka odoslaná' : `@${peerName} ťa pozýva`}
+            </Heading>
+            {host ? (
+              <Button
+                variant="secondary"
+                isDisabled={pending || !!query.error}
+                onPress={() => void respond('cancel')}
+              >
+                <Button.Label>{pending ? 'Čakaj…' : 'Zrušiť pozvánku'}</Button.Label>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  isDisabled={pending || !!query.error}
+                  onPress={() => void respond('accept')}
+                >
+                  <Button.Label>{pending ? 'Prijímam…' : 'Prijať zápas'}</Button.Label>
+                </Button>
+                <Button
+                  variant="ghost"
+                  isDisabled={pending || !!query.error}
+                  onPress={() => void respond('decline')}
+                >
+                  <Button.Label>Teraz nie</Button.Label>
+                </Button>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* 2) KLÁVESNICA */}
+        {m.status === 'active' && (
+          <View className="gap-4">
+            <NumberPad
+              value={input}
+              onChange={(v) => {
+                setInput(v);
+                setDouble(false);
+                setDarts(3);
+                setError('');
+              }}
+              onSubmit={() => void submit()}
+              disabled={disabled}
+              pending={pending}
+            />
+
+            {mine && (showDouble || checkout) && (
+              <View className="gap-4">
+                {m.double_out && (
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Txt className="flex-1">Posledná šípka bola double</Txt>
+                    <Switch
+                      isSelected={double}
+                      isDisabled={disabled}
+                      onSelectedChange={(v) => {
+                        setDouble(v);
+                        setDarts(3);
+                        feedback.selection();
+                      }}
+                    />
+                  </View>
+                )}
+                {checkout && (
+                  <CheckoutDarts value={darts} onChange={setDarts} disabled={disabled} />
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {m.status === 'finished' && (
+          <View className="items-center gap-3 py-4">
+            <Trophy size={32} strokeWidth={1.8} color={palette.ink} />
+            <Txt>Výsledok a štatistiky sú uložené.</Txt>
+            <Button onPress={() => router.push('/statistics')}>
+              <Button.Label>Moje štatistiky</Button.Label>
+            </Button>
+          </View>
+        )}
+
+        {!!error && (
+          <Txt className="text-danger" accessibilityRole="alert">
+            {error}
+          </Txt>
+        )}
+
+        {/* 3) CHAT */}
+        <MatchChat userId={userId} peerId={peerId} peerName={peerName} />
+
+        {/* História ťahov (zbaliteľná) */}
+        <Button variant="ghost" onPress={() => setShowTurns((s) => !s)}>
+          <Button.Label>
+            {showTurns ? 'Skryť ťahy' : `Zobraziť ťahy (${turns.length})`}
+          </Button.Label>
+        </Button>
+        {showTurns &&
+          (turns.length === 0 ? (
+            <Txt className="text-muted text-[13px]">Zatiaľ bez hodov.</Txt>
+          ) : (
+            turns.map((item) => (
+              <View
+                key={item.turn_number}
+                className="border-border flex-row justify-between gap-3 border-b py-2"
+              >
+                <View className="flex-1">
+                  <Txt numberOfLines={1}>{item.player_id === userId ? 'Ty' : `@${peerName}`}</Txt>
+                  <Txt className="text-muted text-[12px]">
+                    Ťah {item.turn_number} · {item.darts} {item.darts === 1 ? 'šípka' : 'šípky'}
+                  </Txt>
+                </View>
+                <Txt
+                  style={{ fontFamily: 'Inter_600SemiBold' }}
+                  className={item.bust ? 'text-danger' : ''}
+                >
+                  {item.bust ? 'Prehodené' : item.score} → {item.remaining}
+                </Txt>
+              </View>
+            ))
+          ))}
+
+        {m.status === 'active' &&
+          (abandon ? (
+            <View className="gap-3">
+              <Txt>Zrušiť zápas pre oboch hráčov? Nebude sa počítať do štatistík.</Txt>
+              <Button
+                variant="danger"
+                isDisabled={pending || !!query.error}
+                onPress={() => void respond('abandon')}
+              >
+                <Button.Label>Zrušiť zápas</Button.Label>
+              </Button>
+              <Button variant="ghost" isDisabled={pending} onPress={() => setAbandon(false)}>
+                <Button.Label>Pokračovať</Button.Label>
+              </Button>
+            </View>
+          ) : (
+            <Button variant="ghost" onPress={() => setAbandon(true)}>
+              <Button.Label>Zrušiť rozhraný zápas</Button.Label>
+            </Button>
+          ))}
+
+        <Button variant="ghost" onPress={() => router.dismissTo('/online')}>
+          <Button.Label>Späť na online zápasy</Button.Label>
+        </Button>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
