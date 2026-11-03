@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input, PressableFeedback } from 'heroui-native';
@@ -18,6 +18,7 @@ import { palette, useDarts } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
 import { loadContacts, useOnlineQuery } from '@/lib/online';
 import { OnlineError, Presence } from '@/components/OnlineUI';
+import { PushNotice } from '@/components/PushNotice';
 
 export default function Friends() {
   const [query, setQuery] = useState('');
@@ -77,6 +78,7 @@ export default function Friends() {
               </Button>
             </View>
             <StorageNotice />
+            {session ? <PushNotice /> : null}
             <View className="mb-6 gap-3">
               {profile ? (
                 <Button variant="secondary" onPress={() => router.push('/account')}>
