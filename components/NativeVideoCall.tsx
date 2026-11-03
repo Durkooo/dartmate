@@ -35,6 +35,9 @@ function RoomContent({
   large: boolean;
 }) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
+  // Hádžem (nie som čakajúci): malé okno ukazuje SÚPEROVU kameru,
+  // nie moju lokálnu – vidím jeho reakciu, keď čaká on.
+  const shownTracks = large ? tracks : tracks.filter((t) => !t.participant.isLocal);
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled } = useLocalParticipant();
   const state = useConnectionState();
   const participants = useParticipants();
@@ -65,19 +68,19 @@ function RoomContent({
             ? 'Obnovujem spojenie…'
             : 'Pripájam…'}
       </Txt>
-      {tracks
-        .filter((t) => large || t.participant.isLocal)
-        .map((track) => (
+      {shownTracks.map((track) => (
         <View key={track.participant.identity} className="mb-3">
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
-            {track.participant.isLocal
-              ? 'Tvoja kamera'
+            {large
+              ? track.participant.isLocal
+                ? 'Tvoja kamera'
+                : `@${track.participant.name || track.participant.identity}`
               : `@${track.participant.name || track.participant.identity}`}
           </Txt>
           {isTrackReference(track) && !track.publication.isMuted ? (
             <VideoTrack
               trackRef={track}
-              objectFit="contain"
+              objectFit={large ? 'contain' : 'cover'}
               style={{ height: large ? 170 : 120, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
             />
           ) : (
