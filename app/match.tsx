@@ -16,6 +16,8 @@ import {
   validScore,
   canFinish,
   validCheckout,
+  currentLeg,
+  legTurns,
 } from '@/lib/darts';
 
 export default function Match() {
@@ -23,6 +25,7 @@ export default function Match() {
   const hydrated = useDarts((s) => s.hydrated);
   const submitTurn = useDarts((s) => s.submitTurn);
   const undo = useDarts((s) => s.undo);
+  const startNextLeg = useDarts((s) => s.startNextLeg);
   const archiveGame = useDarts((s) => s.archiveGame);
   const discardGame = useDarts((s) => s.discardGame);
   const [input, setInput] = useState('');
@@ -65,6 +68,14 @@ export default function Match() {
     validScore(score) &&
     (!game.doubleOut || (finishAttempt && double));
   const finished = game.winner !== null;
+  const legBreak = game.betweenLegs;
+  const legNo = currentLeg(game) + 1;
+  const legWinnerName = (() => {
+    if (!legBreak) return '';
+    const last = game.turns.at(-1);
+    if (!last) return '';
+    return last.player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
+  })();
   const append = (digit: string) => {
     if (input.length >= 3) return;
     setInput(input === '0' ? digit : input + digit);
@@ -127,9 +138,15 @@ export default function Match() {
             <View className="mb-4 flex-row items-center justify-between">
               <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'}
+                {game.legsToWin > 1 && ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`}
               </Txt>
-              <Txt className="text-muted text-[12px]">Lokálna hra</Txt>
+              <Txt className="text-muted mt-2 text-[12px]">Lokálna hra</Txt>
             </View>
+            {!finished && !legBreak && game.legsToWin > 1 && (
+              <Txt className="text-muted mb-3 text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                Leg {legNo} · začína {currentLeg(game) % 2 === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
+              </Txt>
+            )}
             {video && (
               <View className="bg-default mb-4 rounded-2xl p-5">
                 <View className="flex-row items-center justify-between">
@@ -160,7 +177,9 @@ export default function Match() {
               <View className="flex-row items-center justify-center gap-2 pt-4">
                 <View className="bg-accent h-1.5 w-1.5 rounded-full" />
                 <Txt className="text-on-ink text-[12px]">
-                  {finished ? 'Zápas dohraný' : `Kolo ${Math.floor(game.turns.length / 2) + 1}`}
+                  {finished
+                    ? 'Zápas dohraný'
+                    : `Kolo ${Math.floor(legTurns(game).length / 2) + 1}${game.legsToWin > 1 ? ` · leg ${legNo}` : ''}`}
                 </Txt>
               </View>
               <View className="flex-row px-4 py-4">
@@ -207,6 +226,11 @@ export default function Match() {
               <View className="items-center gap-4 py-6">
                 <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
                 <Heading>{game.winner === 0 ? 'Dobrý zásah.' : 'Čas na odvetu.'}</Heading>
+                {game.legsToWin > 1 && (
+                  <Txt className="text-muted text-[14px]">
+                    Legy {game.legs[0]}:{game.legs[1]}
+                  </Txt>
+                )}
                 <Button
                   size="lg"
                   className="w-full"
@@ -217,6 +241,41 @@ export default function Match() {
                   }}
                 >
                   <Button.Label>Uložiť výsledok</Button.Label>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onPress={() => {
+                    undo();
+                    setInput('');
+                    feedback.success();
+                  }}
+                >
+                  <Undo2 size={18} color={palette.ink} />
+                  <Button.Label>Opraviť posledný ťah</Button.Label>
+                </Button>
+              </View>
+            ) : legBreak ? (
+              <View className="items-center gap-4 py-6">
+                <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
+                <Heading>
+                  Leg {legNo - 1}: {legWinnerName}
+                </Heading>
+                <Txt className="text-muted text-[14px]">
+                  Stav legov {game.legs[0]}:{game.legs[1]} · hrá sa do {game.legsToWin}
+                </Txt>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onPress={() => {
+                    startNextLeg();
+                    setInput('');
+                    setDouble(false);
+                    setDarts(3);
+                    setError('');
+                    feedback.success();
+                  }}
+                >
+                  <Button.Label>Začať ďalší leg</Button.Label>
                 </Button>
                 <Button
                   variant="ghost"

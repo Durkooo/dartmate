@@ -27,6 +27,7 @@ export default function NewMatch() {
   const [selected, setSelected] = useState(friendId ?? friends[0]?.id ?? 'practice');
   const [starting, setStarting] = useState<301 | 501>(501);
   const [doubleOut, setDoubleOut] = useState(true);
+  const [legsToWin, setLegsToWin] = useState(2);
   const [replace, setReplace] = useState(false);
   const opponent = friends.find((f) => f.id === selected) ?? practice;
   if (!hydrated)
@@ -102,6 +103,31 @@ export default function NewMatch() {
                 </Button>
               ))}
             </View>
+            <Heading className="mt-7 mb-4 text-[20px]">Na koľko víťazných legov?</Heading>
+            <View className="flex-row gap-3">
+              {([1, 2, 3, 5] as const).map((n) => (
+                <Button
+                  key={n}
+                  className="h-16 flex-1 rounded-xl"
+                  variant={legsToWin === n ? 'primary' : 'secondary'}
+                  onPress={() => {
+                    if (legsToWin !== n) {
+                      setLegsToWin(n);
+                      feedback.selection();
+                    }
+                  }}
+                >
+                  <Button.Label className="text-[24px]" style={{ fontFamily: 'Inter_700Bold' }}>
+                    {n}
+                  </Button.Label>
+                </Button>
+              ))}
+            </View>
+            <Txt className="text-muted mt-3 mb-7 text-[13px]">
+              {legsToWin === 1
+                ? 'Jeden leg — kto prvý ukončí hru, vyhráva zápas.'
+                : `Zápas končí, keď niekto vyhrá ${legsToWin} ${legsToWin === 5 ? 'legov' : 'legy'}. Jeden leg = jedna hra ${starting}.`}
+            </Txt>
             <Heading className="mt-7 mb-4 text-[20px]">Ukončenie hry</Heading>
             <View className="flex-row gap-3">
               {[true, false].map((d) => (
@@ -152,7 +178,7 @@ export default function NewMatch() {
                 <Button
                   size="lg"
                   onPress={() => {
-                    startGame(opponent, starting, doubleOut);
+                    startGame(opponent, starting, doubleOut, legsToWin);
                     feedback.success();
                     router.replace('/match');
                   }}
