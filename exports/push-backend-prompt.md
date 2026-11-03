@@ -33,14 +33,10 @@ create policy push_subscriptions_owner on public.push_subscriptions
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 ```
 
-2. **VAPID kľúče** — ulož ako secret (Settings → Keys):
-   - `VAPID_PUBLIC_KEY` =
-     `BPb1dX-NeoVKp08INgXL6Ou2EtznBRhX59-zKUhLKRY-lK-ZkCYkZIgMFLHyGyZq0Bhua5Mkb20i1K0qMnO1qnA`
-   - `VAPID_PRIVATE_KEY` =
-     `nR-PT-BoEsPRmZvsCdsSps0OqX-L8BC8-OjTwGqFH2-V5Da46peQNcn6Erj67T5jenLYY7-OOyHtrlGAWBnhc8o`
-   - `VAPID_SUBJECT` = `mailto:podpora@dartmate.app`
-   (Verejný kľúč daj aj do Vercel → Environment Variables ako
-   `EXPO_PUBLIC_VAPID_PUBLIC_KEY` s rovnakou hodnotou + Redeploy.)
+2. **VAPID kľúče** — ulož ako secret (Settings → Keys). Hodnoty som ti dal v chate (verejný kľúč je aj vo Verceli ako `EXPO_PUBLIC_VAPID_PUBLIC_KEY`). Súkromný kľúč patrí LEN sem do secretov — nikdy do repozitára ani do chatu okrem tohto formulára:
+   - `VAPID_PUBLIC_KEY` = `BPb1dX-NeoVKp08INgXL6Ou2EtznBRhX59-zKUhLKRY-lK-ZkCYkZIgMFLHyGyZq0Bhua5Mkb20i1K0qMnO1qnA`
+   - `VAPID_PRIVATE_KEY` = (32-bajtový kľúč z chatu)
+   - `VAPID_SUBJECT` = `mailto:kristofjuraj@gmail.com`
 
 3. **Edge funkcia `send-push`** — nová funkcia (verify_jwt: true), ktorá:
    - načíta VAPID_* z Deno.env,
