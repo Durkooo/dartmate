@@ -10,6 +10,7 @@ import { Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError, Presence, OpenMatches } from '@/components/OnlineUI';
 import { feedback, palette } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
+import { notifyRecipient } from '@/lib/sendPush';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
@@ -23,6 +24,7 @@ import {
 export default function Conversation() {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const userId = usePlayers((s) => s.session?.user.id);
+  const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   return <ConversationContent key={`${userId ?? 'guest'}:${id}`} id={id} userId={userId} />;
 }
 function ConversationContent({ id, userId }: { id: string; userId: string | undefined }) {
@@ -108,6 +110,8 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
       setText('');
       request.current = null;
       feedback.success();
+      // Backend pošle príjemcovi push notifikáciu (ak má povolené).
+      if (myNickname) notifyRecipient(id, `@${myNickname}`, body, `/conversation/${userId}`);
       await query.refresh();
     } catch (e) {
       if (usePlayers.getState().session?.user.id === userId) {
