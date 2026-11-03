@@ -71,7 +71,7 @@ export default function Home() {
           friendsOnline.slice(0, 5).map((contact) => (
             <PressableFeedback
               key={contact.user_id}
-              className="border-border gap-2 border-b py-4"
+              className="flex-row items-center gap-2 py-2"
               onPress={() =>
                 router.push({
                   pathname: '/conversation/[id]',
@@ -79,10 +79,14 @@ export default function Home() {
                 })
               }
             >
-              <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+              <Txt
+                numberOfLines={1}
+                className="flex-1"
+                style={{ fontFamily: 'Inter_600SemiBold' }}
+              >
                 @{contact.nickname}
               </Txt>
-              <Presence online={!!contact.online} unknown={!!social.error} />
+              <Presence inline online={!!contact.online} unknown={!!social.error} />
             </PressableFeedback>
           ))
         ) : (
