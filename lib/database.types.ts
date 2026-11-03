@@ -52,6 +52,9 @@ declare module '@biltme/backend' {
             created_at: string
             updated_at: string
             completed_at: string | null
+            legs_to_win: number
+            host_legs: number
+            guest_legs: number
           }
           Insert: {
             id?: string
@@ -70,6 +73,9 @@ declare module '@biltme/backend' {
             created_at?: string
             updated_at?: string
             completed_at?: string | null
+            legs_to_win?: number
+            host_legs?: number
+            guest_legs?: number
           }
           Update: {
             id?: string
@@ -88,6 +94,9 @@ declare module '@biltme/backend' {
             created_at?: string
             updated_at?: string
             completed_at?: string | null
+            legs_to_win?: number
+            host_legs?: number
+            guest_legs?: number
           }
           Relationships: []
         }
@@ -101,6 +110,7 @@ declare module '@biltme/backend' {
             bust: boolean
             remaining: number
             created_at: string
+            leg_number: number
           }
           Insert: {
             match_id: string
@@ -111,6 +121,7 @@ declare module '@biltme/backend' {
             bust: boolean
             remaining: number
             created_at?: string
+            leg_number?: number
           }
           Update: {
             match_id?: string
@@ -121,6 +132,7 @@ declare module '@biltme/backend' {
             bust?: boolean
             remaining?: number
             created_at?: string
+            leg_number?: number
           }
           Relationships: [
             {
@@ -241,6 +253,7 @@ declare module '@biltme/backend' {
             peer: string
             starting_score?: number
             use_double_out?: boolean
+            legs_to_win?: number
           }
           Returns: Database['public']['Tables']['online_matches']['Row'][]
           SetofOptions: {
