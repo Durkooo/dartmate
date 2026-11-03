@@ -4,7 +4,7 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Button, Switch } from 'heroui-native';
 import { Video, Trophy } from 'lucide-react-native';
 import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
-import { OnlineGate, OnlineError, Presence, SyncStatus } from '@/components/OnlineUI';
+import { OnlineGate, OnlineError } from '@/components/OnlineUI';
 import VideoCall from '@/components/VideoCall';
 import { CheckoutDarts } from '@/components/CheckoutDarts';
 import { NumberPad } from '@/components/NumberPad';
@@ -169,10 +169,11 @@ export default function OnlineGame() {
     (!m.double_out || double);
   const showDouble =
     !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
+  const contactOnline = !!contact?.online && !query.error;
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
-  // Kamera: miestnosť ostáva pripojená počas celého zápasu (aj keď hádžem),
-  // veľké video súpera sa ukazuje len čakajúcemu hráčovi.
+  // Čakám na súpera → veľké video súpera; inak (hádžem) kompaktné počítadlo
+  // s malým oknom súperovej kamery (nie mojej) + ovládanie kamery pod ním.
   const waiting = m.status === 'active' && !mine;
 
   return (
@@ -192,19 +193,14 @@ export default function OnlineGame() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Info riadok */}
-        <View>
-          <View className="flex-row items-center justify-between gap-3">
-            <Txt className="flex-1" style={{ fontFamily: 'Inter_600SemiBold' }}>
-              {m.starting} · {m.double_out ? 'Double out' : 'Straight out'}
-            </Txt>
-            <Presence online={!!contact?.online} unknown={!!query.error || !contact} />
-          </View>
-          <SyncStatus error={query.error} syncedAt={query.syncedAt} />
-          <OnlineError error={query.error} retry={() => void query.refresh()} />
-        </View>
+        {/* 1) Jedna trvalá video miestnosť – čakajúci vidí veľké video súpera,
+            hádžuci len malé okno pod počítadlom (large = čakám na súpera) */}
+        {video && m.status === 'active' && focused && foreground && (
+          <VideoCall matchId={id} onLeave={() => setVideo(false)} large={waiting} />
+        )}
 
-        {/* 1) POČÍTADLO (skryté pre čakajúceho so zapnutou kamerou) */}
+        {/* 2) POČÍTADLO: kompaktné (~o tretinu menšie čísla), bez žltého pásu;
+            stav sa ukazuje len ako bodka za menom hráča */}
         {!(video && waiting) && (
           <View className="bg-ink overflow-hidden rounded-[22px]">
           <View className="flex-row p-4">
@@ -218,15 +214,29 @@ export default function OnlineGame() {
               },
             ].map((p) => (
               <View key={p.key} className="flex-1 items-center px-2">
-                <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
-                  {p.active ? '● ' : ''}
-                  {p.name}
-                </Txt>
+                <View className="flex-row items-center gap-1.5">
+                  <View
+                    style={{
+                      backgroundColor:
+                        p.key === 'peer'
+                          ? contactOnline
+                            ? palette.success
+                            : palette.danger
+                          : 'transparent',
+                      width: 7,
+                      height: 7,
+                      borderRadius: 3.5,
+                    }}
+                  />
+                  <Txt className="text-on-ink text-[13px]" numberOfLines={1}>
+                    {p.name}
+                  </Txt>
+                </View>
                 <Txt
                   className={
                     p.active
-                      ? 'text-accent text-[54px] leading-[66px]'
-                      : 'text-[54px] leading-[66px] text-white'
+                      ? 'text-accent text-[38px] leading-[46px]'
+                      : 'text-[38px] leading-[46px] text-white'
                   }
                   adjustsFontSizeToFit
                   numberOfLines={1}
@@ -242,31 +252,11 @@ export default function OnlineGame() {
               </View>
             ))}
           </View>
-          <View className="bg-accent px-4 py-3">
-            <Txt className="text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-              {m.status === 'invited'
-                ? 'Čaká na prijatie'
-                : m.status === 'finished'
-                  ? m.winner_id === userId
-                    ? 'Vyhral si!'
-                    : `@${peerName} vyhráva!`
-                  : m.status === 'active'
-                    ? mine
-                      ? 'Si na ťahu – spočítaj šípky a odošli'
-                      : `Na ťahu: @${peerName}`
-                    : m.status === 'declined'
-                      ? 'Pozvánka odmietnutá'
-                      : 'Zápas zrušený'}
-            </Txt>
-          </View>
           </View>
         )}
 
-        {/* Jedna trvalá video miestnosť počas celého zápasu – pri prestriedaní
-            ťahov sa neodpája, mení sa len zobrazenie (large = vidím súpera) */}
-        {video && m.status === 'active' && focused && foreground && (
-          <VideoCall matchId={id} onLeave={() => setVideo(false)} large={waiting} />
-        )}
+        {/* Status / chyby spojenia pod počítadlom (kompaktné, bez času) */}
+        <OnlineError error={query.error} retry={() => void query.refresh()} />
 
         {/* Tlačidlo kamery pod počítadlom */}
         {m.status === 'active' && (
