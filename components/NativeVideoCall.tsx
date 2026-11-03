@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Room, Track, ConnectionState, LocalVideoTrack } from 'livekit-client';
 import {
@@ -44,13 +44,15 @@ function RoomContent({
   const shownTracks = large ? tracks : tracks.filter((t) => !t.participant.isLocal);
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled } = useLocalParticipant();
   // Mikrofón drží stav zvolený hráčom (z hornej obrazovky) po celý zápas.
-  const [micWantedLocal, setMicWantedLocal] = useState(micWanted);
-  if (micWantedLocal !== micWanted) setMicWantedLocal(micWanted);
+  // active vo refke spúšťa efekt len raz za zmenu; samotný setState sem nepatrí
+  // (React error #310 = setState počas renderu = nekonečná slučka).
+  const appliedMic = useRef(micWanted);
   useEffect(() => {
-    if (isMicrophoneEnabled === micWantedLocal || !localParticipant) return;
-    void control(() => localParticipant.setMicrophoneEnabled(micWantedLocal));
+    if (appliedMic.current === micWanted || !localParticipant) return;
+    appliedMic.current = micWanted;
+    void control(() => localParticipant.setMicrophoneEnabled(micWanted));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- zámerne len na zmenu voľby
-  }, [micWantedLocal]);
+  }, [micWanted, localParticipant]);
   const state = useConnectionState();
   const participants = useParticipants();
   const [pending, setPending] = useState(false);
@@ -119,9 +121,9 @@ function RoomContent({
         onCamera={() => void control(() => localParticipant.setCameraEnabled(!isCameraEnabled))}
         onMicrophone={() =>
           void control(async () => {
-            const next = !micWantedLocal;
+            const next = !appliedMic.current;
             await localParticipant.setMicrophoneEnabled(next);
-            setMicWantedLocal(next);
+            appliedMic.current = next;
             onMicChange?.(next);
           })
         }

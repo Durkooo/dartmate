@@ -34,12 +34,12 @@ export default function VideoCall({
   const [request, setRequest] = useState({ matchId });
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [pending, setPending] = useState(false);
+  const micRef = useRef(micWanted);
+  micRef.current = micWanted;
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const currentRoom = useRef<Room | null>(null);
-  const micWantedRef = useRef(micWanted);
-  micWantedRef.current = micWanted;
   const localHost = useRef<HTMLDivElement>(null);
   const remoteHost = useRef<HTMLDivElement>(null);
   const [previousSession, setPreviousSession] = useState(request);
@@ -108,13 +108,14 @@ export default function VideoCall({
             return;
           }
           // Mikrofón si pamätáme po celý zápas: raz vypnutý = vypnutý,
-          // kým ho hráč v tomto zápase znova nezapne.
-          await session.localParticipant.setMicrophoneEnabled(micWantedRef.current);
+          // kým ho hráč v tomto zápase znova nezapne. Čítame z refky,
+          // nie zo stavu (ten sa počas pripájania mohol zmeniť).
+          await session.localParticipant.setMicrophoneEnabled(micRef.current);
           if (!active) {
             await session.disconnect();
             return;
           }
-          setMicrophone(micWantedRef.current);
+          setMicrophone(micRef.current);
           update();
         } catch (e) {
           fail(e);
