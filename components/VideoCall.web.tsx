@@ -130,7 +130,7 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
       if (element instanceof HTMLVideoElement) {
         element.playsInline = true;
         element.style.width = '100%';
-        element.style.height = local ? '170px' : `${remoteHeight}px`;
+        element.style.height = local ? (large ? '170px' : '120px') : `${remoteHeight}px`;
         element.style.objectFit = 'contain';
       }
       if (local) element.muted = true;
@@ -148,7 +148,7 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
         element.remove();
       }
     };
-  }, [room, tracks, remoteHeight]);
+  }, [room, tracks, large, remoteHeight]);
   const control = async (action: () => Promise<unknown>) => {
     if (!room || pending) return;
     setPending(true);
@@ -183,29 +183,33 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
     <View className="bg-surface rounded-xl p-3">
       <Txt className="text-muted mb-2 text-[12px]">Video · {status}</Txt>
       <View className="gap-3">
-        <View>
-          <Txt className="mb-1 text-[12px]">Súper</Txt>
-          <div
-            ref={remoteHost}
-            style={{
-              minHeight: remoteHeight,
+        {large && (
+          <View>
+            <Txt className="mb-1 text-[12px]">Súper</Txt>
+            <div
+              key="remote"
+              ref={remoteHost}
+              style={{
+                minHeight: remoteHeight,
               backgroundColor: palette.ink,
               borderRadius: 10,
               overflow: 'hidden',
             }}
           />
-          {room.remoteParticipants.size === 0 && (
-            <Txt className="text-muted mt-2 text-[12px]">
-              Súper sa ešte nepripojil k videohovoru.
-            </Txt>
-          )}
-        </View>
+            {room.remoteParticipants.size === 0 && (
+              <Txt className="text-muted mt-2 text-[12px]">
+                Súper sa ešte nepripojil k videohovoru.
+              </Txt>
+            )}
+          </View>
+        )}
         <View>
           <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
           <div
+            key="local"
             ref={localHost}
             style={{
-              minHeight: 170,
+              minHeight: large ? 170 : 120,
               backgroundColor: palette.ink,
               borderRadius: 10,
               overflow: 'hidden',
