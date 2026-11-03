@@ -119,7 +119,7 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
       void session.disconnect();
     };
   }, [request]);
-  const remoteHeight = large ? 300 : 170;
+  const remoteHeight = large ? 300 : 120; // kompaktné okno súpera, keď hádžem
   useEffect(() => {
     if (!room) return undefined;
     const elements: { track: Track; element: HTMLMediaElement }[] = [];
@@ -130,7 +130,7 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
       if (element instanceof HTMLVideoElement) {
         element.playsInline = true;
         element.style.width = '100%';
-        element.style.height = local ? (large ? '170px' : '120px') : `${remoteHeight}px`;
+        element.style.height = local ? '170px' : `${remoteHeight}px`;
         element.style.objectFit = 'contain';
       }
       if (local) element.muted = true;
@@ -138,6 +138,8 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
       elements.push({ track, element });
     };
     for (const { track, local } of tracks) {
+      // Hádžem: zobrazíme len SÚPEROVU kameru – moju lokálnu skryjeme.
+      if (!large && local) continue;
       attach(track, local ? localHost.current : remoteHost.current, local);
     }
     return () => {
@@ -183,39 +185,37 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
     <View className="bg-surface rounded-xl p-3">
       <Txt className="text-muted mb-2 text-[12px]">Video · {status}</Txt>
       <View className="gap-3">
+        <View>
+          <Txt className="mb-1 text-[12px]">{large ? 'Súper' : 'Súperova kamera'}</Txt>
+          <div
+            ref={remoteHost}
+            style={{
+              minHeight: remoteHeight,
+              backgroundColor: palette.ink,
+              borderRadius: 10,
+              overflow: 'hidden',
+            }}
+          />
+          {room.remoteParticipants.size === 0 && (
+            <Txt className="text-muted mt-2 text-[12px]">
+              Súper sa ešte nepripojil k videohovoru.
+            </Txt>
+          )}
+        </View>
         {large && (
           <View>
-            <Txt className="mb-1 text-[12px]">Súper</Txt>
+            <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
             <div
-              key="remote"
-              ref={remoteHost}
+              ref={localHost}
               style={{
-                minHeight: remoteHeight,
-              backgroundColor: palette.ink,
-              borderRadius: 10,
-              overflow: 'hidden',
-            }}
-          />
-            {room.remoteParticipants.size === 0 && (
-              <Txt className="text-muted mt-2 text-[12px]">
-                Súper sa ešte nepripojil k videohovoru.
-              </Txt>
-            )}
+                minHeight: 170,
+                backgroundColor: palette.ink,
+                borderRadius: 10,
+                overflow: 'hidden',
+              }}
+            />
           </View>
         )}
-        <View>
-          <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
-          <div
-            key="local"
-            ref={localHost}
-            style={{
-              minHeight: large ? 170 : 120,
-              backgroundColor: palette.ink,
-              borderRadius: 10,
-              overflow: 'hidden',
-            }}
-          />
-        </View>
       </View>
       {!!error && (
         <Txt className="text-danger mt-2 text-[12px]" accessibilityRole="alert">
