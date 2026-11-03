@@ -25,7 +25,15 @@ function serializeAudio(action: () => Promise<void>): Promise<void> {
   audioTransition = next.catch(() => undefined);
   return next;
 }
-function RoomContent({ room, onLeave }: { room: Room; onLeave: () => void }) {
+function RoomContent({
+  room,
+  onLeave,
+  large,
+}: {
+  room: Room;
+  onLeave: () => void;
+  large: boolean;
+}) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled } = useLocalParticipant();
   const state = useConnectionState();
@@ -57,7 +65,9 @@ function RoomContent({ room, onLeave }: { room: Room; onLeave: () => void }) {
             ? 'Obnovujem spojenie…'
             : 'Pripájam…'}
       </Txt>
-      {tracks.map((track) => (
+      {tracks
+        .filter((t) => large || t.participant.isLocal)
+        .map((track) => (
         <View key={track.participant.identity} className="mb-3">
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
             {track.participant.isLocal
@@ -68,16 +78,18 @@ function RoomContent({ room, onLeave }: { room: Room; onLeave: () => void }) {
             <VideoTrack
               trackRef={track}
               objectFit="contain"
-              style={{ height: 170, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
+              style={{ height: large ? 170 : 120, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
             />
           ) : (
-            <View className="bg-ink h-[170px] items-center justify-center rounded-xl">
+            <View
+              className={`bg-ink items-center justify-center rounded-xl ${large ? 'h-[170px]' : 'h-[120px]'}`}
+            >
               <Txt className="text-on-ink">Kamera je vypnutá</Txt>
             </View>
           )}
         </View>
       ))}
-      {participants.length < 2 && (
+      {large && participants.length < 2 && (
         <Txt className="text-muted text-[12px]">Súper sa ešte nepripojil k videohovoru.</Txt>
       )}
       {!!error && (
@@ -107,7 +119,7 @@ function RoomContent({ room, onLeave }: { room: Room; onLeave: () => void }) {
     </View>
   );
 }
-export default function NativeVideoCall({ matchId, onLeave }: VideoCallProps) {
+export default function NativeVideoCall({ matchId, onLeave, large }: VideoCallProps) {
   const [credentials, setCredentials] = useState<Awaited<
     ReturnType<typeof getVideoCredentials>
   > | null>(null);
@@ -196,7 +208,7 @@ export default function NativeVideoCall({ matchId, onLeave }: VideoCallProps) {
           feedback.error();
         }}
       >
-        <RoomContent room={room} onLeave={onLeave} />
+        <RoomContent room={room} onLeave={onLeave} large={large} />
       </LiveKitRoom>
     </View>
   );
