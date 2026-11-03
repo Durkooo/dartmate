@@ -34,6 +34,9 @@ export default function OnlineGame() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
+  // Stav mikrofónu si pamätáme po celý zápas: raz vypnutý = vypnutý,
+  // kým ho hráč v tomto zápase znova nezapne. Platí od prvého pripojenia.
+  const [micWanted, setMicWanted] = useState(true);
   const [abandon, setAbandon] = useState(false);
   const [showTurns, setShowTurns] = useState(false);
   const [foreground, setForeground] = useState(appIsActive());
@@ -172,9 +175,18 @@ export default function OnlineGame() {
   const contactOnline = !!contact?.online && !query.error;
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
-  // Čakám na súpera → veľké video súpera; inak (hádžem) kompaktné počítadlo
-  // s malým oknom súperovej kamery (nie mojej) + ovládanie kamery pod ním.
+  // Čakám na súpera → jeho video veľké; inak (hádžem) kompaktné počítadlo
+  // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
   const waiting = m.status === 'active' && !mine;
+  const videoVisible = video && m.status === 'active' && focused && foreground;
+  const videoRef = useRef<ScrollView>(null);
+
+  // Po prestriedaní ťahu vyrolovať stránku čo najvyššie,
+  // aby bolo skóre vidno pre oboch hráčov.
+  const turnCount = m.turn_count;
+  useEffect(() => {
+    videoRef.current?.scrollTo({ y: 0, animated: true });
+  }, [turnCount]);
 
   return (
     <KeyboardAvoidingView
@@ -183,6 +195,7 @@ export default function OnlineGame() {
       keyboardVerticalOffset={90}
     >
       <ScrollView
+        ref={videoRef}
         contentContainerStyle={{
           padding: 16,
           paddingBottom: 32,
@@ -193,16 +206,8 @@ export default function OnlineGame() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 1) Jedna trvalá video miestnosť – čakajúci vidí veľké video súpera,
-            hádžuci len malé okno pod počítadlom (large = čakám na súpera) */}
-        {video && m.status === 'active' && focused && foreground && (
-          <VideoCall matchId={id} onLeave={() => setVideo(false)} large={waiting} />
-        )}
-
-        {/* 2) POČÍTADLO: kompaktné (~o tretinu menšie čísla), bez žltého pásu;
-            stav sa ukazuje len ako bodka za menom hráča */}
-        {!(video && waiting) && (
-          <View className="bg-ink overflow-hidden rounded-[22px]">
+        {/* 1) SKÓRE – vždy na vrchu */}
+        <View className="bg-ink overflow-hidden rounded-[22px]">
           <View className="flex-row p-4">
             {[
               { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
@@ -252,63 +257,12 @@ export default function OnlineGame() {
               </View>
             ))}
           </View>
-          </View>
-        )}
+        </View>
 
-        {/* Status / chyby spojenia pod počítadlom (kompaktné, bez času) */}
+        {/* Status / chyby spojenia pod skóre (kompaktné, bez času) */}
         <OnlineError error={query.error} retry={() => void query.refresh()} />
 
-        {/* Tlačidlo kamery pod počítadlom */}
-        {m.status === 'active' && (
-          <Button
-            variant="secondary"
-            onPress={() => {
-              setVideo((v) => !v);
-              feedback.selection();
-            }}
-          >
-            <Video size={19} strokeWidth={1.8} color={palette.ink} />
-            <Button.Label>
-              {video ? 'Vypnúť kameru na terč' : 'Zapnúť kameru na terč'}
-            </Button.Label>
-          </Button>
-        )}
-
-        {/* Pozvánka */}
-        {m.status === 'invited' && (
-          <View className="gap-3">
-            <Heading className="text-[20px]">
-              {host ? 'Pozvánka odoslaná' : `@${peerName} ťa pozýva`}
-            </Heading>
-            {host ? (
-              <Button
-                variant="secondary"
-                isDisabled={pending || !!query.error}
-                onPress={() => void respond('cancel')}
-              >
-                <Button.Label>{pending ? 'Čakaj…' : 'Zrušiť pozvánku'}</Button.Label>
-              </Button>
-            ) : (
-              <>
-                <Button
-                  isDisabled={pending || !!query.error}
-                  onPress={() => void respond('accept')}
-                >
-                  <Button.Label>{pending ? 'Prijímam…' : 'Prijať zápas'}</Button.Label>
-                </Button>
-                <Button
-                  variant="ghost"
-                  isDisabled={pending || !!query.error}
-                  onPress={() => void respond('decline')}
-                >
-                  <Button.Label>Teraz nie</Button.Label>
-                </Button>
-              </>
-            )}
-          </View>
-        )}
-
-        {/* 2) KLÁVESNICA */}
+        {/* 2) KLÁVESNICA pod skóre (len raz) */}
         {m.status === 'active' && (
           <View className="gap-4">
             <NumberPad
@@ -344,6 +298,69 @@ export default function OnlineGame() {
                   <CheckoutDarts value={darts} onChange={setDarts} disabled={disabled} />
                 )}
               </View>
+            )}
+          </View>
+        )}
+
+        {/* 3) VIDEO medzi číselníkom a chatom.
+            Trvalá miestnosť počas celého zápasu – mení sa len veľkosť:
+            čakajúci vidí cez číselník veľké video súpera, hádžuci pod
+            číselníkom malé okno (po zápise sa video zväčší, súperovi zmenší). */}
+        {videoVisible && (
+          <VideoCall
+            matchId={id}
+            onLeave={() => setVideo(false)}
+            large={waiting}
+            micWanted={micWanted}
+            onMicChange={setMicWanted}
+          />
+        )}
+
+        {/* Tlačidlo kamery (schová sa pri zapnutej kamere –
+            ovládanie je priamo vo video paneli) */}
+        {m.status === 'active' && !video && (
+          <Button
+            variant="secondary"
+            onPress={() => {
+              setVideo(true);
+              feedback.selection();
+            }}
+          >
+            <Video size={19} strokeWidth={1.8} color={palette.ink} />
+            <Button.Label>Zapnúť kameru na terč</Button.Label>
+          </Button>
+        )}
+
+        {/* 2b) POZVÁNKA */}
+        {m.status === 'invited' && (
+          <View className="gap-3">
+            <Heading className="text-[20px]">
+              {host ? 'Pozvánka odoslaná' : `@${peerName} ťa pozýva`}
+            </Heading>
+            {host ? (
+              <Button
+                variant="secondary"
+                isDisabled={pending || !!query.error}
+                onPress={() => void respond('cancel')}
+              >
+                <Button.Label>{pending ? 'Čakaj…' : 'Zrušiť pozvánku'}</Button.Label>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  isDisabled={pending || !!query.error}
+                  onPress={() => void respond('accept')}
+                >
+                  <Button.Label>{pending ? 'Prijímam…' : 'Prijať zápas'}</Button.Label>
+                </Button>
+                <Button
+                  variant="ghost"
+                  isDisabled={pending || !!query.error}
+                  onPress={() => void respond('decline')}
+                >
+                  <Button.Label>Teraz nie</Button.Label>
+                </Button>
+              </>
             )}
           </View>
         )}
