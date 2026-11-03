@@ -21,6 +21,7 @@ export default function NewOnlineMatch() {
   const [selected, setSelected] = useState(friendId ?? '');
   const [starting, setStarting] = useState(501);
   const [doubleOut, setDoubleOut] = useState(true);
+  const [legsToWin, setLegsToWin] = useState(2);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const insets = useSafeAreaInsets();
@@ -29,7 +30,7 @@ export default function NewOnlineMatch() {
     setPending(true);
     setError('');
     try {
-      const match = await inviteMatch(selected, starting, doubleOut);
+      const match = await inviteMatch(selected, starting, doubleOut, legsToWin);
       if (usePlayers.getState().session?.user.id !== userId) return;
       feedback.success();
       router.replace({ pathname: '/online/[id]', params: { id: match.id } });
@@ -86,6 +87,30 @@ export default function NewOnlineMatch() {
                 </View>
                 <Txt className="text-muted mt-5 text-[13px] leading-5">
                   Kamera je voliteľná. Zapneš ju až v prijatom zápase.
+                </Txt>
+                <Heading className="mt-8 mb-3 text-[20px]">Na koľko víťazných legov?</Heading>
+                <View className="flex-row gap-3">
+                  {([1, 2, 3, 5] as const).map((n) => (
+                    <Button
+                      key={n}
+                      className="flex-1"
+                      variant={legsToWin === n ? 'primary' : 'secondary'}
+                      isDisabled={pending}
+                      onPress={() => {
+                        if (legsToWin !== n) {
+                          setLegsToWin(n);
+                          feedback.selection();
+                        }
+                      }}
+                    >
+                      <Button.Label>{n}</Button.Label>
+                    </Button>
+                  ))}
+                </View>
+                <Txt className="text-muted mt-3 text-[13px] leading-5">
+                  {legsToWin === 1
+                    ? 'Jeden leg — kto prvý ukončí hru, vyhráva zápas.'
+                    : `Zápas končí, keď niekto vyhrá ${legsToWin} ${legsToWin === 5 ? 'legov' : 'legy'}. Jeden leg = jedna hra ${starting}.`}
                 </Txt>
                 <Heading className="mt-8 mb-3 text-[20px]">Koho vyzveš?</Heading>
                 <OnlineError error={query.error} retry={() => void query.refresh()} />

@@ -143,6 +143,14 @@ export default function OnlineGame() {
   const peerName = m && userId ? opponentName(m, userId) : '';
   const peerId = m && userId ? opponentId(m, userId) : '';
   const myName = host ? (m?.host_nickname ?? '') : (m?.guest_nickname ?? '');
+  const legsToWin = m?.legs_to_win ?? 1;
+  const myLegs = host ? (m?.host_legs ?? 0) : (m?.guest_legs ?? 0);
+  const peerLegs = host ? (m?.guest_legs ?? 0) : (m?.host_legs ?? 0);
+  const legNo = myLegs + peerLegs + 1;
+  // Začínajúceho legu striedame rovnako ako server: párny leg host, nepárny guest.
+  const completedLegs = myLegs + peerLegs;
+  const starterIsHost = completedLegs % 2 === 0;
+  const legStarterName = (starterIsHost === host ? myName : peerName) || peerName;
   const contact = query.data?.contacts.find((c) => c.user_id === peerId);
   const mine = !!m && m.next_player === userId && m.status === 'active';
   const checkout =
@@ -210,6 +218,16 @@ export default function OnlineGame() {
       >
         {/* 1) SKÓRE – vždy na vrchu */}
         <View className="bg-ink overflow-hidden rounded-[22px]">
+          {legsToWin > 1 && (
+            <View className="flex-row items-center justify-center gap-2 px-4 pt-3">
+              <Trophy size={14} strokeWidth={1.8} color={palette.accent} />
+              <Txt className="text-on-ink text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                {m?.status === 'finished'
+                  ? `Legy ${myLegs}:${peerLegs}`
+                  : `Leg ${legNo} · legy ${myLegs}:${peerLegs} (do ${legsToWin}) · začína @${legStarterName}`}
+              </Txt>
+            </View>
+          )}
           <View className="flex-row p-4">
             {[
               { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
