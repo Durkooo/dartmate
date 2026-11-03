@@ -42,6 +42,8 @@ export type Turn = {
   bust: boolean;
   remaining: number;
   darts?: 1 | 2 | 3;
+  /** Poradové číslo legu (od 0), v ktorom padol ťah. */
+  leg: number;
 };
 export type Game = {
   id: string;
@@ -49,6 +51,12 @@ export type Game = {
   opponentName: string;
   starting: 301 | 501;
   doubleOut: boolean;
+  /** Na koľko víťazných legov sa hrá (1 = jeden leg ako doteraz). */
+  legsToWin: number;
+  /** Vyhraté legy [ja, súper]. */
+  legs: [number, number];
+  /** Medzi legmi: leg dohraný, čaká sa na začiatok ďalšieho. */
+  betweenLegs: boolean;
   turns: Turn[];
   winner: 0 | 1 | null;
   date: string;
@@ -77,11 +85,24 @@ const sampleMessages: Message[] = [
 ];
 export function scores(game: Game): [number, number] {
   const result: [number, number] = [game.starting, game.starting];
-  for (const turn of game.turns) result[turn.player] = turn.remaining;
+  for (const turn of game.turns) {
+    if (turn.leg === currentLeg(game)) result[turn.player] = turn.remaining;
+  }
   return result;
 }
+/** Koľko legov je dohraných = číslo práve hraného legu (od 0). */
+export function currentLeg(game: Game): number {
+  return game.legs[0] + game.legs[1];
+}
+/** Ťahy práve hraného legu. */
+export function legTurns(game: Game): Turn[] {
+  const leg = currentLeg(game);
+  return game.turns.filter((t) => t.leg === leg);
+}
 export function activePlayer(game: Game): 0 | 1 {
-  return game.turns.length % 2 === 0 ? 0 : 1;
+  // Začínajúceho v legu striedame: párny leg začína hráč 0, nepárny hráč 1.
+  const starter = (currentLeg(game) % 2) as 0 | 1;
+  return ((starter + legTurns(game).length) % 2) as 0 | 1;
 }
 export function average(game: Game, player: 0 | 1): string {
   const turns = game.turns.filter((t) => t.player === player);
@@ -134,9 +155,10 @@ interface DartsState {
   storageError: boolean;
   addFriend: (name: string, handle: string) => string;
   sendMessage: (friendId: string, text: string) => void;
-  startGame: (friend: Friend, starting: 301 | 501, doubleOut: boolean) => void;
+  startGame: (friend: Friend, starting: 301 | 501, doubleOut: boolean, legsToWin?: number) => void;
   submitTurn: (score: number, finishedDouble: boolean, darts?: 1 | 2 | 3) => void;
   undo: () => void;
+  startNextLeg: () => void;
   archiveGame: () => void;
   discardGame: () => void;
   retryStorage: () => Promise<void>;
@@ -173,7 +195,7 @@ export const useDarts = create<DartsState>()(
             },
           ],
         })),
-      startGame: (friend, starting, doubleOut) =>
+      startGame: (friend, starting, doubleOut, legsToWin = 1) =>
         set({
           game: {
             id: id(),
@@ -181,6 +203,9 @@ export const useDarts = create<DartsState>()(
             opponentName: friend.name,
             starting,
             doubleOut,
+            legsToWin: Math.min(9, Math.max(1, Math.floor(legsToWin))),
+            legs: [0, 0],
+            betweenLegs: false,
             turns: [],
             winner: null,
             date: new Date().toISOString(),
@@ -188,7 +213,7 @@ export const useDarts = create<DartsState>()(
         }),
       submitTurn: (score, finishedDouble, darts = 3) => {
         const game = get().game;
-        if (!game || game.winner !== null || !validScore(score)) return;
+        if (!game || game.winner !== null || game.betweenLegs || !validScore(score)) return;
         const player = activePlayer(game);
         const remaining = scores(game)[player] - score;
         const bust =
@@ -196,25 +221,55 @@ export const useDarts = create<DartsState>()(
           (game.doubleOut &&
             (remaining === 1 || (remaining === 0 && (!finishedDouble || !canFinish(score, true)))));
         if (!bust && remaining === 0 && !validCheckout(score, darts, game.doubleOut)) return;
+        const legWon = !bust && remaining === 0;
+        const legs: [number, number] =
+          legWon && player === 0
+            ? [game.legs[0] + 1, game.legs[1]]
+            : legWon
+              ? [game.legs[0], game.legs[1] + 1]
+              : game.legs;
+        const matchWon = legWon && legs[player] >= game.legsToWin;
         const turn: Turn = {
-          darts: !bust && remaining === 0 ? darts : 3,
+          darts: legWon ? darts : 3,
           player,
           score,
           bust,
           remaining: bust ? scores(game)[player] : remaining,
+          leg: currentLeg(game),
         };
         set({
           game: {
             ...game,
             turns: [...game.turns, turn],
-            winner: !bust && remaining === 0 ? player : null,
+            legs,
+            betweenLegs: legWon && !matchWon,
+            winner: matchWon ? player : null,
           },
         });
       },
       undo: () =>
-        set((s) => ({
-          game: s.game ? { ...s.game, turns: s.game.turns.slice(0, -1), winner: null } : null,
-        })),
+        set((s) => {
+          if (!s.game) return {};
+          const last = s.game.turns.at(-1);
+          const legWon = !!last && !last.bust && last.remaining === 0;
+          return {
+            game: {
+              ...s.game,
+              turns: s.game.turns.slice(0, -1),
+              legs:
+                legWon && last
+                  ? ([
+                      s.game.legs[0] - (last.player === 0 ? 1 : 0),
+                      s.game.legs[1] - (last.player === 1 ? 1 : 0),
+                    ] as [number, number])
+                  : s.game.legs,
+              winner: null,
+              betweenLegs: false,
+            },
+          };
+        }),
+      startNextLeg: () =>
+        set((s) => (s.game && s.game.betweenLegs ? { game: { ...s.game, betweenLegs: false } } : {})),
       archiveGame: () =>
         set((s) => ({
           history: s.game && s.game.winner !== null ? [s.game, ...s.history] : s.history,
@@ -251,6 +306,32 @@ export const useDarts = create<DartsState>()(
         removeItem: (name) => AsyncStorage.removeItem(name),
       })),
       partialize: savedState,
+      version: 1,
+      // Staré uložené zápasy (pred legmi) doplnia predvolené hodnoty,
+      // aby sa po update nerozbili (Ťahy bez legu patria do legu 0).
+      migrate: (persisted: unknown) => {
+        const s = (persisted ?? {}) as { state?: Record<string, unknown> };
+        const state = (s.state ?? s) as Record<string, unknown>;
+        const fixGame = (g: unknown) => {
+          const game = (g ?? {}) as Record<string, unknown>;
+          const turns = (Array.isArray(game.turns) ? game.turns : []) as Record<string, unknown>[];
+          return {
+            ...game,
+            legsToWin: typeof game.legsToWin === 'number' ? game.legsToWin : 1,
+            legs: Array.isArray(game.legs) ? game.legs : [0, 0],
+            betweenLegs: false,
+            winner: (game.winner as 0 | 1 | null) ?? null,
+            turns: turns.map((t) => ({
+              ...t,
+              leg: typeof t.leg === 'number' ? t.leg : 0,
+            })),
+          };
+        };
+        if (Array.isArray(state.history))
+          state.history = (state.history as unknown[]).map(fixGame);
+        if (state.game) state.game = fixGame(state.game);
+        return { ...s, state } as never;
+      },
       onRehydrateStorage: () => (_state, error) => {
         useDarts.setState({ hydrated: true, storageError: !!error });
         if (error) feedback.error();
