@@ -112,6 +112,25 @@ export function needsIosInstall(): boolean {
   return !standalone;
 }
 
+/** Android web bez podpory Web Push (starý/WebView prehliadač) – treba Chrome. */
+export function needsAndroidChrome(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  if (!/Android/i.test(ua)) return false;
+  return !pushSupported();
+}
+
+/** Krátka platforma-špecifická veta do výzvy. */
+export function pushHintLine(): string {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return '';
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua))
+    return ' Na iPhone funguje len ak máš appku pridanú na plochu.';
+  if (/Android/i.test(ua))
+    return ' Na Androide stačí Chrome (aj bez inštalácie), najlepšie s appkou na ploche.';
+  return '';
+}
+
 /**
  * Vypne upozornenia: zruší subscription v prehliadači a zmaže ho z DB,
  * aby backend nemal kam posielať.
