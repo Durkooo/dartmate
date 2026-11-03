@@ -1,4 +1,3 @@
-json
 {
   "buildCommand": "npm run build:pwa",
   "outputDirectory": "dist",

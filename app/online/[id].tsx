@@ -273,7 +273,10 @@ export default function OnlineGame() {
               </Button>
             ) : (
               <>
-                <Button isDisabled={pending || !!query.error} onPress={() => void respond('accept')}>
+                <Button
+                  isDisabled={pending || !!query.error}
+                  onPress={() => void respond('accept')}
+                >
                   <Button.Label>{pending ? 'Prijímam…' : 'Prijať zápas'}</Button.Label>
                 </Button>
                 <Button
@@ -299,7 +302,9 @@ export default function OnlineGame() {
               }}
             >
               <Video size={19} strokeWidth={1.8} color={palette.ink} />
-              <Button.Label>{video ? 'Vypnúť kameru na terč' : 'Zapnúť kameru na terč'}</Button.Label>
+              <Button.Label>
+                {video ? 'Vypnúť kameru na terč' : 'Zapnúť kameru na terč'}
+              </Button.Label>
             </Button>
             {video && focused && foreground && (
               <VideoCall matchId={id} onLeave={() => setVideo(false)} />
@@ -377,9 +382,7 @@ export default function OnlineGame() {
                 className="border-border flex-row justify-between gap-3 border-b py-2"
               >
                 <View className="flex-1">
-                  <Txt numberOfLines={1}>
-                    {item.player_id === userId ? 'Ty' : `@${peerName}`}
-                  </Txt>
+                  <Txt numberOfLines={1}>{item.player_id === userId ? 'Ty' : `@${peerName}`}</Txt>
                   <Txt className="text-muted text-[12px]">
                     Ťah {item.turn_number} · {item.darts} {item.darts === 1 ? 'šípka' : 'šípky'}
                   </Txt>
