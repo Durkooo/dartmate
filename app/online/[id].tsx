@@ -171,6 +171,9 @@ export default function OnlineGame() {
     !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
+  // Kamera sa ukazuje len čakajúcemu hráčovi (nie je na ťahu).
+  const waiting = m.status === 'active' && !mine;
+  const showVideo = video && waiting && focused && foreground;
 
   return (
     <KeyboardAvoidingView
@@ -201,8 +204,11 @@ export default function OnlineGame() {
           <OnlineError error={query.error} retry={() => void query.refresh()} />
         </View>
 
-        {/* 1) MENÁ + SKÓRE */}
-        <View className="bg-ink overflow-hidden rounded-[22px]">
+        {/* 1) POČÍTADLO alebo KAMERA čakajúceho */}
+        {showVideo ? (
+          <VideoCall matchId={id} onLeave={() => setVideo(false)} large />
+        ) : (
+          <View className="bg-ink overflow-hidden rounded-[22px]">
           <View className="flex-row p-4">
             {[
               { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
@@ -255,7 +261,24 @@ export default function OnlineGame() {
                       : 'Zápas zrušený'}
             </Txt>
           </View>
-        </View>
+          </View>
+        )}
+
+        {/* Tlačidlo kamery pod počítadlom */}
+        {m.status === 'active' && (
+          <Button
+            variant="secondary"
+            onPress={() => {
+              setVideo((v) => !v);
+              feedback.selection();
+            }}
+          >
+            <Video size={19} strokeWidth={1.8} color={palette.ink} />
+            <Button.Label>
+              {video ? 'Vypnúť kameru na terč' : 'Zapnúť kameru na terč'}
+            </Button.Label>
+          </Button>
+        )}
 
         {/* Pozvánka */}
         {m.status === 'invited' && (
@@ -291,25 +314,9 @@ export default function OnlineGame() {
           </View>
         )}
 
-        {/* 2) KAMERA + KLÁVESNICA */}
+        {/* 2) KLÁVESNICA */}
         {m.status === 'active' && (
           <View className="gap-4">
-            <Button
-              variant="secondary"
-              onPress={() => {
-                setVideo((v) => !v);
-                feedback.selection();
-              }}
-            >
-              <Video size={19} strokeWidth={1.8} color={palette.ink} />
-              <Button.Label>
-                {video ? 'Vypnúť kameru na terč' : 'Zapnúť kameru na terč'}
-              </Button.Label>
-            </Button>
-            {video && focused && foreground && (
-              <VideoCall matchId={id} onLeave={() => setVideo(false)} />
-            )}
-
             <NumberPad
               value={input}
               onChange={(v) => {
