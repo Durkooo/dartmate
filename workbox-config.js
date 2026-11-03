@@ -14,4 +14,7 @@ module.exports = {
   skipWaiting: true,
   clientsClaim: true,
   cleanupOutdatedCaches: true,
+  // Push notifications about new direct messages (see lib/push.ts).
+  // Workbox appends this to the generated service worker.
+  importScripts: ['/push-sw.js'],
 };
