@@ -1,4 +1,6 @@
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
 import { ChevronRight, Wifi, WifiOff } from 'lucide-react-native';
@@ -41,23 +43,59 @@ export function OnlineError({ error, retry }: { error: string; retry: () => void
     </View>
   );
 }
-export function Presence({ online, unknown = false }: { online: boolean; unknown?: boolean }) {
+export function Presence({
+  online,
+  unknown = false,
+  inline = false,
+}: {
+  online: boolean;
+  unknown?: boolean;
+  inline?: boolean;
+}) {
+  // Online bodka bliká (opacity 1 ↔ 0.25), nápis „Online" ostáva stále zelený.
+  const blink = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!online || unknown) {
+      blink.setValue(1);
+      return undefined;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.25, duration: 700, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [online, unknown, blink]);
+  const color = unknown ? palette.muted : online ? palette.success : palette.danger;
   return (
-    <View className="flex-row items-center gap-1.5">
-      <View
-        style={{
-          backgroundColor: online && !unknown ? palette.success : palette.muted,
-          width: 6,
-          height: 6,
-          borderRadius: 3,
-        }}
+    <View
+      style={inline ? styles.inlineRow : undefined}
+      className={inline ? undefined : 'flex-row items-center gap-1.5'}
+    >
+      <Animated.View
+        style={[
+          styles.dot,
+          { backgroundColor: unknown ? palette.muted : online ? palette.success : color,
+            opacity: blink },
+        ]}
       />
-      <Txt className="text-muted text-[12px]" numberOfLines={1}>
+      <Txt
+        numberOfLines={1}
+        style={{ color, fontSize: inline ? 13 : 12 }}
+        className={inline ? undefined : 'text-[12px]'}
+      >
         {unknown ? 'Stav neznámy' : online ? 'Online' : 'Offline'}
       </Txt>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 7, height: 7, borderRadius: 3.5 },
+});
 export function SyncStatus({ error, syncedAt }: { error: string; syncedAt: number }) {
   return (
     <View className="flex-row items-center gap-2 py-3">
