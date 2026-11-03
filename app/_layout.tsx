@@ -29,8 +29,9 @@ import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { palette } from '@/lib/darts';
-import { usePlayerSession } from '@/lib/players';
+import { usePlayerSession, usePlayers } from '@/lib/players';
 import { useOnlinePresence } from '@/lib/online';
+import { ensurePushSubscription, pushSupported } from '@/lib/push';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -57,9 +58,26 @@ Uniwind.setTheme('light');
 
 void SplashScreen.preventAutoHideAsync();
 
+/**
+ * Hneď po prihlásení zaregistruje Web Push subscription (lib/push.ts).
+ * Zámerne v root layoute: Metro tak udrží VAPID kľúč v hlavnom bundli
+ * (lenivé importy ho pri exporte vyhadzujú ako nepoužitý).
+ * Samotná výzva na povolenie ostáva v Priateľoch (PushNotice).
+ */
+function usePushRegistration() {
+  const userId = usePlayers((s) => s.session?.user.id);
+  useEffect(() => {
+    if (!userId || !pushSupported()) return;
+    // Len ak už povolenie udelil (cez PushNotice) – nepýtame sa tu.
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    void ensurePushSubscription(userId);
+  }, [userId]);
+}
+
 export default function RootLayout() {
   usePlayerSession();
   useOnlinePresence();
+  usePushRegistration();
   const [loaded, error] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
