@@ -6,11 +6,10 @@ import { Video, Trophy } from 'lucide-react-native';
 import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError } from '@/components/OnlineUI';
 import VideoCall from '@/components/VideoCall';
-import { CheckoutDarts } from '@/components/CheckoutDarts';
 import { NumberPad } from '@/components/NumberPad';
 import { MatchChat } from '@/components/MatchChat';
 import { bilt } from '@/lib/bilt';
-import { feedback, palette, validScore, canFinish } from '@/lib/darts';
+import { feedback, palette, validScore, canFinish, validCheckout } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   appIsActive,
@@ -30,7 +29,6 @@ export default function OnlineGame() {
   );
   const [input, setInput] = useState('');
   const [double, setDouble] = useState(false);
-  const [darts, setDarts] = useState<1 | 2 | 3>(3);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
@@ -59,7 +57,6 @@ export default function OnlineGame() {
     setPreviousTurn({ turnCount: m?.turn_count, id, userId });
     setInput('');
     setDouble(false);
-    setDarts(3);
   }
 
   useEffect(() => {
@@ -94,7 +91,8 @@ export default function OnlineGame() {
     }
   };
 
-  const submit = async () => {
+  /** Odoslanie ťahu. Pri zatváraní legu (skóre 0) volá hráč s počtom šípok 1/2/3. */
+  const submitWith = async (chosenDarts: 1 | 2 | 3) => {
     if (!m || pending) return;
     const score = Number(input);
     if (!input || !/^\d{1,3}$/.test(input) || !validScore(score)) {
@@ -110,7 +108,7 @@ export default function OnlineGame() {
         expected_turn: m.turn_count,
         turn_score: score,
         finished_double: double,
-        darts_thrown: darts,
+        darts_thrown: chosenDarts,
       });
       if (e) throw new Error(e.message);
       if (!data?.[0])
@@ -118,7 +116,6 @@ export default function OnlineGame() {
       await query.refresh();
       setInput('');
       setDouble(false);
-      setDarts(3);
       feedback.success();
     } catch (e) {
       setError(
@@ -292,10 +289,9 @@ export default function OnlineGame() {
               onChange={(v) => {
                 setInput(v);
                 setDouble(false);
-                setDarts(3);
                 setError('');
               }}
-              onSubmit={() => void submit()}
+              onSubmit={() => void submitWith(3)}
               disabled={disabled}
               pending={pending}
             />
@@ -310,15 +306,42 @@ export default function OnlineGame() {
                       isDisabled={disabled}
                       onSelectedChange={(v) => {
                         setDouble(v);
-                        setDarts(3);
                         feedback.selection();
                       }}
                     />
                   </View>
                 )}
-                {checkout && (
-                  <CheckoutDarts value={darts} onChange={setDarts} disabled={disabled} />
-                )}
+                {checkout ? (
+                  <View className="bg-surface gap-3 rounded-2xl p-4">
+                    <Txt className="text-center" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                      Zavrel si leg {Number(input)}! Koľkými šípkami?
+                    </Txt>
+                    <View className="flex-row gap-2">
+                      {([1, 2, 3] as const).map((n) => {
+                        const ok = validCheckout(Number(input), n, m.double_out);
+                        return (
+                          <Button
+                            key={n}
+                            className="h-14 flex-1 rounded-xl"
+                            variant="primary"
+                            isDisabled={disabled || !ok}
+                            onPress={() => void submitWith(n)}
+                          >
+                            <Button.Label
+                              className="text-[24px]"
+                              style={{ fontFamily: 'Inter_700Bold' }}
+                            >
+                              {n}
+                            </Button.Label>
+                          </Button>
+                        );
+                      })}
+                    </View>
+                    <Txt className="text-muted text-center text-[12px]">
+                      Kliknutím na číslo sa leg ukončí.
+                    </Txt>
+                  </View>
+                ) : null}
               </View>
             )}
           </View>
