@@ -5,7 +5,6 @@ import { Button, PressableFeedback } from 'heroui-native';
 import { Video, X, Delete, Undo2, Check, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
-import { CheckoutDarts } from '@/components/CheckoutDarts';
 import {
   palette,
   feedback,
@@ -30,7 +29,6 @@ export default function Match() {
   const discardGame = useDarts((s) => s.discardGame);
   const [input, setInput] = useState('');
   const [double, setDouble] = useState(false);
-  const [darts, setDarts] = useState<1 | 2 | 3>(3);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
   const [discard, setDiscard] = useState(false);
@@ -81,24 +79,23 @@ export default function Match() {
     setInput(input === '0' ? digit : input + digit);
     setError('');
     setDouble(false);
-    setDarts(3);
     feedback.selection();
   };
-  const save = () => {
+  /** Uloženie ťahu. Pri zatváraní hry (skóre 0) volá hráč s počtom šípok 1/2/3. */
+  const saveWith = (chosenDarts: 1 | 2 | 3) => {
     if (!input || !validScore(score)) {
       setError('Zadaj možné skóre troch šípok od 0 do 180.');
       feedback.error();
       return;
     }
-    if (checkout && !validCheckout(score, darts, game.doubleOut)) {
+    if (checkout && !validCheckout(score, chosenDarts, game.doubleOut)) {
       setError('Toto skóre nemožno zatvoriť zvoleným počtom šípok. Skontroluj výber.');
       feedback.error();
       return;
     }
-    submitTurn(score, double, checkout ? darts : 3);
+    submitTurn(score, double, checkout ? chosenDarts : 3);
     setInput('');
     setDouble(false);
-    setDarts(3);
     setError('');
     if (useDarts.getState().game?.turns.at(-1)?.bust) feedback.error();
     else feedback.success();
@@ -270,7 +267,6 @@ export default function Match() {
                     startNextLeg();
                     setInput('');
                     setDouble(false);
-                    setDarts(3);
                     setError('');
                     feedback.success();
                   }}
@@ -316,7 +312,6 @@ export default function Match() {
                       onPress={() => {
                         setInput(String(n));
                         setDouble(false);
-                        setDarts(3);
                         setError('');
                         feedback.selection();
                       }}
@@ -358,7 +353,6 @@ export default function Match() {
                       undo();
                       setInput('');
                       setDouble(false);
-                      setDarts(3);
                       setError('');
                       feedback.success();
                     }}
@@ -385,7 +379,6 @@ export default function Match() {
                     onPress={() => {
                       setInput(input.slice(0, -1));
                       setDouble(false);
-                      setDarts(3);
                       setError('');
                       feedback.selection();
                     }}
@@ -400,7 +393,6 @@ export default function Match() {
                     accessibilityState={{ checked: double }}
                     onPress={() => {
                       setDouble((v) => !v);
-                      setDarts(3);
                       feedback.selection();
                     }}
                   >
@@ -412,27 +404,53 @@ export default function Match() {
                     <Txt className="flex-1 text-[14px]">Posledná šípka trafila double</Txt>
                   </PressableFeedback>
                 )}
-                {checkout && (
-                  <View className="mb-4">
-                    <CheckoutDarts
-                      value={darts}
-                      onChange={(n) => {
-                        setDarts(n);
-                        setError('');
-                      }}
-                    />
+                {checkout ? (
+                  <View className="bg-surface mb-4 gap-3 rounded-2xl p-4">
+                    <Txt className="text-center" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                      Zavrel si hru {score}! Koľkými šípkami?
+                    </Txt>
+                    <View className="flex-row gap-2">
+                      {([1, 2, 3] as const).map((n) => {
+                        const ok = validCheckout(score, n, game.doubleOut);
+                        return (
+                          <Button
+                            key={n}
+                            className="h-14 flex-1 rounded-xl"
+                            variant="primary"
+                            isDisabled={!ok}
+                            onPress={() => saveWith(n)}
+                          >
+                            <Button.Label
+                              className="text-[24px]"
+                              style={{ fontFamily: 'Inter_700Bold' }}
+                            >
+                              {n}
+                            </Button.Label>
+                          </Button>
+                        );
+                      })}
+                    </View>
+                    <Txt className="text-muted text-center text-[12px]">
+                      Kliknutím na číslo sa leg ukončí.
+                    </Txt>
                   </View>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="rounded-xl"
+                    isDisabled={!input}
+                    onPress={() => saveWith(3)}
+                  >
+                    <Button.Label>{input ? `Zapísať ${input}` : 'Zapísať skóre'}</Button.Label>
+                    <Check size={21} color={palette.ink} strokeWidth={1.8} />
+                  </Button>
                 )}
                 {!!error && (
                   <Txt className="text-danger mb-3 text-[13px]" accessibilityRole="alert">
                     {error}
                   </Txt>
                 )}
-                <Button size="lg" className="rounded-xl" isDisabled={!input} onPress={save}>
-                  <Button.Label>{input ? `Zapísať ${input}` : 'Zapísať skóre'}</Button.Label>
-                  <Check size={21} color={palette.ink} strokeWidth={1.8} />
-                </Button>
-                {!game.turns.length && (
+                {!checkout && !game.turns.length && (
                   <Txt className="text-muted mt-3 text-center text-[12px]">
                     Žiadny zásah? Zapíš 0.
                   </Txt>
