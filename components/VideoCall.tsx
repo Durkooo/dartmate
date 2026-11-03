@@ -2,7 +2,13 @@ import { useEffect, useState, type ComponentType } from 'react';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { VideoNotice } from '@/components/VideoUI';
 import { feedback } from '@/lib/darts';
-export type VideoCallProps = { matchId: string; onLeave: () => void; large?: boolean };
+export type VideoCallProps = {
+  matchId: string;
+  onLeave: () => void;
+  large?: boolean;
+  micWanted?: boolean;
+  onMicChange?: (on: boolean) => void;
+};
 
 const expoGoError =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient

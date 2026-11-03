@@ -29,16 +29,28 @@ function RoomContent({
   room,
   onLeave,
   large,
+  micWanted,
+  onMicChange,
 }: {
   room: Room;
   onLeave: () => void;
   large: boolean;
+  micWanted: boolean;
+  onMicChange?: (on: boolean) => void;
 }) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   // Hádžem (nie som čakajúci): malé okno ukazuje SÚPEROVU kameru,
   // nie moju lokálnu – vidím jeho reakciu, keď čaká on.
   const shownTracks = large ? tracks : tracks.filter((t) => !t.participant.isLocal);
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled } = useLocalParticipant();
+  // Mikrofón drží stav zvolený hráčom (z hornej obrazovky) po celý zápas.
+  const [micWantedLocal, setMicWantedLocal] = useState(micWanted);
+  if (micWantedLocal !== micWanted) setMicWantedLocal(micWanted);
+  useEffect(() => {
+    if (isMicrophoneEnabled === micWantedLocal || !localParticipant) return;
+    void control(() => localParticipant.setMicrophoneEnabled(micWantedLocal));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- zámerne len na zmenu voľby
+  }, [micWantedLocal]);
   const state = useConnectionState();
   const participants = useParticipants();
   const [pending, setPending] = useState(false);
@@ -106,7 +118,12 @@ function RoomContent({
         pending={pending}
         onCamera={() => void control(() => localParticipant.setCameraEnabled(!isCameraEnabled))}
         onMicrophone={() =>
-          void control(() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled))
+          void control(async () => {
+            const next = !micWantedLocal;
+            await localParticipant.setMicrophoneEnabled(next);
+            setMicWantedLocal(next);
+            onMicChange?.(next);
+          })
         }
         onFlip={() =>
           void control(async () => {
@@ -122,7 +139,13 @@ function RoomContent({
     </View>
   );
 }
-export default function NativeVideoCall({ matchId, onLeave, large }: VideoCallProps) {
+export default function NativeVideoCall({
+  matchId,
+  onLeave,
+  large,
+  micWanted = true,
+  onMicChange,
+}: VideoCallProps) {
   const [credentials, setCredentials] = useState<Awaited<
     ReturnType<typeof getVideoCredentials>
   > | null>(null);
@@ -200,7 +223,7 @@ export default function NativeVideoCall({ matchId, onLeave, large }: VideoCallPr
         serverUrl={credentials.url}
         token={credentials.token}
         connect
-        audio
+        audio={micWanted}
         video
         onError={(e) => {
           setError(e.message);
@@ -211,7 +234,13 @@ export default function NativeVideoCall({ matchId, onLeave, large }: VideoCallPr
           feedback.error();
         }}
       >
-        <RoomContent room={room} onLeave={onLeave} large={large} />
+        <RoomContent
+          room={room}
+          onLeave={onLeave}
+          large={large}
+          micWanted={micWanted}
+          onMicChange={onMicChange}
+        />
       </LiveKitRoom>
     </View>
   );

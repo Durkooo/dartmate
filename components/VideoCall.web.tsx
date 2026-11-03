@@ -21,7 +21,13 @@ function snapshotTracks(room: Room): MediaTrack[] {
   return tracks;
 }
 
-export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
+export default function VideoCall({
+  matchId,
+  onLeave,
+  large,
+  micWanted = true,
+  onMicChange,
+}: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('Pripájam…');
@@ -29,9 +35,11 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [pending, setPending] = useState(false);
   const [camera, setCamera] = useState(false);
-  const [microphone, setMicrophone] = useState(false);
+  const [microphone, setMicrophone] = useState(micWanted);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const currentRoom = useRef<Room | null>(null);
+  const micWantedRef = useRef(micWanted);
+  micWantedRef.current = micWanted;
   const localHost = useRef<HTMLDivElement>(null);
   const remoteHost = useRef<HTMLDivElement>(null);
   const [previousSession, setPreviousSession] = useState(request);
@@ -99,11 +107,14 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
             await session.disconnect();
             return;
           }
-          await session.localParticipant.setMicrophoneEnabled(true);
+          // Mikrofón si pamätáme po celý zápas: raz vypnutý = vypnutý,
+          // kým ho hráč v tomto zápase znova nezapne.
+          await session.localParticipant.setMicrophoneEnabled(micWantedRef.current);
           if (!active) {
             await session.disconnect();
             return;
           }
+          setMicrophone(micWantedRef.current);
           update();
         } catch (e) {
           fail(e);
@@ -119,6 +130,13 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
       void session.disconnect();
     };
   }, [request]);
+  // Zmena z hornej obrazovky (prepínač mikrofónu) sa premietne do miestnosti.
+  useEffect(() => {
+    if (!room) return;
+    if (room.localParticipant.isMicrophoneEnabled === microphone) return;
+    void control(() => room.localParticipant.setMicrophoneEnabled(microphone));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- zámerne len na zmenu microphone
+  }, [microphone, room]);
   const remoteHeight = large ? 300 : 120; // kompaktné okno súpera, keď hádžem
   useEffect(() => {
     if (!room) return undefined;
@@ -228,7 +246,12 @@ export default function VideoCall({ matchId, onLeave, large }: VideoCallProps) {
         pending={pending}
         onCamera={() => void control(() => room.localParticipant.setCameraEnabled(!camera))}
         onMicrophone={() =>
-          void control(() => room.localParticipant.setMicrophoneEnabled(!microphone))
+          void control(async () => {
+            const next = !microphone;
+            await room.localParticipant.setMicrophoneEnabled(next);
+            setMicrophone(next);
+            onMicChange?.(next);
+          })
         }
         onFlip={() =>
           void control(async () => {
