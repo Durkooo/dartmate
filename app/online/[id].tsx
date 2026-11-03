@@ -171,9 +171,9 @@ export default function OnlineGame() {
     !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
-  // Kamera sa ukazuje len čakajúcemu hráčovi (nie je na ťahu).
+  // Kamera: miestnosť ostáva pripojená počas celého zápasu (aj keď hádžem),
+  // veľké video súpera sa ukazuje len čakajúcemu hráčovi.
   const waiting = m.status === 'active' && !mine;
-  const showVideo = video && waiting && focused && foreground;
 
   return (
     <KeyboardAvoidingView
@@ -204,10 +204,8 @@ export default function OnlineGame() {
           <OnlineError error={query.error} retry={() => void query.refresh()} />
         </View>
 
-        {/* 1) POČÍTADLO alebo KAMERA čakajúceho */}
-        {showVideo ? (
-          <VideoCall matchId={id} onLeave={() => setVideo(false)} large />
-        ) : (
+        {/* 1) POČÍTADLO (skryté pre čakajúceho so zapnutou kamerou) */}
+        {!(video && waiting) && (
           <View className="bg-ink overflow-hidden rounded-[22px]">
           <View className="flex-row p-4">
             {[
@@ -262,6 +260,12 @@ export default function OnlineGame() {
             </Txt>
           </View>
           </View>
+        )}
+
+        {/* Jedna trvalá video miestnosť počas celého zápasu – pri prestriedaní
+            ťahov sa neodpája, mení sa len zobrazenie (large = vidím súpera) */}
+        {video && m.status === 'active' && focused && foreground && (
+          <VideoCall matchId={id} onLeave={() => setVideo(false)} large={waiting} />
         )}
 
         {/* Tlačidlo kamery pod počítadlom */}
