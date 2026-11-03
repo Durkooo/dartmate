@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { Button } from 'heroui-native';
-import { Delete } from 'lucide-react-native';
+import { Delete, Undo2 } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
 import { feedback, palette } from '@/lib/darts';
 
@@ -65,10 +65,11 @@ export function NumberPad({
         <Button
           variant="secondary"
           className="h-12 flex-1 rounded-xl"
+          accessibilityLabel="Vymazať rozpísané skóre"
           isDisabled={locked || !value}
           onPress={() => change('')}
         >
-          <Button.Label>Vymazať</Button.Label>
+          <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
         </Button>
         <Button
           variant="secondary"
