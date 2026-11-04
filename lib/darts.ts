@@ -101,8 +101,11 @@ export function legTurns(game: Game): Turn[] {
 }
 export function activePlayer(game: Game): 0 | 1 {
   // Začínajúceho v legu striedame: párny leg začína hráč 0, nepárny hráč 1.
-  const starter = (currentLeg(game) % 2) as 0 | 1;
-  return ((starter + legTurns(game).length) % 2) as 0 | 1;
+  // active = (starter + odohrané ťahy) % 2 — vetvenie namiesto pretypovania.
+  const starterIsFirst = currentLeg(game) % 2 === 0;
+  const evenTurns = legTurns(game).length % 2 === 0;
+  if (starterIsFirst) return evenTurns ? 0 : 1;
+  return evenTurns ? 1 : 0;
 }
 export function average(game: Game, player: 0 | 1): string {
   const turns = game.turns.filter((t) => t.player === player);
@@ -166,6 +169,40 @@ interface DartsState {
 function savedState(s: DartsState) {
   return { friends: s.friends, messages: s.messages, game: s.game, history: s.history };
 }
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Doplní predvolené hodnoty starému uloženému zápasu (spred legov). */
+function fixGame(g: unknown): Record<string, unknown> {
+  const game = isObject(g) ? g : {};
+  const rawTurns = Array.isArray(game.turns) ? game.turns : [];
+  const legs: [number, number] = [0, 0];
+  if (Array.isArray(game.legs)) {
+    const [a, b] = game.legs;
+    legs[0] = typeof a === 'number' && Number.isFinite(a) && a >= 0 ? Math.floor(a) : 0;
+    legs[1] = typeof b === 'number' && Number.isFinite(b) && b >= 0 ? Math.floor(b) : 0;
+  }
+  const legsToWin =
+    typeof game.legsToWin === 'number' &&
+    Number.isFinite(game.legsToWin) &&
+    game.legsToWin >= 1 &&
+    game.legsToWin <= 9
+      ? Math.floor(game.legsToWin)
+      : 1;
+  return {
+    ...game,
+    legsToWin,
+    legs,
+    betweenLegs: false,
+    winner: game.winner === 0 || game.winner === 1 ? game.winner : null,
+    turns: rawTurns.filter(isObject).map((t) => ({
+      ...t,
+      leg: typeof t.leg === 'number' && Number.isFinite(t.leg) && t.leg >= 0 ? Math.floor(t.leg) : 0,
+    })),
+  };
+}
+
 export const useDarts = create<DartsState>()(
   persist(
     (set, get) => ({
@@ -310,27 +347,12 @@ export const useDarts = create<DartsState>()(
       // Staré uložené zápasy (pred legmi) doplnia predvolené hodnoty,
       // aby sa po update nerozbili (Ťahy bez legu patria do legu 0).
       migrate: (persisted: unknown) => {
-        const s = (persisted ?? {}) as { state?: Record<string, unknown> };
-        const state = (s.state ?? s) as Record<string, unknown>;
-        const fixGame = (g: unknown) => {
-          const game = (g ?? {}) as Record<string, unknown>;
-          const turns = (Array.isArray(game.turns) ? game.turns : []) as Record<string, unknown>[];
-          return {
-            ...game,
-            legsToWin: typeof game.legsToWin === 'number' ? game.legsToWin : 1,
-            legs: Array.isArray(game.legs) ? game.legs : [0, 0],
-            betweenLegs: false,
-            winner: (game.winner as 0 | 1 | null) ?? null,
-            turns: turns.map((t) => ({
-              ...t,
-              leg: typeof t.leg === 'number' ? t.leg : 0,
-            })),
-          };
-        };
+        const root = isObject(persisted) ? persisted : {};
+        const state = isObject(root.state) ? root.state : root;
         if (Array.isArray(state.history))
-          state.history = (state.history as unknown[]).map(fixGame);
+          state.history = state.history.filter(isObject).map(fixGame);
         if (state.game) state.game = fixGame(state.game);
-        return { ...s, state } as never;
+        return { ...root, state };
       },
       onRehydrateStorage: () => (_state, error) => {
         useDarts.setState({ hydrated: true, storageError: !!error });

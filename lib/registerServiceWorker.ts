@@ -13,23 +13,25 @@ export function swRegisterError(): string {
   return lastRegisterError;
 }
 
+/** Registrácia SW; mimo hlavnej funkcie, lebo nič z nej nepotrebuje. */
+function register() {
+  navigator.serviceWorker
+    .register('/sw.js')
+    .then(() => {
+      lastRegisterError = '';
+    })
+    .catch((e: unknown) => {
+      // Neúspešná registrácia = žiadny push ani offline. Chybu si
+      // pamätáme pre diagnostiku, appka funguje ďalej bez workera.
+      lastRegisterError = e instanceof Error ? e.message : String(e);
+    });
+}
+
 export function registerServiceWorker(): void {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
   if (process.env.NODE_ENV !== 'production') return;
   if (!('serviceWorker' in navigator)) return;
 
-  const register = () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then(() => {
-        lastRegisterError = '';
-      })
-      .catch((e: unknown) => {
-        // Neúspešná registrácia = žiadny push ani offline. Chybu si
-        // pamätáme pre diagnostiku, appka funguje ďalej bez workera.
-        lastRegisterError = e instanceof Error ? e.message : String(e);
-      });
-  };
   // PWA z cache štartuje tak rýchlo, že `load` prebehne skôr, než sa stihneme
   // prihlásiť — vtedy registruj hneď. Inak počkaj na `load` ako doteraz.
   if (typeof document !== 'undefined' && document.readyState === 'complete') register();
