@@ -7,6 +7,7 @@ import { Check } from 'lucide-react-native';
 import { Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError, Presence } from '@/components/OnlineUI';
 import { feedback, palette } from '@/lib/darts';
+import { notifyRecipient } from '@/lib/sendPush';
 import { playerError, usePlayers } from '@/lib/players';
 import { inviteMatch, loadContacts, useOnlineQuery } from '@/lib/online';
 
@@ -33,6 +34,14 @@ export default function NewOnlineMatch() {
       const match = await inviteMatch(selected, starting, doubleOut, legsToWin);
       if (usePlayers.getState().session?.user.id !== userId) return;
       feedback.success();
+      // Aj pozvánka chodí ako push notifikácia (klik otvorí chat s kartou pozvánky).
+      if (profile?.nickname)
+        notifyRecipient(
+          selected,
+          `@${profile.nickname}`,
+          `Pozýva ťa na zápas ${starting}${legsToWin > 1 ? ` na ${legsToWin} víťazné legy` : ''}`,
+          `/conversation/${userId}`,
+        );
       router.replace({ pathname: '/online/[id]', params: { id: match.id } });
     } catch (e) {
       setError(

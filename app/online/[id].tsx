@@ -162,6 +162,16 @@ export default function OnlineGame() {
   const peerRemaining = host ? (m?.guest_remaining ?? 0) : (m?.host_remaining ?? 0);
   const peerName = m && userId ? opponentName(m, userId) : '';
   const peerId = m && userId ? opponentId(m, userId) : '';
+  // Zamietnutá/zrušená pozvánka: zápas pre oboch končí, vrátime sa do správ s tým človekom.
+  useEffect(() => {
+    if ((m?.status === 'declined' || m?.status === 'cancelled') && peerId) {
+      const t = setTimeout(() => {
+        router.replace({ pathname: '/conversation/[id]', params: { id: peerId } });
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [m?.status, peerId]);
   const myName = host ? (m?.host_nickname ?? '') : (m?.guest_nickname ?? '');
   const legsToWin = m?.legs_to_win ?? 1;
   const myLegs = host ? (m?.host_legs ?? 0) : (m?.guest_legs ?? 0);
@@ -434,6 +444,28 @@ export default function OnlineGame() {
             )}
           </View>
         )}
+
+        {m.status === 'declined' || m.status === 'cancelled' ? (
+          <View className="gap-3">
+            <Heading className="text-[20px]">
+              {m.status === 'declined'
+                ? host
+                  ? 'Súper pozvánku odmietol.'
+                  : 'Odmietol si pozvánku.'
+                : host
+                  ? 'Pozvánku si zrušil.'
+                  : 'Súper pozvánku zrušil.'}
+            </Heading>
+            <Txt className="text-muted text-[13px]">O chvíľu ťa vrátim do správ…</Txt>
+            <Button
+              onPress={() =>
+                router.replace({ pathname: '/conversation/[id]', params: { id: peerId } })
+              }
+            >
+              <Button.Label>Späť do správ</Button.Label>
+            </Button>
+          </View>
+        ) : null}
 
         {m.status === 'finished' && (
           <View className="items-center gap-3 py-4">
