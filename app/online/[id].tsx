@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { Button, Switch } from 'heroui-native';
+import { Button } from 'heroui-native';
 import { Video, Trophy } from 'lucide-react-native';
 import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError } from '@/components/OnlineUI';
@@ -50,7 +50,6 @@ export default function OnlineGame() {
     videoRef.current?.scrollTo({ y: 0, animated: true });
   }, [watchedTurnCount]);
   const [input, setInput] = useState('');
-  const [double, setDouble] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
@@ -78,7 +77,6 @@ export default function OnlineGame() {
   ) {
     setPreviousTurn({ turnCount: m?.turn_count, id, userId });
     setInput('');
-    setDouble(false);
   }
 
   useEffect(() => {
@@ -122,7 +120,6 @@ export default function OnlineGame() {
       await undoOnlineTurn(id);
       await query.refresh();
       setInput('');
-      setDouble(false);
       feedback.success();
     } catch (e) {
       setError(
@@ -151,7 +148,7 @@ export default function OnlineGame() {
         mid: id,
         expected_turn: m.turn_count,
         turn_score: score,
-        finished_double: double,
+        finished_double: checkout,
         darts_thrown: chosenDarts,
       });
       if (e) throw new Error(e.message);
@@ -159,7 +156,6 @@ export default function OnlineGame() {
         throw new Error('Ťah sa nezapísal. Skontroluj skóre, počet šípok a kto je na ťahu.');
       await query.refresh();
       setInput('');
-      setDouble(false);
       feedback.success();
     } catch (e) {
       setError(
@@ -195,12 +191,7 @@ export default function OnlineGame() {
   const contact = query.data?.contacts.find((c: any) => c.user_id === peerId);
   const mine = !!m && m.next_player === userId && m.status === 'active';
   const checkout =
-    !!input &&
-    Number(input) === myRemaining &&
-    canFinish(Number(input), m.double_out) &&
-    (!m.double_out || double);
-  const showDouble =
-    !!input && Number(input) === myRemaining && m.double_out && canFinish(Number(input), true);
+    !!input && Number(input) === myRemaining && canFinish(Number(input), m.double_out);
   const contactOnline = !!contact?.online && !query.error;
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
@@ -322,7 +313,6 @@ export default function OnlineGame() {
               value={input}
               onChange={(v) => {
                 setInput(v);
-                setDouble(false);
                 setError('');
               }}
               onSubmit={() => void submitWith(3)}
@@ -331,21 +321,8 @@ export default function OnlineGame() {
               pending={pending}
             />
 
-            {mine && (showDouble || checkout) && (
+            {mine && checkout && (
               <View className="gap-4">
-                {m.double_out && (
-                  <View className="flex-row items-center justify-between gap-3">
-                    <Txt className="flex-1">Posledná šípka bola double</Txt>
-                    <Switch
-                      isSelected={double}
-                      isDisabled={disabled}
-                      onSelectedChange={(v) => {
-                        setDouble(v);
-                        feedback.selection();
-                      }}
-                    />
-                  </View>
-                )}
                 {checkout ? (
                   <View className="bg-surface gap-3 rounded-2xl p-4">
                     <Txt className="text-center" style={{ fontFamily: 'Inter_600SemiBold' }}>
