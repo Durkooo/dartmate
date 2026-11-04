@@ -46,8 +46,8 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
     if (result.error) throw new Error(result.error.message);
     return {
       messages: result.data ?? [],
-      contact: contacts.find((c) => c.user_id === id),
-      matches: matches.filter((m) => m.host_id === id || m.guest_id === id),
+      contact: contacts.find((c: any) => c.user_id === id),
+      matches: matches.filter((m: any) => m.host_id === id || m.guest_id === id),
     };
   }, [id, userId]);
   const query = useOnlineQuery(key, loader);
@@ -191,12 +191,12 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
             ) : null}
           </OnlineGate>
           <OnlineError error={query.error} retry={() => void query.refresh()} />
-          {query.data && userId && <OpenMatches matches={query.data.matches.filter((m) => m.status !== 'invited')} userId={userId} />}
+          {query.data && userId && <OpenMatches matches={query.data.matches.filter((m: any) => m.status !== 'invited')} userId={userId} />}
           {query.data &&
             userId &&
             query.data.matches
-              .filter((m) => m.status === 'invited')
-              .map((m) => (
+              .filter((m: any) => m.status === 'invited')
+              .map((m: any) => (
                 <MatchInviteCard
                   key={m.id}
                   match={m}
