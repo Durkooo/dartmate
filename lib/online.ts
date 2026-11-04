@@ -52,12 +52,11 @@ export async function inviteMatch(peer: string, starting: number, doubleOut: boo
     throw new Error('Pozvánku nemožno odoslať. Skontroluj priateľa a nastavenie nicku.');
   return data[0];
 }
-/** Vráti posledné kolo (posledné dva ťahy, príp. jeden) — body sa vrátia obom hráčom. */
+/** Vráti posledné kolo (posledné dva ťahy, príp. jeden) — body sa vrátia obom hráčom, vráti aj uzavretý leg. */
 export async function undoOnlineTurn(mid: string) {
   const { data, error } = await bilt.rpc('undo_online_turn', { mid });
   if (error) throw new Error(error.message);
-  if (!data?.[0])
-    throw new Error('Ťah sa nepodarilo vrátiť (možno už uzavrel leg alebo niet čo vrátiť).');
+  if (!data?.[0]) throw new Error('Ťah sa nepodarilo vrátiť (možno niet čo vrátiť).');
   return data[0];
 }
 export async function respondMatch(
