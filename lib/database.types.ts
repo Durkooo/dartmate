@@ -371,6 +371,18 @@ declare module '@biltme/backend' {
             isSetofReturn: true
           }
         }
+        undo_online_turn: {
+          Args: {
+            mid: string
+          }
+          Returns: Database['public']['Tables']['online_matches']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'online_matches'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
       }
       Enums: { [_ in never]: never }
       CompositeTypes: { [_ in never]: never }
