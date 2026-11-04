@@ -3,13 +3,15 @@ import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input } from 'heroui-native';
-import { Send } from 'lucide-react-native';
+import { Send, Video } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError, MatchInviteCard, Presence, OpenMatches } from '@/components/OnlineUI';
 import { feedback, palette } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
+import VideoCall from '@/components/VideoCall';
+import { getCallCredentials } from '@/lib/video';
 import { notifyRecipient } from '@/lib/sendPush';
 import { playerError, usePlayers } from '@/lib/players';
 import {
@@ -25,6 +27,12 @@ export default function Conversation() {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const userId = usePlayers((s) => s.session?.user.id);
   return <ConversationContent key={`${userId ?? 'guest'}:${id}`} id={id} userId={userId} />;
+}
+
+/** Pozvánka k videohovoru v chate — správa, čo sa vykreslí ako karta s tlačidlom. */
+export const CALL_PREFIX = '📹call:';
+export function isCallMessage(body: string): boolean {
+  return body.startsWith(CALL_PREFIX);
 }
 function ConversationContent({ id, userId }: { id: string; userId: string | undefined }) {
   const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
@@ -54,6 +62,43 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
   const [text, setText] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [callOpen, setCallOpen] = useState(false);
+  const [micWanted, setMicWanted] = useState(true);
+  // Credentials pre súkromnú miestnosť dvojice (stabilné počas konverzácie).
+  const loadCallCredentials = useCallback(() => getCallCredentials(id), [id]);
+  /** Tlačidlo kamery v chate: pošle pozvánku k hovoru a rovno otvorí miestnosť. */
+  const startCall = async () => {
+    if (!userId || pending || !key || query.error) return;
+    setPending(true);
+    setError('');
+    try {
+      const { data, error: e } = await bilt.rpc('send_direct_message', {
+        peer: id,
+        message_body: `${CALL_PREFIX}${Date.now()}`,
+        client_request: Crypto.randomUUID(),
+      });
+      if (e) throw new Error(e.message);
+      if (!data?.[0]) throw new Error('Pozvánku k hovoru sa nepodarilo odoslať.');
+      if (usePlayers.getState().session?.user.id !== userId) return;
+      setCallOpen(true);
+      feedback.success();
+      const invitingNick = usePlayers.getState().profile?.nickname;
+      if (invitingNick)
+        notifyRecipient(id, `@${invitingNick}`, '📹 Videohovor — klepni pre pripojenie', `/conversation/${userId}`);
+      await query.refresh();
+    } catch (e) {
+      if (usePlayers.getState().session?.user.id === userId) {
+        setError(
+          playerError({
+            message: e instanceof Error ? e.message : 'Hovor sa nepodarilo začať.',
+          }),
+        );
+        feedback.error();
+      }
+    } finally {
+      setPending(false);
+    }
+  };
   const [older, setOlder] = useState<{
     key: string;
     rows: DirectMessage[];
@@ -174,13 +219,25 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
             ) : contact ? (
               <View className="flex-row items-center justify-between gap-3">
                 <Presence online={!!contact.online} unknown={!!query.error} />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onPress={() => router.push({ pathname: '/online/new', params: { friendId: id } })}
-                >
-                  <Button.Label>Pozvať na zápas</Button.Label>
-                </Button>
+                <View className="flex-row items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    isIconOnly
+                    accessibilityLabel="Videohovor"
+                    isDisabled={pending || !!query.error}
+                    onPress={() => void startCall()}
+                  >
+                    <Video size={19} strokeWidth={1.8} color={palette.ink} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onPress={() => router.push({ pathname: '/online/new', params: { friendId: id } })}
+                  >
+                    <Button.Label>Pozvať na zápas</Button.Label>
+                  </Button>
+                </View>
               </View>
             ) : !query.error ? (
               <Empty
@@ -204,6 +261,18 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                   onChanged={() => void query.refresh()}
                 />
               ))}
+          {callOpen && userId && (
+            <View className="my-2">
+              <VideoCall
+                matchId={`dm:${userId}:${id}`}
+                onLeave={() => setCallOpen(false)}
+                large
+                micWanted={micWanted}
+                onMicChange={setMicWanted}
+                getCredentials={loadCallCredentials}
+              />
+            </View>
+          )}
         </View>
         <FlatList
           inverted
@@ -213,6 +282,35 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const mine = item.sender_id === userId;
+            if (isCallMessage(item.body)) {
+              return (
+                <Animated.View
+                  entering={FadeIn.duration(160)}
+                  exiting={FadeOut.duration(100)}
+                  style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '85%' }}
+                >
+                  <View className="bg-surface gap-2 rounded-2xl p-4">
+                    <View className="flex-row items-center gap-2">
+                      <Video size={18} color={palette.ink} strokeWidth={1.8} />
+                      <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        {mine ? 'Pozval si priateľa k hovoru' : 'Pozvánka k videohovoru'}
+                      </Txt>
+                    </View>
+                    <Button
+                      variant="secondary"
+                      isDisabled={callOpen}
+                      onPress={() => setCallOpen(true)}
+                    >
+                      <Button.Label>{callOpen ? 'Hovor prebieha' : 'Pripojiť sa'}</Button.Label>
+                    </Button>
+                    <Txt className="text-muted text-right text-[11px]">
+                      {new Date(item.created_at).toLocaleDateString('sk-SK')} ·{' '}
+                      {timeLabel(item.created_at)}
+                    </Txt>
+                  </View>
+                </Animated.View>
+              );
+            }
             return (
               <Animated.View
                 entering={FadeIn.duration(160)}
