@@ -394,6 +394,7 @@ export default function OnlineGame() {
             large={waiting}
             micWanted={micWanted}
             onMicChange={setMicWanted}
+            peerName={peerName}
           />
         )}
 
