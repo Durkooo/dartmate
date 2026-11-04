@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Button, PressableFeedback } from 'heroui-native';
+import { Button } from 'heroui-native';
 import { Video, X, Delete, Undo2, Check, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
@@ -28,7 +28,6 @@ export default function Match() {
   const archiveGame = useDarts((s) => s.archiveGame);
   const discardGame = useDarts((s) => s.discardGame);
   const [input, setInput] = useState('');
-  const [double, setDouble] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
   const [discard, setDiscard] = useState(false);
@@ -58,13 +57,8 @@ export default function Match() {
   const practice = game.opponentId === 'practice';
   const name = player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
   const score = Number(input);
-  const finishAttempt =
-    !!input && score === currentScores[player] && game.doubleOut && canFinish(score, true);
   const checkout =
-    !!input &&
-    score === currentScores[player] &&
-    validScore(score) &&
-    (!game.doubleOut || (finishAttempt && double));
+    !!input && score === currentScores[player] && validScore(score) && canFinish(score, game.doubleOut);
   const finished = game.winner !== null;
   const legBreak = game.betweenLegs;
   const legNo = currentLeg(game) + 1;
@@ -78,7 +72,6 @@ export default function Match() {
     if (input.length >= 3) return;
     setInput(input === '0' ? digit : input + digit);
     setError('');
-    setDouble(false);
     feedback.selection();
   };
   /** Uloženie ťahu. Pri zatváraní hry (skóre 0) volá hráč s počtom šípok 1/2/3. */
@@ -93,9 +86,8 @@ export default function Match() {
       feedback.error();
       return;
     }
-    submitTurn(score, double, checkout ? chosenDarts : 3);
+    submitTurn(score, checkout, checkout ? chosenDarts : 3);
     setInput('');
-    setDouble(false);
     setError('');
     if (useDarts.getState().game?.turns.at(-1)?.bust) feedback.error();
     else feedback.success();
@@ -266,7 +258,6 @@ export default function Match() {
                   onPress={() => {
                     startNextLeg();
                     setInput('');
-                    setDouble(false);
                     setError('');
                     feedback.success();
                   }}
@@ -311,7 +302,6 @@ export default function Match() {
                       className="flex-1 rounded-lg"
                       onPress={() => {
                         setInput(String(n));
-                        setDouble(false);
                         setError('');
                         feedback.selection();
                       }}
@@ -352,7 +342,6 @@ export default function Match() {
                     onPress={() => {
                       undo();
                       setInput('');
-                      setDouble(false);
                       setError('');
                       feedback.success();
                     }}
@@ -378,7 +367,6 @@ export default function Match() {
                     accessibilityLabel="Vymazať poslednú číslicu"
                     onPress={() => {
                       setInput(input.slice(0, -1));
-                      setDouble(false);
                       setError('');
                       feedback.selection();
                     }}
@@ -386,24 +374,6 @@ export default function Match() {
                     <Delete size={21} color={palette.ink} strokeWidth={1.8} />
                   </Button>
                 </View>
-                {finishAttempt && (
-                  <PressableFeedback
-                    className="flex-row items-center gap-3 py-4"
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: double }}
-                    onPress={() => {
-                      setDouble((v) => !v);
-                      feedback.selection();
-                    }}
-                  >
-                    <View
-                      className={`size-6 items-center justify-center rounded-md border ${double ? 'bg-accent border-accent' : 'border-muted'}`}
-                    >
-                      {double && <Check size={18} color={palette.ink} />}
-                    </View>
-                    <Txt className="flex-1 text-[14px]">Posledná šípka trafila double</Txt>
-                  </PressableFeedback>
-                )}
                 {checkout ? (
                   <View className="bg-surface mb-4 gap-3 rounded-2xl p-4">
                     <Txt className="text-center" style={{ fontFamily: 'Inter_600SemiBold' }}>
