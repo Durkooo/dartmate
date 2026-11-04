@@ -142,8 +142,10 @@ export default function VideoCall({
   useEffect(() => {
     if (!room) return;
     if (room.localParticipant.isMicrophoneEnabled === microphone) return;
-    void control(() => room.localParticipant.setMicrophoneEnabled(microphone));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- zámerne len na zmenu microphone
+    // Priama synchronizácia (bez control): beží na pozadí pri zmene voľby.
+    void room.localParticipant.setMicrophoneEnabled(microphone).catch(() => {
+      feedback.error();
+    });
   }, [microphone, room]);
   const remoteHeight = large ? 300 : 120; // kompaktné okno súpera, keď hádžem
   useEffect(() => {

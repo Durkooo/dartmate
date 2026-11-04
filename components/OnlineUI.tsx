@@ -53,10 +53,8 @@ export function Presence({
   inline?: boolean;
 }) {
   // Online bodka bliká (opacity 1 ↔ 0.25), nápis „Online" ostáva stále zelený.
-  // Lenivé vytvorenie hodnoty — nevzniká pri každom vykreslení nanovo.
-  const blinkRef = useRef<Animated.Value | null>(null);
-  if (blinkRef.current === null) blinkRef.current = new Animated.Value(1);
-  const blink = blinkRef.current;
+  // Hodnota vznikne raz pri prvom vykreslení (inicializátor useState).
+  const [blink] = useState(() => new Animated.Value(1));
   useEffect(() => {
     if (!online || unknown) {
       blink.setValue(1);

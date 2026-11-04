@@ -52,8 +52,10 @@ function RoomContent({
   useEffect(() => {
     if (appliedMic.current === micWanted || !localParticipant) return;
     appliedMic.current = micWanted;
-    void control(() => localParticipant.setMicrophoneEnabled(micWanted));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- zámerne len na zmenu voľby
+    // Priama synchronizácia (bez control): beží na pozadí pri zmene voľby.
+    void localParticipant.setMicrophoneEnabled(micWanted).catch(() => {
+      feedback.error();
+    });
   }, [micWanted, localParticipant]);
   const state = useConnectionState();
   const participants = useParticipants();
@@ -165,9 +167,6 @@ export default function NativeVideoCall({
     () => new Room({ adaptiveStream: { pixelDensity: 'screen' }, dynacast: true }),
   );
   const [previousSession, setPreviousSession] = useState(request);
-  // Vlastné credentials (chat) cez refku, aby sa efekt nespúšťal dookola.
-  const credsRef = useRef(getCredentials);
-  credsRef.current = getCredentials;
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
     setPreviousSession(request);
@@ -179,7 +178,7 @@ export default function NativeVideoCall({
     let ownsAudio = false;
     void (async () => {
       try {
-        const data = await (credsRef.current ? credsRef.current() : getVideoCredentials(request.matchId));
+        const data = await (getCredentials ? getCredentials() : getVideoCredentials(request.matchId));
         if (!mounted) return;
         await serializeAudio(async () => {
           if (!mounted) return;
@@ -213,8 +212,7 @@ export default function NativeVideoCall({
         }
       }).catch(() => undefined);
     };
-    // eslint-disable-next-line react/exhaustive-effect-dependencies -- room is stable state, but react-hooks/exhaustive-deps requires it here.
-  }, [request, room]);
+  }, [request, room, getCredentials]);
   if (!credentials)
     return (
       <VideoNotice
