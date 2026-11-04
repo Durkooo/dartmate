@@ -28,7 +28,7 @@ export function appIsActive() {
 export async function loadContacts() {
   const { data, error } = await bilt.rpc('list_social_contacts');
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((c) => c.user_id && c.nickname);
+  return (data ?? []).filter((c: any) => c.user_id && c.nickname);
 }
 export type SocialContact = Awaited<ReturnType<typeof loadContacts>>[number];
 export async function loadOpenMatches() {

@@ -74,7 +74,7 @@ export const usePlayers = create<PlayersState>((set, get) => ({
       }
       set({
         profile: profileResult.data,
-        friends: (friendsResult.data ?? []).map((p): Friend => {
+        friends: (friendsResult.data ?? []).map((p: any): Friend => {
           if (!p.user_id || !p.nickname) throw new Error('Zoznam priateľov sa nepodarilo načítať.');
           return {
             id: p.user_id,
@@ -115,14 +115,14 @@ export function usePlayerSession() {
     };
     const {
       data: { subscription },
-    } = bilt.auth.onAuthStateChange((_event, session) => {
+    } = bilt.auth.onAuthStateChange((_event: any, session: any) => {
       receivedEvent = true;
       // Run queries outside the authentication callback lock.
       setTimeout(() => apply(session), 0);
     });
     void bilt.auth
       .getSession()
-      .then(({ data, error }) => {
+      .then(({ data, error }: any) => {
         if (!active) return;
         // onAuthStateChange vie doraziť skôr s prázdnou session (INITIAL_SESSION)
         // a platný výsledok getSession by sa potom zahodil — čerstvý tab by ostal
