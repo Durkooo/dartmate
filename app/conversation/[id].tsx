@@ -7,7 +7,7 @@ import { Send } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Empty, LoadingRows } from '@/components/DartsUI';
-import { OnlineGate, OnlineError, Presence, OpenMatches } from '@/components/OnlineUI';
+import { OnlineGate, OnlineError, MatchInviteCard, Presence, OpenMatches } from '@/components/OnlineUI';
 import { feedback, palette } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import { notifyRecipient } from '@/lib/sendPush';
@@ -191,7 +191,19 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
             ) : null}
           </OnlineGate>
           <OnlineError error={query.error} retry={() => void query.refresh()} />
-          {query.data && userId && <OpenMatches matches={query.data.matches} userId={userId} />}
+          {query.data && userId && <OpenMatches matches={query.data.matches.filter((m) => m.status !== 'invited')} userId={userId} />}
+          {query.data &&
+            userId &&
+            query.data.matches
+              .filter((m) => m.status === 'invited')
+              .map((m) => (
+                <MatchInviteCard
+                  key={m.id}
+                  match={m}
+                  userId={userId}
+                  onChanged={() => void query.refresh()}
+                />
+              ))}
         </View>
         <FlatList
           inverted
