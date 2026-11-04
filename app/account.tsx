@@ -77,10 +77,27 @@ export default function Account() {
         fail('Nick musí mať 3 až 24 znakov: písmená bez diakritiky, čísla alebo podčiarkovník.');
         return;
       }
+      // Prezývka musí byť jedinečná — najprv overíme, či ju už niekto nemá.
+      const { data: taken, error: checkError } = await bilt.rpc('find_player_by_nickname', {
+        search_nickname: nickname,
+      });
+      if (checkError) {
+        fail(playerError(checkError));
+        return;
+      }
+      if (taken) {
+        fail('Táto prezývka je už obsadená. Vyber si inú.');
+        return;
+      }
       const { error: e } = await bilt
         .from('player_profiles')
         .insert({ user_id: session.user.id, nickname });
       if (e) {
+        // Súbeh: medzitým si nick zabral niekto iný (databáza to nepustí dvakrát).
+        if ((e as { code?: string }).code === '23505') {
+          fail('Táto prezývka je už obsadená. Vyber si inú.');
+          return;
+        }
         fail(playerError(e));
         return;
       }
