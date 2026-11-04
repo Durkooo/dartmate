@@ -24,7 +24,8 @@ async function invokeForCredentials(
         /* Keep the SDK error when the response body cannot be read. */
       }
     }
-    throw new Error(message);
+    // Názov funkcie v hláške — podľa screenshotu vidno, ktorý endpoint appka volala.
+    throw new Error(`[${functionName}] ${message}`);
   }
   const result: unknown = data;
   if (
