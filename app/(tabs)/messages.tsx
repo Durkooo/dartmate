@@ -56,7 +56,7 @@ function OnlineMessages({ userId }: { userId: string }) {
         }
         renderItem={({ item }) => (
           <PressableFeedback
-            className="border-border flex-row items-start gap-3 border-b py-5"
+            className="flex-row items-start gap-3 py-3"
             onPress={() =>
               router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
             }
@@ -135,7 +135,7 @@ function LocalMessages() {
         renderItem={({ item }) => (
           <PressableFeedback
             onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.friend.id } })}
-            className="border-border flex-row gap-3 border-b py-5"
+            className="flex-row gap-3 py-3"
           >
             <Avatar friend={item.friend} size={52} />
             <View className="flex-1 gap-2">
