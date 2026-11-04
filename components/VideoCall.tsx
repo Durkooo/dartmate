@@ -11,6 +11,8 @@ export type VideoCallProps = {
   onMicChange?: (on: boolean) => void;
   /** Vlastné načítanie credentials (chat-hovor); predvolene token k matchId. */
   getCredentials?: () => Promise<VideoCredentials>;
+  /** Meno protihráča nad jeho kamerou (namiesto „Súper“). */
+  peerName?: string;
 };
 
 const expoGoError =

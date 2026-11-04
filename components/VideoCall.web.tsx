@@ -28,6 +28,7 @@ export default function VideoCall({
   micWanted = true,
   onMicChange,
   getCredentials,
+  peerName,
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
@@ -211,7 +212,9 @@ export default function VideoCall({
       <Txt className="text-muted mb-2 text-[12px]">Video · {status}</Txt>
       <View className="gap-3">
         <View>
-          <Txt className="mb-1 text-[12px]">{large ? 'Súper' : 'Súperova kamera'}</Txt>
+          <Txt className="mb-1 text-[12px]" numberOfLines={1}>
+            {peerName ? `@${peerName}` : large ? 'Súper' : 'Súperova kamera'}
+          </Txt>
           <div
             ref={remoteHost}
             style={{

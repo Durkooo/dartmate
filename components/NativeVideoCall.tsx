@@ -31,12 +31,14 @@ function RoomContent({
   large,
   micWanted,
   onMicChange,
+  peerName,
 }: {
   room: Room;
   onLeave: () => void;
   large: boolean;
   micWanted: boolean;
   onMicChange?: (on: boolean) => void;
+  peerName?: string;
 }) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   // Hádžem (nie som čakajúci): malé okno ukazuje SÚPEROVU kameru,
@@ -85,11 +87,11 @@ function RoomContent({
       {shownTracks.map((track) => (
         <View key={track.participant.identity} className="mb-3">
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
-            {large
-              ? track.participant.isLocal
-                ? 'Tvoja kamera'
-                : `@${track.participant.name || track.participant.identity}`
-              : `@${track.participant.name || track.participant.identity}`}
+            {track.participant.isLocal
+              ? 'Tvoja kamera'
+              : peerName
+                ? `@${peerName}`
+                : `@${track.participant.name || track.participant.identity}`}
           </Txt>
           {isTrackReference(track) && !track.publication.isMuted ? (
             <VideoTrack
@@ -152,6 +154,7 @@ export default function NativeVideoCall({
   micWanted = true,
   onMicChange,
   getCredentials,
+  peerName,
 }: VideoCallProps) {
   const [credentials, setCredentials] = useState<Awaited<
     ReturnType<typeof getVideoCredentials>
@@ -250,6 +253,7 @@ export default function NativeVideoCall({
           large={large ?? false}
           micWanted={micWanted}
           onMicChange={onMicChange}
+          peerName={peerName}
         />
       </LiveKitRoom>
     </View>
