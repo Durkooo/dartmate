@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bilt, biltConfigured } from '@/lib/bilt';
+import { swRegisterError } from '@/lib/registerServiceWorker';
 
 /**
  * Web Push notifikácie o nových správach (PWA).
@@ -165,7 +166,8 @@ export async function ensurePushSubscription(userId: string): Promise<PushResult
     let extra = '';
     try {
       const st = await swStatus();
-      extra = ` [SW: ${st.state}]`;
+      const regErr = swRegisterError();
+      extra = ` [SW: ${st.state}${regErr ? `; reg: ${regErr}` : ''}]`;
     } catch {
       /* stav SW nezistíme */
     }

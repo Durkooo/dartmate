@@ -5,14 +5,33 @@ import { Platform } from 'react-native';
  * Production web only: the Metro dev server doesn't serve sw.js, and caching
  * would interfere with live preview anyway.
  */
+
+let lastRegisterError = '';
+
+/** Posledná chyba registrácie SW (na diagnostiku v PushNotice). */
+export function swRegisterError(): string {
+  return lastRegisterError;
+}
+
 export function registerServiceWorker(): void {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
   if (process.env.NODE_ENV !== 'production') return;
   if (!('serviceWorker' in navigator)) return;
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Registration is best-effort; the app works without offline support.
-    });
-  });
+  const register = () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then(() => {
+        lastRegisterError = '';
+      })
+      .catch((e: unknown) => {
+        // Neúspešná registrácia = žiadny push ani offline. Chybu si
+        // pamätáme pre diagnostiku, appka funguje ďalej bez workera.
+        lastRegisterError = e instanceof Error ? e.message : String(e);
+      });
+  };
+  // PWA z cache štartuje tak rýchlo, že `load` prebehne skôr, než sa stihneme
+  // prihlásiť — vtedy registruj hneď. Inak počkaj na `load` ako doteraz.
+  if (typeof document !== 'undefined' && document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
 }
