@@ -70,7 +70,11 @@ export default function Friends() {
               <View className="flex-1 flex-row items-baseline gap-2">
                 <Heading>Priatelia</Heading>
                 {profile ? (
-                  <Txt className="text-muted text-[13px]" numberOfLines={1}>
+                  <Txt
+                    numberOfLines={1}
+                    className="text-[24px] leading-8"
+                    style={{ fontFamily: 'Inter_700Bold', color: palette.onInk }}
+                  >
                     @{profile.nickname}
                   </Txt>
                 ) : null}
