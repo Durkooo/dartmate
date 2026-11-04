@@ -79,7 +79,7 @@ export function VideoNotice({
         </Button>
       )}
       <Button variant="ghost" onPress={leave}>
-        <Button.Label>Hrať bez videa</Button.Label>
+        <Button.Label>Zavrieť</Button.Label>
       </Button>
     </View>
   );
