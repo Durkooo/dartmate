@@ -93,12 +93,33 @@ function errText(e: unknown): string {
 /** VAPID public key je verejný – je v build-e, netreba ho tajiť. */
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
+/** Čakanie s limitom — serviceWorker.ready vie visieť naveky, ak SW zlyhal. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(label)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export async function ensurePushSubscription(userId: string): Promise<PushResult> {
   const blocked = pushBlockReason();
   if (blocked) return { ok: false, reason: blocked };
   if (Notification.permission === 'denied') return { ok: false, reason: 'denied' };
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await withTimeout(
+      navigator.serviceWorker.ready,
+      10000,
+      'Service Worker sa neaktivoval do 10 s — skús appku úplne zavrieť a otvoriť znova.',
+    );
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       try {
@@ -193,7 +214,7 @@ export function pushHintLine(): string {
 export async function disablePushSubscription(userId: string): Promise<PushResult> {
   try {
     if (pushSupported()) {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await withTimeout(navigator.serviceWorker.ready, 10000, 'Service Worker timeout.');
       const sub = await reg.pushManager.getSubscription();
       if (sub?.endpoint) {
         await bilt.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
