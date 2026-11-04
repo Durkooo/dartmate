@@ -243,7 +243,7 @@ export default function NativeVideoCall({
         <RoomContent
           room={room}
           onLeave={onLeave}
-          large={large}
+          large={large ?? false}
           micWanted={micWanted}
           onMicChange={onMicChange}
         />
