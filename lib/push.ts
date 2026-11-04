@@ -41,6 +41,34 @@ export function pushPermission(): NotificationPermission | 'unsupported' {
   return Notification.permission;
 }
 
+/** Verzia iOS z user-agenta (napr. 17.2), alebo null ak sa nedá zistiť. */
+export function iosVersion(): number | null {
+  if (typeof navigator === 'undefined') return null;
+  const m = navigator.userAgent.match(/OS (\d+)[_.](\d+)/);
+  if (!m) return null;
+  return Number(m[1]) + Number(m[2]) / 100;
+}
+
+/** Dôvod, prečo push nejde — rozlíši prehliadač, iOS verziu a konfiguráciu. */
+export function pushBlockReason(): string | null {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return 'Len vo webovej verzii.';
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  if (isIOS) {
+    const v = iosVersion();
+    if (v !== null && v < 16.4)
+      return `iOS ${String(v).replace('.', ',')} — Web Push vyžaduje aspoň iOS 16.4 (aktualizuj v Nastavenia → Všeobecné → Aktualizácia softvéru).`;
+  }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    if (isIOS)
+      return 'iPhone nedovolil push (skontroluj iOS 16.4+ a otvorenie z ikony na ploche, nie zo Safari).';
+    return 'Tento prehliadač Web Push nevie (skús Chrome).';
+  }
+  if (!isBiltConfigured) return 'Chýba konfigurácia online služieb.';
+  if (!VAPID_PUBLIC_KEY) return 'Chýba VAPID kľúč v builde — napíš vývojárovi.';
+  return null;
+}
+
 /** Výsledok s ľudsky čitateľným dôvodom (zobrazí sa používateľovi pri zlyhaní). */
 export type PushResult = { ok: boolean; reason?: string };
 
@@ -52,8 +80,8 @@ function errText(e: unknown): string {
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
 export async function ensurePushSubscription(userId: string): Promise<PushResult> {
-  if (!pushSupported() || !isBiltConfigured || !VAPID_PUBLIC_KEY)
-    return { ok: false, reason: 'Push nie je v tomto prehliadači k dispozícii.' };
+  const blocked = pushBlockReason();
+  if (blocked) return { ok: false, reason: blocked };
   if (Notification.permission === 'denied') return { ok: false, reason: 'denied' };
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -90,7 +118,8 @@ export async function ensurePushSubscription(userId: string): Promise<PushResult
 }
 
 export async function requestPushPermission(userId: string): Promise<PushResult> {
-  if (!pushSupported()) return { ok: false, reason: 'Push nie je v tomto prehliadači k dispozícii.' };
+  const blocked = pushBlockReason();
+  if (blocked) return { ok: false, reason: blocked };
   if (Notification.permission === 'granted') return ensurePushSubscription(userId);
   if (Notification.permission === 'denied') return { ok: false, reason: 'denied' };
   try {
