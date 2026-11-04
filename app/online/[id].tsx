@@ -347,26 +347,16 @@ export default function OnlineGame() {
           </View>
         )}
 
-        {/* 3) VIDEO namiesto klávesnice, keď čakám na súpera;
-            keď hádžem ja, len malé okno pod klávesnicou.
-            Trvalá miestnosť počas celého zápasu – mení sa len veľkosť
-            (čakajúci = veľké video súpera, hádžuci = malé).
-            Po zápise skóre sa role prehodia: mne sa video zmenší
-            a ukáže klávesnica, súperovi naopak. */}
-        {videoVisible && waiting && (
+        {/* 3) VIDEO – pripojené RAZ za zápas, prepínač large len mení veľkosť.
+            Dôležité: VideoCall sa nesmie odmontovať pri prestriedaní ťahu
+            (inak by sa po každom hode znova pripájal = 5 s delay + reset kamery/miku).
+            Čakajúci = veľké video súpera, hádžuci = malé.
+            Po zápise skóre sa role prehodia len zmenou propu large. */}
+        {videoVisible && (
           <VideoCall
             matchId={id}
             onLeave={() => setVideo(false)}
-            large
-            micWanted={micWanted}
-            onMicChange={setMicWanted}
-          />
-        )}
-        {videoVisible && !waiting && (
-          <VideoCall
-            matchId={id}
-            onLeave={() => setVideo(false)}
-            large={false}
+            large={waiting}
             micWanted={micWanted}
             onMicChange={setMicWanted}
           />
