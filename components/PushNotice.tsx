@@ -30,7 +30,7 @@ export function PushNotice() {
   const userId = usePlayers((s) => s.session?.user.id);
   const [status, setStatus] = useState<Status>('loading');
   const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!userId) {
@@ -56,7 +56,8 @@ export function PushNotice() {
     }
     if (perm === 'granted') {
       const res = await ensurePushSubscription(userId);
-      setStatus(res === 'ok' ? 'on' : 'prompt');
+      setStatus(res.ok ? 'on' : 'prompt');
+      if (!res.ok && res.reason !== 'denied') setFailed(res.reason ?? 'Neznáma chyba.');
       return;
     }
     if (await wasPushAsked()) {
@@ -64,7 +65,8 @@ export function PushNotice() {
       return;
     }
     const res = await ensurePushSubscription(userId);
-    setStatus(res === 'ok' ? 'on' : 'prompt');
+    setStatus(res.ok ? 'on' : 'prompt');
+    if (!res.ok && res.reason !== 'denied') setFailed(res.reason ?? 'Neznáma chyba.');
   }, [userId]);
 
   useFocusEffect(
@@ -76,22 +78,22 @@ export function PushNotice() {
   const ask = useCallback(async () => {
     if (!userId || pending) return;
     setPending(true);
-    setFailed(false);
+    setFailed(null);
     const res = await requestPushPermission(userId);
     setPending(false);
-    if (res === 'ok') setStatus('on');
-    else if (res === 'denied') setStatus('denied');
-    else setFailed(true);
+    if (res.ok) setStatus('on');
+    else if (res.reason === 'denied') setStatus('denied');
+    else setFailed(res.reason ?? 'Neznáma chyba.');
   }, [userId, pending]);
 
   const turnOff = useCallback(async () => {
     if (!userId || pending) return;
     setPending(true);
-    setFailed(false);
+    setFailed(null);
     const res = await disablePushSubscription(userId);
     setPending(false);
-    if (res === 'ok') setStatus('prompt');
-    else setFailed(true);
+    if (res.ok) setStatus('prompt');
+    else setFailed(res.reason ?? 'Neznáma chyba.');
   }, [userId, pending]);
 
   if (!userId || status === 'loading' || status === 'unsupported') return null;
@@ -176,7 +178,7 @@ export function PushNotice() {
       </Txt>
       {failed && (
         <Txt className="text-danger text-[13px]">
-          Povolenie sa nepodarilo uložiť. Skús to znova.
+          Povolenie sa nepodarilo uložiť ({failed}) Skús to znova, prípadne mi chybu odpíš.
         </Txt>
       )}
       <Button variant="secondary" isDisabled={pending} onPress={() => void ask()}>
