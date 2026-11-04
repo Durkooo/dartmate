@@ -134,7 +134,7 @@ export default function Friends() {
             {session ? (
               <PressableFeedback
                 onPress={() => router.push({ pathname: '/friend/[id]', params: { id: item.id } })}
-                className="border-border flex-row items-center gap-3 border-b py-4"
+                className="flex-row items-center gap-3 py-3"
               >
                 <Avatar friend={item} />
                 <View className="flex-1">
