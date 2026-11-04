@@ -24,10 +24,10 @@ import {
 export default function Conversation() {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const userId = usePlayers((s) => s.session?.user.id);
-  const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   return <ConversationContent key={`${userId ?? 'guest'}:${id}`} id={id} userId={userId} />;
 }
 function ConversationContent({ id, userId }: { id: string; userId: string | undefined }) {
+  const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   const key = userId && uuidPattern.test(id) ? `${userId}:${id}` : null;
   const loader = useCallback(async () => {
     if (!userId || !uuidPattern.test(id)) return null;
