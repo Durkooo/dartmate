@@ -27,6 +27,7 @@ export default function VideoCall({
   large,
   micWanted = true,
   onMicChange,
+  getCredentials,
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
@@ -43,6 +44,9 @@ export default function VideoCall({
   const localHost = useRef<HTMLDivElement>(null);
   const remoteHost = useRef<HTMLDivElement>(null);
   const [previousSession, setPreviousSession] = useState(request);
+  // Vlastné credentials (chat) cez refku, aby sa efekt nespúšťal dookola.
+  const credsRef = useRef(getCredentials);
+  credsRef.current = getCredentials;
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
     setPreviousSession(request);
@@ -86,7 +90,9 @@ export default function VideoCall({
       });
     void (async () => {
       try {
-        const credentials = await getVideoCredentials(request.matchId);
+        const credentials = await (credsRef.current
+          ? credsRef.current()
+          : getVideoCredentials(request.matchId));
         if (!active) return;
         await session.connect(credentials.url, credentials.token);
         if (!active) {
@@ -259,7 +265,10 @@ export default function VideoCall({
             const next = facing === 'user' ? 'environment' : 'user';
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
-            await track.restartTrack({ facingMode: next });
+            await track.restartTrack({
+              facingMode: next,
+              resolution: { width: 640, height: 480, frameRate: 24 },
+            });
             setFacing(next);
           })
         }
