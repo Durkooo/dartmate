@@ -270,6 +270,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                 micWanted={micWanted}
                 onMicChange={setMicWanted}
                 getCredentials={loadCallCredentials}
+                peerName={contact?.nickname}
               />
             </View>
           )}
