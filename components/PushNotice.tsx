@@ -11,7 +11,6 @@ import {
   ensurePushSubscription,
   needsAndroidChrome,
   needsIosInstall,
-  pushHintLine,
   pushPermission,
   pushSupported,
   requestPushPermission,
@@ -153,11 +152,8 @@ export function PushNotice() {
           <BellRing size={18} color={palette.ink} strokeWidth={1.8} />
           <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Upozornenia zapnuté</Txt>
         </View>
-        <Txt className="text-muted text-[13px] leading-5">
-          Keď ti priateľ napíše, vyskočí ti systémové upozornenie – aj keď máš appku zavretú.
-        </Txt>
         {failed && (
-          <Txt className="text-danger text-[13px]">Vypnutie sa nepodarilo. Skús to znova.</Txt>
+          <Txt className="text-danger text-[13px]">Vypnutie sa nepodarilo ({failed}). Skús to znova.</Txt>
         )}
         <Button variant="ghost" isDisabled={pending} onPress={() => void turnOff()}>
           <Button.Label>{pending ? 'Čakaj…' : 'Vypnúť upozornenia'}</Button.Label>
@@ -172,10 +168,6 @@ export function PushNotice() {
         <BellRing size={18} color={palette.ink} strokeWidth={1.8} />
         <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Upozorniť na nové správy</Txt>
       </View>
-      <Txt className="text-muted text-[13px] leading-5">
-        Keď ti priateľ napíše, vyskočí ti systémové upozornenie – aj keď máš appku zavretú.
-        {pushHintLine()}
-      </Txt>
       {failed && (
         <Txt className="text-danger text-[13px]">
           Povolenie sa nepodarilo uložiť ({failed}) Skús to znova, prípadne mi chybu odpíš.
