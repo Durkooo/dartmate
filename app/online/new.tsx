@@ -175,7 +175,7 @@ export default function NewOnlineMatch() {
                 pending ||
                 !selected ||
                 !!query.error ||
-                !query.data?.some((c) => c.user_id === selected)
+                !query.data?.some((c: any) => c.user_id === selected)
               }
               onPress={() => void invite()}
             >

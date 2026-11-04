@@ -28,6 +28,27 @@ export default function OnlineGame() {
     userId ? `match:${userId}:${id}` : null,
     useCallback(() => loadMatch(id), [id]),
   );
+  // VŠETKY háky musia byť pred prvým podmieneným returnom (stabilný počet).
+  // Zamietnutá/zrušená pozvánka: vrátime sa do správ s tým človekom.
+  const watchedStatus = query.data?.match?.status;
+  const watchedPeer =
+    query.data?.match && userId ? opponentId(query.data.match, userId) : '';
+  useEffect(() => {
+    if ((watchedStatus === 'declined' || watchedStatus === 'cancelled') && watchedPeer) {
+      const t = setTimeout(() => {
+        router.replace({ pathname: '/conversation/[id]', params: { id: watchedPeer } });
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [watchedStatus, watchedPeer]);
+  const videoRef = useRef<ScrollView | null>(null);
+  const watchedTurnCount = query.data?.match?.turn_count ?? 0;
+  // Po prestriedaní ťahu vyrolovať stránku čo najvyššie,
+  // aby bolo skóre vidno pre oboch hráčov.
+  useEffect(() => {
+    videoRef.current?.scrollTo({ y: 0, animated: true });
+  }, [watchedTurnCount]);
   const [input, setInput] = useState('');
   const [double, setDouble] = useState(false);
   const [pending, setPending] = useState(false);
@@ -162,16 +183,6 @@ export default function OnlineGame() {
   const peerRemaining = host ? (m?.guest_remaining ?? 0) : (m?.host_remaining ?? 0);
   const peerName = m && userId ? opponentName(m, userId) : '';
   const peerId = m && userId ? opponentId(m, userId) : '';
-  // Zamietnutá/zrušená pozvánka: zápas pre oboch končí, vrátime sa do správ s tým človekom.
-  useEffect(() => {
-    if ((m?.status === 'declined' || m?.status === 'cancelled') && peerId) {
-      const t = setTimeout(() => {
-        router.replace({ pathname: '/conversation/[id]', params: { id: peerId } });
-      }, 2500);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-  }, [m?.status, peerId]);
   const myName = host ? (m?.host_nickname ?? '') : (m?.guest_nickname ?? '');
   const legsToWin = m?.legs_to_win ?? 1;
   const myLegs = host ? (m?.host_legs ?? 0) : (m?.guest_legs ?? 0);
@@ -181,7 +192,7 @@ export default function OnlineGame() {
   const completedLegs = myLegs + peerLegs;
   const starterIsHost = completedLegs % 2 === 0;
   const legStarterName = (starterIsHost === host ? myName : peerName) || peerName;
-  const contact = query.data?.contacts.find((c) => c.user_id === peerId);
+  const contact = query.data?.contacts.find((c: any) => c.user_id === peerId);
   const mine = !!m && m.next_player === userId && m.status === 'active';
   const checkout =
     !!input &&
@@ -197,16 +208,6 @@ export default function OnlineGame() {
   // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
   const waiting = !!m && m.status === 'active' && !mine;
   const videoVisible = !!video && !!m && m.status === 'active' && focused && foreground;
-  // VŠETKY háky musia byť pred každým podmieneným returnom – inak pri
-  // prechode loading → dáta zlyhá React (error #310: meniaci sa počet hákov).
-  const videoRef = useRef<ScrollView>(null);
-
-  // Po prestriedaní ťahu vyrolovať stránku čo najvyššie,
-  // aby bolo skóre vidno pre oboch hráčov.
-  const turnCount = m?.turn_count ?? 0;
-  useEffect(() => {
-    videoRef.current?.scrollTo({ y: 0, animated: true });
-  }, [turnCount]);
 
   if (query.loading)
     return (
@@ -250,7 +251,7 @@ export default function OnlineGame() {
         <View className="bg-ink overflow-hidden rounded-[22px]">
           {legsToWin > 1 && (
             <View className="flex-row items-center justify-center gap-2 px-4 pt-3">
-              <Trophy size={14} strokeWidth={1.8} color={palette.accent} />
+              <Trophy size={14} strokeWidth={1.8} color={palette.ink} />
               <Txt className="text-on-ink text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {m?.status === 'finished'
                   ? `Legy ${myLegs}:${peerLegs}`
