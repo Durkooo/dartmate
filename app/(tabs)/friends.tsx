@@ -67,7 +67,14 @@ export default function Friends() {
         ListHeaderComponent={
           <View>
             <View className="mb-6 flex-row items-center justify-between">
-              <Heading>Priatelia</Heading>
+              <View className="flex-1 flex-row items-baseline gap-2">
+                <Heading>Priatelia</Heading>
+                {profile ? (
+                  <Txt className="text-muted text-[13px]" numberOfLines={1}>
+                    @{profile.nickname}
+                  </Txt>
+                ) : null}
+              </View>
               <Button
                 variant="secondary"
                 isIconOnly
@@ -79,26 +86,20 @@ export default function Friends() {
             </View>
             <StorageNotice />
             {session ? <PushNotice /> : null}
-            <View className="mb-6 gap-3">
-              {profile ? (
-                <Button variant="secondary" onPress={() => router.push('/account')}>
-                  <Button.Label numberOfLines={1}>Môj nick: @{profile.nickname}</Button.Label>
+            {!profile && (
+              <View className="mb-6 gap-3">
+                <Txt>
+                  {session
+                    ? 'Nastav si nick, aby ťa priatelia našli.'
+                    : 'Nájdi priateľov, ktorí majú túto aplikáciu.'}
+                </Txt>
+                <Button onPress={() => router.push('/account')}>
+                  <Button.Label>
+                    {session ? 'Vybrať nick' : 'Prihlásiť sa a vybrať nick'}
+                  </Button.Label>
                 </Button>
-              ) : (
-                <>
-                  <Txt>
-                    {session
-                      ? 'Nastav si nick, aby ťa priatelia našli.'
-                      : 'Nájdi priateľov, ktorí majú túto aplikáciu.'}
-                  </Txt>
-                  <Button onPress={() => router.push('/account')}>
-                    <Button.Label>
-                      {session ? 'Vybrať nick' : 'Prihlásiť sa a vybrať nick'}
-                    </Button.Label>
-                  </Button>
-                </>
-              )}
-            </View>
+              </View>
+            )}
             <OnlineError error={social.error} retry={() => void social.refresh()} />
             {session && (
               <Button className="mb-4" variant="secondary" onPress={() => router.push('/online')}>
