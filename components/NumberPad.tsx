@@ -8,6 +8,8 @@ type NumberPadProps = {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  /** Vrátenie posledného ťahu (šípka pri prázdnom vstupe). Bez neho šípka len maže vstup. */
+  onUndoTurn?: () => void;
   disabled?: boolean;
   pending?: boolean;
 };
@@ -16,6 +18,7 @@ export function NumberPad({
   value,
   onChange,
   onSubmit,
+  onUndoTurn,
   disabled = false,
   pending = false,
 }: NumberPadProps) {
@@ -65,9 +68,9 @@ export function NumberPad({
         <Button
           variant="secondary"
           className="h-12 flex-1 rounded-xl"
-          accessibilityLabel="Vymazať rozpísané skóre"
-          isDisabled={locked || !value}
-          onPress={() => change('')}
+          accessibilityLabel={value ? 'Vymazať rozpísané skóre' : 'Vrátiť posledný ťah'}
+          isDisabled={locked || (!value && !onUndoTurn)}
+          onPress={() => (value ? change('') : onUndoTurn?.())}
         >
           <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
         </Button>
