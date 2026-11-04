@@ -41,25 +41,37 @@ export function pushPermission(): NotificationPermission | 'unsupported' {
   return Notification.permission;
 }
 
+/** Výsledok s ľudsky čitateľným dôvodom (zobrazí sa používateľovi pri zlyhaní). */
+export type PushResult = { ok: boolean; reason?: string };
+
+function errText(e: unknown): string {
+  return e instanceof Error ? (e.message || e.name) : String(e);
+}
+
 /** VAPID public key je verejný – je v build-e, netreba ho tajiť. */
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
-export async function ensurePushSubscription(userId: string): Promise<'ok' | 'denied' | 'skipped' | 'error'> {
-  if (!pushSupported() || !isBiltConfigured || !VAPID_PUBLIC_KEY) return 'skipped';
-  if (Notification.permission === 'denied') return 'denied';
+export async function ensurePushSubscription(userId: string): Promise<PushResult> {
+  if (!pushSupported() || !isBiltConfigured || !VAPID_PUBLIC_KEY)
+    return { ok: false, reason: 'Push nie je v tomto prehliadači k dispozícii.' };
+  if (Notification.permission === 'denied') return { ok: false, reason: 'denied' };
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+      try {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      } catch (e) {
+        return { ok: false, reason: `Prehliadač odmietol registráciu (1): ${errText(e)}` };
+      }
     }
     const json = sub.toJSON();
-    if (!json.endpoint) return 'error';
+    if (!json.endpoint) return { ok: false, reason: 'Prehliadač nevrátil endpoint (2).' };
     const cacheKey = SUB_SENT_KEY + userId + ':' + json.endpoint.slice(-32);
-    if (await AsyncStorage.getItem(cacheKey)) return 'ok';
+    if (await AsyncStorage.getItem(cacheKey)) return { ok: true };
     const { error } = await bilt.from('push_subscriptions').upsert(
       {
         user_id: userId,
@@ -69,25 +81,25 @@ export async function ensurePushSubscription(userId: string): Promise<'ok' | 'de
       },
       { onConflict: 'endpoint' },
     );
-    if (error) return 'error';
+    if (error) return { ok: false, reason: `Uloženie do databázy zlyhalo (3): ${error.message}` };
     await AsyncStorage.setItem(cacheKey, '1');
-    return 'ok';
-  } catch {
-    return 'error';
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: `Neočakávaná chyba (4): ${errText(e)}` };
   }
 }
 
-export async function requestPushPermission(userId: string): Promise<'ok' | 'denied' | 'skipped' | 'error'> {
-  if (!pushSupported()) return 'skipped';
+export async function requestPushPermission(userId: string): Promise<PushResult> {
+  if (!pushSupported()) return { ok: false, reason: 'Push nie je v tomto prehliadači k dispozícii.' };
   if (Notification.permission === 'granted') return ensurePushSubscription(userId);
-  if (Notification.permission === 'denied') return 'denied';
+  if (Notification.permission === 'denied') return { ok: false, reason: 'denied' };
   try {
     await AsyncStorage.setItem(ASKED_KEY, '1');
     const result = await Notification.requestPermission();
-    if (result !== 'granted') return 'denied';
+    if (result !== 'granted') return { ok: false, reason: 'denied' };
     return ensurePushSubscription(userId);
-  } catch {
-    return 'error';
+  } catch (e) {
+    return { ok: false, reason: `Povolenie zlyhalo (5): ${errText(e)}` };
   }
 }
 
@@ -135,7 +147,7 @@ export function pushHintLine(): string {
  * Vypne upozornenia: zruší subscription v prehliadači a zmaže ho z DB,
  * aby backend nemal kam posielať.
  */
-export async function disablePushSubscription(userId: string): Promise<'ok' | 'error'> {
+export async function disablePushSubscription(userId: string): Promise<PushResult> {
   try {
     if (pushSupported()) {
       const reg = await navigator.serviceWorker.ready;
@@ -148,8 +160,8 @@ export async function disablePushSubscription(userId: string): Promise<'ok' | 'e
     const keys = await AsyncStorage.getAllKeys();
     const mine = keys.filter((k) => k.startsWith(SUB_SENT_KEY + userId + ':'));
     if (mine.length) await AsyncStorage.multiRemove(mine);
-    return 'ok';
-  } catch {
-    return 'error';
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: errText(e) };
   }
 }
