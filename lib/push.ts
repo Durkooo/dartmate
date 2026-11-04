@@ -49,21 +49,35 @@ export function iosVersion(): number | null {
   return Number(m[1]) + Number(m[2]) / 100;
 }
 
+/** Beží appka z ikony na ploche (standalone), alebo v prehliadači? */
+export function standaloneMode(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  if ((navigator as Navigator & { standalone?: boolean }).standalone === true) return true;
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches
+  );
+}
+
 /** Dôvod, prečo push nejde — rozlíši prehliadač, iOS verziu a konfiguráciu. */
 export function pushBlockReason(): string | null {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return 'Len vo webovej verzii.';
   const ua = navigator.userAgent || '';
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  if (isIOS) {
-    const v = iosVersion();
-    if (v !== null && v < 16.4)
-      return `iOS ${String(v).replace('.', ',')} — Web Push vyžaduje aspoň iOS 16.4 (aktualizuj v Nastavenia → Všeobecné → Aktualizácia softvéru).`;
-  }
-  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-    if (isIOS)
-      return 'iPhone nedovolil push (skontroluj iOS 16.4+ a otvorenie z ikony na ploche, nie zo Safari).';
-    return 'Tento prehliadač Web Push nevie (skús Chrome).';
-  }
+  const v = isIOS ? iosVersion() : null;
+  const where = isIOS
+    ? `iOS ${v !== null ? String(v).replace('.', ',') : '?'}, ${standaloneMode() ? 'appka z plochy' : 'otvorené v Safari'}`
+    : standaloneMode()
+      ? 'web, appka z plochy'
+      : 'web, prehliadač';
+  if (isIOS && v !== null && v < 16.4)
+    return `Starý ${where} — Web Push vyžaduje aspoň iOS 16.4 (Nastavenia → Všeobecné → Aktualizácia softvéru).`;
+  const missing: string[] = [];
+  if (!('serviceWorker' in navigator)) missing.push('serviceWorker');
+  if (!('PushManager' in window)) missing.push('PushManager');
+  if (!('Notification' in window)) missing.push('Notification');
+  if (missing.length)
+    return `Chýba: ${missing.join(', ')} (${where}). Ak máš appku na ploche a nové iOS, skús ju z plochy zmazať a pridať znova zo Safari (Zdieľať → Pridať na plochu).`;
   if (!isBiltConfigured) return 'Chýba konfigurácia online služieb.';
   if (!VAPID_PUBLIC_KEY) return 'Chýba VAPID kľúč v builde — napíš vývojárovi.';
   return null;
