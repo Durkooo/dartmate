@@ -19,6 +19,7 @@ export default function Account() {
   const [code, setCode] = useState('');
   const [nick, setNick] = useState('');
   const [pending, setPending] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
   const fail = (message: string) => {
     setError(message);
@@ -156,9 +157,6 @@ export default function Account() {
           ) : profile ? (
             <>
               <Txt className="text-muted">Tento nick daj priateľom, aby ťa našli v aplikácii.</Txt>
-              <Button onPress={() => router.push('/friend/new')}>
-                <Button.Label>Pridať priateľa podľa nicku</Button.Label>
-              </Button>
               <Button variant="secondary" onPress={() => router.push('/statistics')}>
                 <Button.Label>Moje štatistiky</Button.Label>
               </Button>
@@ -197,25 +195,78 @@ export default function Account() {
             </Button>
           )}
           {!!session && (
-            <Button
-              variant="ghost"
-              isDisabled={pending}
-              onPress={() =>
-                run(async () => {
-                  const { error: e } = await bilt.auth.signOut();
-                  if (e) {
-                    fail(playerError(e));
-                    return;
-                  }
-                  setSentEmail('');
-                  setCode('');
-                  feedback.success();
-                  router.dismissTo('/friends');
-                })
-              }
-            >
-              <Button.Label>{pending ? 'Čakaj…' : 'Odhlásiť sa'}</Button.Label>
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                isDisabled={pending}
+                onPress={() =>
+                  run(async () => {
+                    const { error: e } = await bilt.auth.signOut();
+                    if (e) {
+                      fail(playerError(e));
+                      return;
+                    }
+                    setSentEmail('');
+                    setCode('');
+                    setConfirmDelete(false);
+                    feedback.success();
+                    router.dismissTo('/friends');
+                  })
+                }
+              >
+                <Button.Label>{pending ? 'Čakaj…' : 'Odhlásiť sa'}</Button.Label>
+              </Button>
+              {!confirmDelete ? (
+                <Button
+                  variant="ghost"
+                  isDisabled={pending}
+                  onPress={() => {
+                    setConfirmDelete(true);
+                    setError('');
+                  }}
+                >
+                  <Button.Label className="text-danger">Odstrániť účet</Button.Label>
+                </Button>
+              ) : (
+                <View className="gap-3">
+                  <Txt className="text-danger text-[13px] leading-5">
+                    Naozaj odstrániť účet{profile ? ` @${profile.nickname}` : ''}? Vymaže sa
+                    profil, priatelia, zápasy aj správy. Túto akciu nemožno vrátiť.
+                  </Txt>
+                  <Button
+                    variant="danger"
+                    isDisabled={pending}
+                    onPress={() =>
+                      run(async () => {
+                        const { error: e } = await bilt.rpc('delete_own_account');
+                        if (e) {
+                          fail(playerError(e));
+                          return;
+                        }
+                        await bilt.auth.signOut();
+                        setSentEmail('');
+                        setCode('');
+                        setConfirmDelete(false);
+                        feedback.success();
+                        router.dismissTo('/friends');
+                      })
+                    }
+                  >
+                    <Button.Label>{pending ? 'Mažem…' : 'Áno, odstrániť účet'}</Button.Label>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    isDisabled={pending}
+                    onPress={() => {
+                      setConfirmDelete(false);
+                      setError('');
+                    }}
+                  >
+                    <Button.Label>Zrušiť</Button.Label>
+                  </Button>
+                </View>
+              )}
+            </>
           )}
         </View>
       )}
