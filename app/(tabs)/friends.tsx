@@ -184,14 +184,6 @@ export default function Friends() {
             />
           )
         }
-        ListFooterComponent={
-          shown.length > 0 ? (
-            <Button variant="outline" onPress={() => router.push('/friend/new')} className="mt-6">
-              <UserPlus size={19} color={palette.ink} strokeWidth={1.8} />
-              <Button.Label>Pridať podľa nicku</Button.Label>
-            </Button>
-          ) : undefined
-        }
       />
     </KeyboardAvoidingView>
   );
