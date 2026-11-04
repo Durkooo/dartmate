@@ -151,6 +151,7 @@ export default function NativeVideoCall({
   large,
   micWanted = true,
   onMicChange,
+  getCredentials,
 }: VideoCallProps) {
   const [credentials, setCredentials] = useState<Awaited<
     ReturnType<typeof getVideoCredentials>
@@ -161,6 +162,9 @@ export default function NativeVideoCall({
     () => new Room({ adaptiveStream: { pixelDensity: 'screen' }, dynacast: true }),
   );
   const [previousSession, setPreviousSession] = useState(request);
+  // Vlastné credentials (chat) cez refku, aby sa efekt nespúšťal dookola.
+  const credsRef = useRef(getCredentials);
+  credsRef.current = getCredentials;
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
     setPreviousSession(request);
@@ -172,7 +176,7 @@ export default function NativeVideoCall({
     let ownsAudio = false;
     void (async () => {
       try {
-        const data = await getVideoCredentials(request.matchId);
+        const data = await (credsRef.current ? credsRef.current() : getVideoCredentials(request.matchId));
         if (!mounted) return;
         await serializeAudio(async () => {
           if (!mounted) return;

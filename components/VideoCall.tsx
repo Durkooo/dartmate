@@ -2,12 +2,15 @@ import { useEffect, useState, type ComponentType } from 'react';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { VideoNotice } from '@/components/VideoUI';
 import { feedback } from '@/lib/darts';
+import type { VideoCredentials } from '@/lib/video';
 export type VideoCallProps = {
   matchId: string;
   onLeave: () => void;
   large?: boolean;
   micWanted?: boolean;
   onMicChange?: (on: boolean) => void;
+  /** Vlastné načítanie credentials (chat-hovor); predvolene token k matchId. */
+  getCredentials?: () => Promise<VideoCredentials>;
 };
 
 const expoGoError =
