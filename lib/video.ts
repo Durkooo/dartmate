@@ -6,6 +6,7 @@ export type VideoCredentials = { url: string; token: string };
 async function invokeForCredentials(
   functionName: string,
   body: Record<string, string>,
+  label: string,
 ): Promise<VideoCredentials> {
   const { data, error } = await bilt.functions.invoke(functionName, { body });
   if (error) {
@@ -24,8 +25,8 @@ async function invokeForCredentials(
         /* Keep the SDK error when the response body cannot be read. */
       }
     }
-    // Názov funkcie v hláške — podľa screenshotu vidno, ktorý endpoint appka volala.
-    throw new Error(`[${functionName}] ${message}`);
+    // Názov funkcie + parameter v hláške — podľa screenshotu vidno, ktorý endpoint appka volala a s čím.
+    throw new Error(`[${functionName} ${label}] ${message}`);
   }
   const result: unknown = data;
   if (
@@ -42,7 +43,7 @@ async function invokeForCredentials(
 
 /** Token do videomiestnosti online zápasu (overuje účasť v zápase). */
 export function getVideoCredentials(matchId: string): Promise<VideoCredentials> {
-  return invokeForCredentials('match-video-token', { matchId });
+  return invokeForCredentials('match-video-token', { matchId }, `mid:${matchId.slice(0, 12)}`);
 }
 
 /**
@@ -51,5 +52,5 @@ export function getVideoCredentials(matchId: string): Promise<VideoCredentials> 
  * do spoločnej miestnosti dvojice (rovnakej bez ohľadu na to, kto volá).
  */
 export function getCallCredentials(peerId: string): Promise<VideoCredentials> {
-  return invokeForCredentials('dm-call-token', { peer: peerId });
+  return invokeForCredentials('dm-call-token', { peer: peerId }, `peer:${peerId.slice(0, 8)}`);
 }
