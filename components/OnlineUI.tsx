@@ -1,13 +1,13 @@
 import { View, StyleSheet } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
-import { ChevronRight, Wifi, WifiOff } from 'lucide-react-native';
+import { ChevronRight, Swords, Wifi, WifiOff } from 'lucide-react-native';
 import { Empty, Heading, LoadingRows, Txt } from '@/components/DartsUI';
-import { palette } from '@/lib/darts';
-import { opponentName, type OnlineMatch } from '@/lib/online';
-import { usePlayers } from '@/lib/players';
+import { feedback, palette } from '@/lib/darts';
+import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
+import { playerError, usePlayers } from '@/lib/players';
 
 export function OnlineGate({ children }: { children: React.ReactNode }) {
   const session = usePlayers((s) => s.session);
@@ -155,6 +155,93 @@ export function OpenMatches({ matches, userId }: { matches: OnlineMatch[]; userI
       {matches.map((m) => (
         <MatchRow key={m.id} match={m} userId={userId} />
       ))}
+    </View>
+  );
+}
+/**
+ * Pozvánka na zápas ako správa v chate (konverzácia s priateľom).
+ * Prijať = rovno do zápasu, odmietnuť/zrušiť = zmizne po obnovení.
+ */
+export function MatchInviteCard({
+  match,
+  userId,
+  onChanged,
+}: {
+  match: OnlineMatch;
+  userId: string;
+  onChanged: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  if (match.status !== 'invited') return null;
+  const incoming = match.guest_id === userId;
+  const legs = (match.legs_to_win ?? 1) > 1 ? ` · na ${match.legs_to_win} víťazné legy` : '';
+  const decide = async (decision: 'accept' | 'decline' | 'cancel') => {
+    if (pending) return;
+    setPending(true);
+    setError('');
+    try {
+      await respondMatch(match.id, decision);
+      feedback.success();
+      if (decision === 'accept') {
+        router.push({ pathname: '/online/[id]', params: { id: match.id } });
+      } else {
+        onChanged();
+      }
+    } catch (e) {
+      setError(playerError({ message: e instanceof Error ? e.message : 'Akciu sa nepodarilo vykonať.' }));
+      feedback.error();
+      onChanged();
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <View className="bg-surface my-2 gap-3 rounded-2xl rounded-bl-sm p-4">
+      <View className="flex-row items-center gap-2">
+        <Swords size={18} color={palette.ink} strokeWidth={1.8} />
+        <Txt className="flex-1" style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>
+          {incoming
+            ? `@${opponentName(match, userId)} ťa pozýva na zápas`
+            : 'Pozvánka odoslaná — čakáš na súpera'}
+        </Txt>
+      </View>
+      <Txt className="text-muted text-[13px] leading-5">
+        {match.starting} · {match.double_out ? 'double out' : 'straight out'}
+        {legs} · kamera voliteľná
+      </Txt>
+      {!!error && (
+        <Txt className="text-danger text-[13px]" accessibilityRole="alert">
+          {error}
+        </Txt>
+      )}
+      {incoming ? (
+        <View className="flex-row gap-2">
+          <Button
+            className="flex-1"
+            isDisabled={pending}
+            onPress={() => void decide('accept')}
+          >
+            <Button.Label>{pending ? 'Čakaj…' : 'Prijať zápas'}</Button.Label>
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1"
+            isDisabled={pending}
+            onPress={() => void decide('decline')}
+          >
+            <Button.Label>Odmietnuť</Button.Label>
+          </Button>
+        </View>
+      ) : (
+        <Button
+          variant="secondary"
+          isDisabled={pending}
+          onPress={() => void decide('cancel')}
+        >
+          <Button.Label>{pending ? 'Čakaj…' : 'Zrušiť pozvánku'}</Button.Label>
+        </Button>
+      )}
     </View>
   );
 }
