@@ -110,6 +110,20 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+/** Stav registrácie Service Workera — nevisí (na rozdiel od .ready). */
+export async function swStatus(): Promise<{ registered: boolean; active: boolean; state: string }> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator))
+    return { registered: false, active: false, state: 'no-sw-api' };
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return { registered: false, active: false, state: 'none' };
+    const sw = reg.active ?? reg.waiting ?? reg.installing;
+    return { registered: true, active: !!reg.active, state: sw?.state ?? 'unknown' };
+  } catch {
+    return { registered: false, active: false, state: 'error' };
+  }
+}
+
 export async function ensurePushSubscription(userId: string): Promise<PushResult> {
   const blocked = pushBlockReason();
   if (blocked) return { ok: false, reason: blocked };
@@ -148,7 +162,14 @@ export async function ensurePushSubscription(userId: string): Promise<PushResult
     await AsyncStorage.setItem(cacheKey, '1');
     return { ok: true };
   } catch (e) {
-    return { ok: false, reason: `Neočakávaná chyba (4): ${errText(e)}` };
+    let extra = '';
+    try {
+      const st = await swStatus();
+      extra = ` [SW: ${st.state}]`;
+    } catch {
+      /* stav SW nezistíme */
+    }
+    return { ok: false, reason: `Neočakávaná chyba (4): ${errText(e)}${extra}` };
   }
 }
 
