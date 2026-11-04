@@ -132,7 +132,11 @@ function RoomContent({
             const next = facing === 'user' ? 'environment' : 'user';
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
-            await track.restartTrack({ facingMode: next });
+            // Skromné rozlíšenie = rýchlejšie prebratie kamery systémom (typicky do 2 s).
+            await track.restartTrack({
+              facingMode: next,
+              resolution: { width: 640, height: 480, frameRate: 24 },
+            });
             setFacing(next);
           })
         }
