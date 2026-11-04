@@ -1,7 +1,7 @@
 import { View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Button, PressableFeedback } from 'heroui-native';
-import { ArrowUpRight, Target, Video, ChevronRight, Trophy } from 'lucide-react-native';
+import { ArrowUpRight, Target, ChevronRight, Trophy } from 'lucide-react-native';
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
@@ -154,12 +154,6 @@ export default function Home() {
           <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>Hrať online</Button.Label>
           <ArrowUpRight size={20} color={palette.ink} strokeWidth={1.8} />
         </Button>
-      </View>
-      <View className="mt-4 mb-7 flex-row items-center gap-2">
-        <Video size={16} color={palette.muted} strokeWidth={1.8} />
-        <Txt className="text-muted flex-1 text-[12px]">
-          Kamera je voliteľná · skóre zadávaš ručne
-        </Txt>
       </View>
       {game && (
         <Button className="mt-5" variant="secondary" onPress={() => router.push('/match')}>
