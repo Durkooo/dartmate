@@ -56,7 +56,8 @@ export async function inviteMatch(peer: string, starting: number, doubleOut: boo
 export async function undoOnlineTurn(mid: string) {
   const { data, error } = await bilt.rpc('undo_online_turn', { mid });
   if (error) throw new Error(error.message);
-  if (!data?.[0]) throw new Error('Ťah sa nepodarilo vrátiť. Skús to znova.');
+  if (!data?.[0])
+    throw new Error('Ťah sa nepodarilo vrátiť (možno už uzavrel leg alebo niet čo vrátiť).');
   return data[0];
 }
 export async function respondMatch(
