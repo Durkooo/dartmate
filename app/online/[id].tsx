@@ -17,6 +17,7 @@ import {
   opponentId,
   opponentName,
   respondMatch,
+  undoOnlineTurn,
   useOnlineQuery,
 } from '@/lib/online';
 
@@ -83,6 +84,28 @@ export default function OnlineGame() {
         playerError({
           message: e instanceof Error ? e.message : 'Zápas sa nepodarilo aktualizovať.',
         }),
+      );
+      feedback.error();
+      await query.refresh();
+    } finally {
+      setPending(false);
+    }
+  };
+
+  /** Šípka pri prázdnom vstupe: vráti môj posledný ťah (ak súper ešte nehodil). */
+  const undoTurn = async () => {
+    if (!m || pending || !mine) return;
+    setPending(true);
+    setError('');
+    try {
+      await undoOnlineTurn(id);
+      await query.refresh();
+      setInput('');
+      setDouble(false);
+      feedback.success();
+    } catch (e) {
+      setError(
+        playerError({ message: e instanceof Error ? e.message : 'Ťah sa nepodarilo vrátiť.' }),
       );
       feedback.error();
       await query.refresh();
@@ -292,6 +315,7 @@ export default function OnlineGame() {
                 setError('');
               }}
               onSubmit={() => void submitWith(3)}
+              onUndoTurn={() => void undoTurn()}
               disabled={disabled}
               pending={pending}
             />
