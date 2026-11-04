@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input, PressableFeedback } from 'heroui-native';
@@ -143,7 +143,7 @@ export default function Friends() {
                   </Txt>
                   <View className="mt-2">
                     <Presence
-                      online={!!social.data?.find((c) => c.user_id === item.id)?.online}
+                      online={!!social.data?.find((c: any) => c.user_id === item.id)?.online}
                       unknown={social.loading || !!social.error}
                     />
                   </View>

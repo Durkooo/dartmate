@@ -32,7 +32,7 @@ function OnlineMessages({ userId }: { userId: string }) {
   return (
     <View className="bg-background flex-1" style={{ paddingTop: insets.top }}>
       <FlatList
-        data={query.data?.contacts.filter((c) => c.last_body) ?? []}
+        data={query.data?.contacts.filter((c: any) => c.last_body) ?? []}
         keyExtractor={(c) => c.user_id ?? ''}
         contentContainerStyle={{
           padding: 20,
