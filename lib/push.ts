@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { bilt, isBiltConfigured } from '@/lib/bilt';
+import { bilt, biltConfigured } from '@/lib/bilt';
 
 /**
  * Web Push notifikácie o nových správach (PWA).
@@ -78,7 +78,7 @@ export function pushBlockReason(): string | null {
   if (!('Notification' in window)) missing.push('Notification');
   if (missing.length)
     return `Chýba: ${missing.join(', ')} (${where}). Ak máš appku na ploche a nové iOS, skús ju z plochy zmazať a pridať znova zo Safari (Zdieľať → Pridať na plochu).`;
-  if (!isBiltConfigured) return 'Chýba konfigurácia online služieb.';
+  if (!biltConfigured) return 'Chýba konfigurácia online služieb.';
   if (!VAPID_PUBLIC_KEY) return 'Chýba VAPID kľúč v builde — napíš vývojárovi.';
   return null;
 }
