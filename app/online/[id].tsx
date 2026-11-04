@@ -207,7 +207,7 @@ export default function OnlineGame() {
   // Čakám na súpera → jeho video veľké; inak (hádžem) kompaktné počítadlo
   // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
   const waiting = !!m && m.status === 'active' && !mine;
-  const videoVisible = !!video && !!m && m.status === 'active' && focused && foreground;
+  const videoVisible = video && !!m && m.status === 'active' && focused && foreground;
 
   if (query.loading)
     return (
