@@ -24,6 +24,9 @@ const STAT_LABELS: { key: keyof MatchPlayerStats; label: string }[] = [
   { key: 'bestLeg', label: 'Najlepší leg' },
 ];
 
+function statText(v: number | null) {
+  return v === null ? '–' : String(v);
+}
 function StatRow({
   label,
   mine,
@@ -33,15 +36,14 @@ function StatRow({
   mine: number | null;
   peer: number | null;
 }) {
-  const text = (v: number | null) => (v === null ? '–' : String(v));
   return (
     <View className="flex-row items-baseline py-2.5">
       <Txt numberOfLines={1} className="flex-1 text-left text-[17px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-        {text(mine)}
+        {statText(mine)}
       </Txt>
-      <Txt className="text-muted px-3 text-[13px]">{label}</Txt>
+      <Txt className="text-muted px-3 text-[13px]" style={{ fontFamily: 'Inter_400Regular' }}>{label}</Txt>
       <Txt numberOfLines={1} className="flex-1 text-right text-[17px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-        {text(peer)}
+        {statText(peer)}
       </Txt>
     </View>
   );
