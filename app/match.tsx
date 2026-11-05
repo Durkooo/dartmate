@@ -99,7 +99,8 @@ export default function Match() {
         data={game.turns.toReversed()}
         keyExtractor={(_, index) => `${game.id}-${game.turns.length - index}`}
         contentContainerStyle={{
-          padding: 20,
+          paddingHorizontal: 20,
+          paddingTop: 4,
           paddingBottom: 32,
           maxWidth: 600,
           width: '100%',
@@ -164,11 +165,6 @@ export default function Match() {
               </Txt>
               <Txt className="text-muted mt-2 text-[12px]">Lokálna hra</Txt>
             </View>
-            {!finished && !legBreak && game.legsToWin > 1 && (
-              <Txt className="text-muted mb-3 text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-                Leg {legNo} · začína {currentLeg(game) % 2 === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
-              </Txt>
-            )}
             {finished ? (
               <View className="items-center gap-4 py-6">
                 <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
@@ -241,7 +237,7 @@ export default function Match() {
                     Prehodené alebo neplatné ukončenie. Skóre zostáva.
                   </Txt>
                 )}
-                <View className="mt-5 mb-3 flex-row items-center justify-between">
+                <View className="mt-2 mb-2 flex-row items-center justify-between">
                   <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Súčet 3 šípok</Txt>
                   <Txt
                     className="text-[30px] leading-9"
@@ -251,7 +247,7 @@ export default function Match() {
                     {input || '—'}
                   </Txt>
                 </View>
-                <View className="mb-3 flex-row gap-2">
+                <View className="mb-2 flex-row gap-2">
                   {[26, 41, 60, 100].map((n) => (
                     <Button
                       key={n}
