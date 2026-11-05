@@ -213,8 +213,8 @@ export default function NativeVideoCall({
       }).catch(() => undefined);
     };
   // room vzniká raz (useState inicializátor) a nikdy sa nemení — v závislostiach
-  // preto nie je: opätovné pripojenie riadi request.matchId (nové credentials).
-  }, [request.matchId, getCredentials]);
+  // je kvôli cleanupu (odpojenie), ale re-rendery navyše nespôsobuje.
+  }, [request.matchId, room, getCredentials]);
   if (!credentials)
     return (
       <VideoNotice
