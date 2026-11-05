@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { Room, RoomEvent, Track, ConnectionState, LocalVideoTrack } from 'livekit-client';
+import { Room, RoomEvent, Track, ConnectionState, LocalVideoTrack, VideoPresets } from 'livekit-client';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import { feedback, palette } from '@/lib/darts';
@@ -60,7 +60,11 @@ export default function VideoCall({
   }
   useEffect(() => {
     let active = true;
-    const session = new Room({ adaptiveStream: true, dynacast: true });
+    const session = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+      videoCaptureDefaults: { resolution: VideoPresets.h720 },
+    });
     const fail = (e: unknown) => {
       if (active) {
         setError(e instanceof Error ? e.message : 'Video sa nepodarilo pripojiť.');
@@ -113,7 +117,9 @@ export default function VideoCall({
           return;
         }
         try {
-          await session.localParticipant.setCameraEnabled(true);
+          await session.localParticipant.setCameraEnabled(true, {
+            resolution: VideoPresets.h720,
+          });
           if (!active) {
             await session.disconnect();
             return;
@@ -276,7 +282,7 @@ export default function VideoCall({
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             await track.restartTrack({
               facingMode: next,
-              resolution: { width: 640, height: 480, frameRate: 24 },
+              resolution: { width: 1280, height: 720, frameRate: 30 },
             });
             setFacing(next);
           })

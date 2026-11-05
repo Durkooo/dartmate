@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { Room, Track, ConnectionState, LocalVideoTrack } from 'livekit-client';
+import { Room, Track, ConnectionState, LocalVideoTrack, VideoPresets } from 'livekit-client';
 import {
   AudioSession,
   LiveKitRoom,
@@ -122,7 +122,13 @@ function RoomContent({
         camera={isCameraEnabled}
         microphone={isMicrophoneEnabled}
         pending={pending}
-        onCamera={() => void control(() => localParticipant.setCameraEnabled(!isCameraEnabled))}
+        onCamera={() =>
+          void control(() =>
+            localParticipant.setCameraEnabled(!isCameraEnabled, {
+              resolution: VideoPresets.h720,
+            }),
+          )
+        }
         onMicrophone={() =>
           void control(async () => {
             const next = !appliedMic.current;
@@ -139,7 +145,7 @@ function RoomContent({
             // Skromné rozlíšenie = rýchlejšie prebratie kamery systémom (typicky do 2 s).
             await track.restartTrack({
               facingMode: next,
-              resolution: { width: 640, height: 480, frameRate: 24 },
+              resolution: { width: 1280, height: 720, frameRate: 30 },
             });
             setFacing(next);
           })
@@ -164,7 +170,12 @@ export default function NativeVideoCall({
   const [error, setError] = useState('');
   const [request, setRequest] = useState({ matchId });
   const [room] = useState(
-    () => new Room({ adaptiveStream: { pixelDensity: 'screen' }, dynacast: true }),
+    () =>
+      new Room({
+        adaptiveStream: { pixelDensity: 'screen' },
+        dynacast: true,
+        videoCaptureDefaults: { resolution: VideoPresets.h720 },
+      }),
   );
   const [previousSession, setPreviousSession] = useState(request);
   if (request.matchId !== matchId) setRequest({ matchId });
