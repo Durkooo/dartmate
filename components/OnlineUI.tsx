@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
-import { ChevronRight, Swords, Wifi, WifiOff } from 'lucide-react-native';
+import { ChevronRight, Mail, Swords, Wifi, WifiOff } from 'lucide-react-native';
 import { Empty, Heading, LoadingRows, Txt } from '@/components/DartsUI';
 import { feedback, palette } from '@/lib/darts';
 import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
@@ -99,6 +99,25 @@ export function Presence({
         {unknown ? 'Stav neznámy' : playing ? 'Práve hrá' : online ? 'Online' : 'Offline'}
       </Txt>
     </View>
+  );
+}
+/** Blikajúca čierna obálka = neprečítaná správa od priateľa. */
+export function UnreadEnvelope() {
+  const [blink] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.25, duration: 700, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [blink]);
+  return (
+    <Animated.View style={{ opacity: blink }}>
+      <Mail size={16} color={palette.ink} strokeWidth={1.8} />
+    </Animated.View>
   );
 }
 
