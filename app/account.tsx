@@ -73,8 +73,10 @@ export default function Account() {
     run(async () => {
       if (!session) return;
       const nickname = nick.trim().replace(/^@/, '').toLowerCase();
-      if (!/^[a-z0-9_]{3,24}$/.test(nickname)) {
-        fail('Nick musí mať 3 až 24 znakov: písmená bez diakritiky, čísla alebo podčiarkovník.');
+      if (!/^[\p{L}\p{N} _.\-]{3,24}$/u.test(nickname)) {
+        fail(
+          'Nick musí mať 3 až 24 znakov: písmená (aj s diakritikou), čísla, medzera, bodka, podčiarkovník alebo pomlčka.',
+        );
         return;
       }
       // Prezývka musí byť jedinečná — najprv overíme, či ju už niekto nemá.
@@ -85,7 +87,9 @@ export default function Account() {
         fail(playerError(checkError));
         return;
       }
-      if (taken) {
+      // find_player_by_nickname vracia ZOZNAM — voľný nick = prázdny zoznam (ten je truthy!).
+      const isTaken = Array.isArray(taken) ? taken.length > 0 : !!taken;
+      if (isTaken) {
         fail('Táto prezývka je už obsadená. Vyber si inú.');
         return;
       }
