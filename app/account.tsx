@@ -261,7 +261,9 @@ export default function Account() {
                     isDisabled={pending}
                     onPress={() =>
                       run(async () => {
-                        const { error: e } = await bilt.rpc('delete_own_account');
+                        // Mazanie beží ako Edge Function (vie zmazať aj auth účet).
+                        const { error: e } =
+                          await bilt.functions.invoke('delete-own-account');
                         if (e) {
                           fail(playerError(e));
                           return;
