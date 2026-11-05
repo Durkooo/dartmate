@@ -150,20 +150,7 @@ export default function Friends() {
             </View>
           </View>
         }
-        renderItem={({ item }) => {
-          const contact = session
-            ? (social.data?.find((c: any) => c.user_id === item.id) as
-                | { online?: boolean | null; in_match?: boolean | null; avg?: number | null }
-                | undefined)
-            : undefined;
-          const friendAvg =
-            typeof contact?.avg === 'number'
-              ? contact.avg
-              : typeof (contact as { three_dart_average?: number | null } | undefined)
-                    ?.three_dart_average === 'number'
-                ? (contact as { three_dart_average?: number | null }).three_dart_average
-                : null;
-          return (
+        renderItem={({ item }) => (
           <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
             {session ? (
               <PressableFeedback
@@ -172,28 +159,13 @@ export default function Friends() {
               >
                 <Avatar friend={item} />
                 <View className="flex-1">
-                  <View className="flex-row items-baseline gap-2">
-                    <Txt
-                      numberOfLines={1}
-                      className="flex-1"
-                      style={{ fontFamily: 'Inter_600SemiBold' }}
-                    >
-                      @{item.handle}
-                    </Txt>
-                    {friendAvg !== null ? (
-                      <Txt
-                        numberOfLines={1}
-                        className="text-[13px]"
-                        style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
-                      >
-                        avg. {Math.round(friendAvg)}
-                      </Txt>
-                    ) : null}
-                  </View>
+                  <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+                    @{item.handle}
+                  </Txt>
                   <View className="mt-2">
                     <Presence
-                      online={!!contact?.online}
-                      playing={!!contact?.in_match}
+                      online={!!social.data?.find((c: any) => c.user_id === item.id)?.online}
+                      playing={!!social.data?.find((c: any) => c.user_id === item.id)?.in_match}
                       unknown={social.loading || !!social.error}
                     />
                   </View>
@@ -209,8 +181,7 @@ export default function Friends() {
               />
             )}
           </Animated.View>
-          );
-        }}
+        )}
         ListEmptyComponent={
           busy ? (
             <LoadingRows />
