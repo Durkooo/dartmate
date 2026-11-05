@@ -28,13 +28,16 @@ export function Page({
   form = false,
   safeTop = false,
   fallbackHref = '/',
-  fallbackLabel = 'Späť na hru',
+  fallbackLabel = 'Späť domov',
+  hideFallback = false,
 }: {
   children: ReactNode;
   form?: boolean;
   safeTop?: boolean;
   fallbackHref?: Href;
   fallbackLabel?: string;
+  /** Skryje spodné tlačidlo (obrazovka má vlastné). */
+  hideFallback?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   return (
@@ -51,7 +54,7 @@ export function Page({
       >
         <View className="w-full max-w-xl flex-1 self-center">
           {children}
-          {!safeTop && (
+          {!safeTop && !hideFallback && (
             <Button className="mt-5" variant="ghost" onPress={() => router.dismissTo(fallbackHref)}>
               <Button.Label>{fallbackLabel}</Button.Label>
             </Button>
