@@ -265,7 +265,18 @@ export default function Account() {
                         const { error: e } =
                           await bilt.functions.invoke('delete-own-account');
                         if (e) {
-                          fail(playerError(e));
+                          // Funkcia odpovedala chybou — ukáž aj jej vlastnú správu zo servera.
+                          let detail = '';
+                          try {
+                            const ctx = (e as { context?: unknown }).context;
+                            if (ctx instanceof Response) {
+                              const text = await ctx.text();
+                              if (text) detail = ` ${text.slice(0, 300)}`;
+                            }
+                          } catch {
+                            // Ignoruj — ostane všeobecná chyba.
+                          }
+                          fail(`Operácia sa nepodarila.${detail}`);
                           return;
                         }
                         await bilt.auth.signOut();
