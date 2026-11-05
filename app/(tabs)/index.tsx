@@ -19,12 +19,15 @@ function sortedContacts(
     last_sender_id?: string | null;
     last_message_at?: string | null;
   }[],
+  myId: string,
+  read: Record<string, string>,
 ) {
-  // Online prví, potom podľa abecedy (bez diakritiky, malé písmená).
+  // Najprv neprečítaní + online, potom online, potom offline; v skupinách abecedne.
+  const tier = (c: (typeof contacts)[number]) =>
+    hasUnread(c, myId, read) && c.online ? 0 : c.online ? 1 : 2;
   return [...contacts].sort((a, b) => {
-    const ao = a.online ? 0 : 1;
-    const bo = b.online ? 0 : 1;
-    if (ao !== bo) return ao - bo;
+    const t = tier(a) - tier(b);
+    if (t !== 0) return t;
     const an = (a.nickname ?? '').toLowerCase();
     const bn = (b.nickname ?? '').toLowerCase();
     return an.localeCompare(bn, 'sk');
@@ -58,8 +61,11 @@ export default function Home() {
     }, []),
   );
   const friendsOnline = useMemo(
-    () => (social.data ? sortedContacts(social.data.contacts) : []),
-    [social.data],
+    () =>
+      session
+        ? sortedContacts(social.data?.contacts ?? [], session.user.id, read).slice(0, 3)
+        : [],
+    [social.data, session, read],
   );
   return (
     <Page safeTop>
@@ -87,7 +93,7 @@ export default function Home() {
         social.loading ? (
           <LoadingRows />
         ) : friendsOnline.length ? (
-          friendsOnline.slice(0, 5).map((contact) => (
+          friendsOnline.map((contact) => (
             <PressableFeedback
               key={contact.user_id}
               className="flex-row items-center gap-2 py-2"
