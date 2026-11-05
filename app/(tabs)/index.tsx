@@ -35,6 +35,10 @@ export default function Home() {
   const compact = useWindowDimensions().width < 360;
   const cardWidth = useWindowDimensions().width - 40;
   const boardSize = cardWidth * 1.8;
+  // Šírka miesta pre nápis — písmo sa jej prispôsobí (na výšku menšie, na šírku väčšie).
+  const [titleWidth, setTitleWidth] = useState(0);
+  const titleFont =
+    titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
   const friends = useDarts((s) => s.friends);
   const game = useDarts((s) => s.game);
   const history = useDarts((s) => s.history);
@@ -168,6 +172,12 @@ export default function Home() {
               Terč doma.{'\n'}Súper kdekoľvek.
             </Txt>
             <View>
+            <View
+              onLayout={(e) => {
+                const w = e.nativeEvent.layout.width;
+                if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
+              }}
+            >
               <Txt
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -176,12 +186,13 @@ export default function Home() {
                 style={{
                   fontFamily: 'Inter_700Bold',
                   letterSpacing: -4,
-                  fontSize: compact ? 68 : 84,
-                  lineHeight: compact ? 78 : 94,
+                  fontSize: titleFont,
+                  lineHeight: Math.round(titleFont * 1.12),
                 }}
               >
                 DartMate
               </Txt>
+            </View>
               <View className="mt-3 flex-row gap-2">
                 <Button
                   size="md"
