@@ -16,7 +16,7 @@ import {
 } from '@/components/DartsUI';
 import { palette, useDarts } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
-import { loadContacts, useOnlineQuery } from '@/lib/online';
+import { loadContacts, loadStatistics, useOnlineQuery } from '@/lib/online';
 import { OnlineError, Presence } from '@/components/OnlineUI';
 import { PushNotice } from '@/components/PushNotice';
 
@@ -35,6 +35,13 @@ export default function Friends() {
     session ? `friends:${session.user.id}` : null,
     useCallback(() => loadContacts(), []),
   );
+  const stats = useOnlineQuery(
+    session ? `stats:${session.user.id}` : null,
+    useCallback(() => loadStatistics().catch(() => null), []),
+    15000,
+  );
+  const avg =
+    typeof stats.data?.three_dart_average === 'number' ? stats.data.three_dart_average : null;
   useFocusEffect(
     useCallback(() => {
       void refresh();
@@ -76,6 +83,15 @@ export default function Friends() {
                     style={{ fontFamily: 'Inter_700Bold', color: palette.onInk }}
                   >
                     @{profile.nickname}
+                  </Txt>
+                ) : null}
+                {avg !== null ? (
+                  <Txt
+                    numberOfLines={1}
+                    className="text-[15px]"
+                    style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
+                  >
+                    avg. {Math.round(avg)}
                   </Txt>
                 ) : null}
               </View>
