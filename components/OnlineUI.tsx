@@ -47,16 +47,19 @@ export function Presence({
   online,
   unknown = false,
   inline = false,
+  playing = false,
 }: {
   online: boolean;
   unknown?: boolean;
   inline?: boolean;
+  /** Práve hrá online zápas — oranžová bodka a text. */
+  playing?: boolean;
 }) {
   // Online bodka bliká (opacity 1 ↔ 0.25), nápis „Online" ostáva stále zelený.
   // Hodnota vznikne raz pri prvom vykreslení (inicializátor useState).
   const [blink] = useState(() => new Animated.Value(1));
   useEffect(() => {
-    if (!online || unknown) {
+    if ((!online && !playing) || unknown) {
       blink.setValue(1);
       return undefined;
     }
@@ -68,8 +71,14 @@ export function Presence({
     );
     loop.start();
     return () => loop.stop();
-  }, [online, unknown, blink]);
-  const color = unknown ? palette.muted : online ? palette.success : palette.danger;
+  }, [online, playing, unknown, blink]);
+  const color = unknown
+    ? palette.muted
+    : playing
+      ? palette.playing
+      : online
+        ? palette.success
+        : palette.danger;
   return (
     <View
       style={inline ? styles.inlineRow : undefined}
@@ -87,7 +96,7 @@ export function Presence({
         style={{ color, fontSize: inline ? 13 : 12 }}
         className={inline ? undefined : 'text-[12px]'}
       >
-        {unknown ? 'Stav neznámy' : online ? 'Online' : 'Offline'}
+        {unknown ? 'Stav neznámy' : playing ? 'Práve hrá' : online ? 'Online' : 'Offline'}
       </Txt>
     </View>
   );
