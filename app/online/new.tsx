@@ -142,7 +142,11 @@ export default function NewOnlineMatch() {
                   <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
                     @{item.nickname}
                   </Txt>
-                  <Presence online={!!item.online} unknown={!!query.error} />
+                  <Presence
+                    online={!!item.online}
+                    playing={!!(item as { in_match?: boolean | null }).in_match}
+                    unknown={!!query.error}
+                  />
                 </View>
                 {selected === item.user_id && (
                   <Check size={21} strokeWidth={1.8} color={palette.ink} />
