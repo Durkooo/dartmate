@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import {
-  Room,
-  Track,
-  ConnectionState,
-  LocalVideoTrack,
-  VideoPresets,
-  ConnectionQuality,
-  RoomEvent,
-  type Participant,
-} from 'livekit-client';
+import { Room, Track, ConnectionState, LocalVideoTrack, VideoPresets } from 'livekit-client';
 import {
   AudioSession,
   LiveKitRoom,
@@ -151,13 +142,10 @@ function RoomContent({
             const next = facing === 'user' ? 'environment' : 'user';
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
-            // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
-            const res = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080][
-              videoTier.current
-            ].resolution;
+            // Skromné rozlíšenie = rýchlejšie prebratie kamery systémom (typicky do 2 s).
             await track.restartTrack({
               facingMode: next,
-              resolution: { width: res.width, height: res.height, frameRate: 30 },
+              resolution: { width: 1280, height: 720, frameRate: 30 },
             });
             setFacing(next);
           })
@@ -189,40 +177,6 @@ export default function NativeVideoCall({
         videoCaptureDefaults: { resolution: VideoPresets.h720 },
       }),
   );
-  // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p.
-  // Štart je 720p; prepína sa len pri zmene pásma + max raz za 8 s (nekmitá).
-  const videoTier = useRef(1);
-  useEffect(() => {
-    const presets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
-    let cooling = false;
-    const apply = (quality: ConnectionQuality) => {
-      const tier =
-        quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
-      if (tier === videoTier.current || cooling) return;
-      videoTier.current = tier;
-      cooling = true;
-      setTimeout(() => {
-        cooling = false;
-      }, 8000);
-      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
-      const track = pub?.track;
-      if (track instanceof LocalVideoTrack && room.localParticipant.isCameraEnabled) {
-        const res = presets[tier].resolution;
-        void track
-          .restartTrack({
-            resolution: { width: res.width, height: res.height, frameRate: 30 },
-          })
-          .catch(() => undefined);
-      }
-    };
-    const handler = (quality: ConnectionQuality, participant: Participant) => {
-      if (participant.isLocal) apply(quality);
-    };
-    room.on(RoomEvent.ConnectionQualityChanged, handler);
-    return () => {
-      room.off(RoomEvent.ConnectionQualityChanged, handler);
-    };
-  }, [room]);
   const [previousSession, setPreviousSession] = useState(request);
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
