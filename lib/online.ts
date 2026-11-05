@@ -17,6 +17,71 @@ export function opponentName(match: OnlineMatch, userId: string) {
 export function opponentId(match: OnlineMatch, userId: string) {
   return match.host_id === userId ? match.guest_id : match.host_id;
 }
+/** Štatistiky jedného hráča v dohranom online zápase (rátajú aj pokazené hody). */
+export type MatchPlayerStats = {
+  tons80: number;
+  tons100: number;
+  tons140: number;
+  tons170: number;
+  count180: number;
+  /** Priemer na 3 šípky za celý zápas, null = žiadne hody. */
+  avg3: number | null;
+  /** Priemer prvých 9 šípok každého legu dokopy, null = žiadne hody. */
+  avg9: number | null;
+  /** Najrýchlejší vyhraný leg v šípkach, null = žiadny vyhraný leg. */
+  bestLeg: number | null;
+};
+const round1 = (n: number) => Math.round(n * 10) / 10;
+export function computeMatchStats(turns: OnlineTurn[], playerId: string): MatchPlayerStats {
+  const mine = turns.filter((t) => t.player_id === playerId);
+  const tons80 = mine.filter((t) => t.score >= 80).length;
+  const tons100 = mine.filter((t) => t.score >= 100).length;
+  const tons140 = mine.filter((t) => t.score >= 140).length;
+  const tons170 = mine.filter((t) => t.score >= 170).length;
+  const count180 = mine.filter((t) => t.score === 180).length;
+  const totalScore = mine.reduce((s, t) => s + t.score, 0);
+  const totalDarts = mine.reduce((s, t) => s + t.darts, 0);
+  const avg3 = totalDarts > 0 ? round1((totalScore / totalDarts) * 3) : null;
+  // Prvých 9 šípok každého legu: prechodný hod sa započíta pomerne.
+  let winScore = 0;
+  let winDarts = 0;
+  const legs = new Map<number, OnlineTurn[]>();
+  for (const t of mine) {
+    const list = legs.get(t.leg_number) ?? [];
+    list.push(t);
+    legs.set(t.leg_number, list);
+  }
+  for (const list of legs.values()) {
+    const ordered = [...list].sort((a, b) => a.turn_number - b.turn_number);
+    let used = 0;
+    for (const t of ordered) {
+      if (used >= 9 || !t.darts) continue;
+      const take = Math.min(t.darts, 9 - used);
+      winScore += (t.score * take) / t.darts;
+      winDarts += take;
+      used += take;
+    }
+  }
+  const avg9 = winDarts > 0 ? round1((winScore / winDarts) * 3) : null;
+  // Víťaz legu = hráč záverečného hodu (presná nula, nie bust).
+  const byLeg = new Map<number, OnlineTurn[]>();
+  for (const t of turns) {
+    const list = byLeg.get(t.leg_number) ?? [];
+    list.push(t);
+    byLeg.set(t.leg_number, list);
+  }
+  let bestLeg: number | null = null;
+  for (const list of byLeg.values()) {
+    const ordered = [...list].sort((a, b) => a.turn_number - b.turn_number);
+    const last = ordered[ordered.length - 1];
+    if (!last || last.bust || last.remaining !== 0 || last.player_id !== playerId) continue;
+    const darts = list
+      .filter((t) => t.player_id === playerId)
+      .reduce((s, t) => s + t.darts, 0);
+    if (darts > 0 && (bestLeg === null || darts < bestLeg)) bestLeg = darts;
+  }
+  return { tons80, tons100, tons140, tons170, count180, avg3, avg9, bestLeg };
+}
 export function timeLabel(date: string) {
   return new Date(date).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
 }
