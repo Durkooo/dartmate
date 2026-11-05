@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Button, PressableFeedback } from 'heroui-native';
+import { Button, Input, PressableFeedback } from 'heroui-native';
 import { Check, Target, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Page, Heading, Txt, Avatar, LoadingRows, StorageNotice } from '@/components/DartsUI';
@@ -19,7 +19,9 @@ export default function NewMatch() {
   const { friendId } = useLocalSearchParams<{ friendId?: string }>();
   const localFriends = useDarts((s) => s.friends);
   const remoteFriends = usePlayers((s) => s.friends);
-  const friends = [...remoteFriends, ...localFriends];
+  // Ukážkoví hráči do offline zápasu nepatria — len ozajstní + tréning.
+  const friends = [...remoteFriends, ...localFriends].filter((f) => !f.demo);
+  const [tempName, setTempName] = useState('');
   const game = useDarts((s) => s.game);
   const hydrated = useDarts((s) => s.hydrated);
   const startGame = useDarts((s) => s.startGame);
@@ -29,7 +31,16 @@ export default function NewMatch() {
   const [doubleOut, setDoubleOut] = useState(true);
   const [legsToWin, setLegsToWin] = useState(2);
   const [replace, setReplace] = useState(false);
-  const opponent = friends.find((f) => f.id === selected) ?? practice;
+  const trimmed = tempName.trim();
+  // Dočasný súper sa nikam neukladá — po zápase zmizne, zápas ostane v histórii.
+  const tempOpponent: Friend = {
+    id: `temp-${trimmed}`,
+    name: trimmed,
+    handle: trimmed,
+    color: 'peach',
+    demo: false,
+  };
+  const opponent = trimmed ? tempOpponent : (friends.find((f) => f.id === selected) ?? practice);
   if (!hydrated)
     return (
       <Page>
@@ -41,7 +52,7 @@ export default function NewMatch() {
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: 'Nový zápas' }} />
       <FlatList
-        data={[...friends, practice]}
+        data={trimmed ? [tempOpponent, ...friends, practice] : [...friends, practice]}
         keyExtractor={(friend) => friend.id}
         contentContainerStyle={{
           padding: 20,
@@ -57,19 +68,30 @@ export default function NewMatch() {
             <Txt className="text-muted mb-4 text-[13px]">
               Lokálny zápas · skóre zadávaš za oboch hráčov
             </Txt>
+            <Input
+              value={tempName}
+              onChangeText={setTempName}
+              placeholder="Meno dočasného súpera…"
+              accessibilityLabel="Meno dočasného súpera"
+              className="rounded-xl"
+            />
+            <Txt className="text-muted mt-2 mb-4 text-[12px]">
+              Dočasný súper sa neuloží medzi priateľov — po zápase zmizne, zápas ostane v odohraných.
+            </Txt>
           </View>
         }
         renderItem={({ item: friend }) => (
           <PressableFeedback
             onPress={() => {
+              if (tempName) setTempName('');
               if (selected !== friend.id) {
                 setSelected(friend.id);
                 feedback.selection();
               }
             }}
-            className={`mb-2 flex-row items-center gap-3 rounded-xl p-3 ${selected === friend.id ? 'bg-surface' : ''}`}
+            className={`mb-2 flex-row items-center gap-3 rounded-xl p-3 ${opponent.id === friend.id ? 'bg-surface' : ''}`}
             accessibilityRole="radio"
-            accessibilityState={{ selected: selected === friend.id }}
+            accessibilityState={{ selected: opponent.id === friend.id }}
           >
             <Avatar friend={friend} size={42} />
             <View className="flex-1">
@@ -78,7 +100,7 @@ export default function NewMatch() {
               </Txt>
               {friend.demo && <Txt className="text-muted mt-1 text-[12px]">Ukážkový hráč</Txt>}
             </View>
-            {selected === friend.id && <Check size={22} color={palette.ink} strokeWidth={1.8} />}
+            {opponent.id === friend.id && <Check size={22} color={palette.ink} strokeWidth={1.8} />}
           </PressableFeedback>
         )}
         ListFooterComponent={
