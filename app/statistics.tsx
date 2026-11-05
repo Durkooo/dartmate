@@ -155,7 +155,7 @@ export default function Statistics() {
             <OnlineError error={error} retry={() => void load(!rows.length)} />
           </OnlineGate>
         }
-        renderItem={({ item }) => <MatchRow match={item} userId={userId ?? ''} />}
+        renderItem={({ item }) => <MatchRow match={item} userId={userId ?? ''} stats />}
         ListEmptyComponent={
           userId ? (
             pending || (!history && !error) ? (
