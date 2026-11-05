@@ -1,7 +1,7 @@
 import { View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Button, PressableFeedback } from 'heroui-native';
-import { ArrowUpRight, Target, ChevronRight, Trophy } from 'lucide-react-native';
+import { Target, ChevronRight, Trophy } from 'lucide-react-native';
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
@@ -33,6 +33,8 @@ function sortedContacts(
 
 export default function Home() {
   const compact = useWindowDimensions().width < 360;
+  const cardWidth = useWindowDimensions().width - 40;
+  const boardSize = cardWidth * 1.8;
   const friends = useDarts((s) => s.friends);
   const game = useDarts((s) => s.game);
   const history = useDarts((s) => s.history);
@@ -135,10 +137,25 @@ export default function Home() {
       {social.data && session && (
         <OpenMatches matches={social.data.matches} userId={session.user.id} />
       )}
-      {/* 3) RÁMIK pod pozvánkami */}
-      <View className="bg-ink mt-4 overflow-hidden rounded-[24px] p-5">
-        <View className="flex-row items-start justify-between gap-2">
-          <View className="flex-1">
+      {/* 3) RÁMIK pod pozvánkami — terč na celej ploche */}
+      <View className="bg-ink mt-4 overflow-hidden rounded-[24px]">
+        <View style={{ height: cardWidth * 1.08 }} className="relative w-full">
+          <View
+            className="absolute"
+            style={{
+              width: boardSize,
+              height: boardSize,
+              left: (cardWidth - boardSize) / 2,
+              top: (cardWidth * 1.08 - boardSize) / 2,
+            }}
+          >
+            <Dartboard dart={false} size={boardSize} />
+          </View>
+          <View
+            className="absolute inset-0"
+            style={{ backgroundColor: palette.ink, opacity: 0.45 }}
+          />
+          <View className="absolute inset-0 justify-between p-5">
             <Txt
               className="text-[28px] leading-[34px] text-white"
               style={{
@@ -150,32 +167,43 @@ export default function Home() {
             >
               Terč doma.{'\n'}Súper kdekoľvek.
             </Txt>
+            <View>
+              <Txt
+                numberOfLines={1}
+                className="text-accent"
+                style={{
+                  fontFamily: 'Inter_700Bold',
+                  letterSpacing: -4,
+                  fontSize: compact ? 56 : 68,
+                  lineHeight: compact ? 66 : 76,
+                }}
+              >
+                501
+              </Txt>
+              <View className="mt-3 flex-row gap-2">
+                <Button
+                  size="md"
+                  onPress={() => router.push('/online')}
+                  className="flex-1 rounded-xl"
+                >
+                  <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>
+                    Hrať online
+                  </Button.Label>
+                </Button>
+                <Button
+                  size="md"
+                  variant="secondary"
+                  onPress={() => router.push('/new-match')}
+                  className="flex-1 rounded-xl"
+                >
+                  <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>
+                    Hrať offline
+                  </Button.Label>
+                </Button>
+              </View>
+            </View>
           </View>
-          <ArrowUpRight size={25} strokeWidth={1.8} color={palette.yellow} />
         </View>
-        <View className="my-4 flex-row items-center justify-between">
-          <View style={{ flexShrink: 0, width: compact ? 112 : 144 }}>
-            <Txt
-              numberOfLines={1}
-              className="text-accent"
-              style={{
-                fontFamily: 'Inter_700Bold',
-                letterSpacing: -4,
-                fontSize: compact ? 56 : 68,
-                lineHeight: compact ? 66 : 76,
-              }}
-            >
-              501
-            </Txt>
-          </View>
-          <View style={{ marginRight: -10 }}>
-            <Dartboard size={compact ? 120 : 154} />
-          </View>
-        </View>
-        <Button size="lg" onPress={() => router.push('/online')} className="rounded-xl">
-          <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>Hrať online</Button.Label>
-          <ArrowUpRight size={20} color={palette.ink} strokeWidth={1.8} />
-        </Button>
       </View>
       {game && (
         <Button className="mt-5" variant="secondary" onPress={() => router.push('/match')}>
@@ -201,16 +229,6 @@ export default function Home() {
           ))}
         </View>
       )}
-      <PressableFeedback
-        className="mt-6 flex-row items-center gap-3 py-3"
-        onPress={() => router.push('/new-match')}
-      >
-        <Target size={20} color={palette.ink} strokeWidth={1.8} />
-        <Txt className="flex-1" style={{ fontFamily: 'Inter_500Medium' }}>
-          Tréning pri jednom terči
-        </Txt>
-        <ChevronRight size={18} color={palette.muted} />
-      </PressableFeedback>
     </Page>
   );
 }
