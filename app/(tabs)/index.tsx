@@ -170,12 +170,14 @@ export default function Home() {
             <View>
               <Txt
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
                 className="text-accent"
                 style={{
                   fontFamily: 'Inter_700Bold',
                   letterSpacing: -4,
-                  fontSize: compact ? 34 : 42,
-                  lineHeight: compact ? 42 : 50,
+                  fontSize: compact ? 68 : 84,
+                  lineHeight: compact ? 78 : 94,
                 }}
               >
                 DartMate
