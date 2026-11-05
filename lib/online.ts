@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
@@ -24,6 +25,30 @@ export function appIsActive() {
     AppState.currentState === 'active' &&
     (Platform.OS !== 'web' || document.visibilityState !== 'hidden')
   );
+}
+/** Systémové správy videohovorov (`📹call:{timestamp}`) — číslo sa nikde nezobrazuje. */
+export const CALL_PREFIX = '📹call:';
+export function isCallMessage(body: string | null | undefined): boolean {
+  return !!body && body.startsWith(CALL_PREFIX);
+}
+const JOINED_CALLS_KEY = 'dartmate:joined-calls';
+/** peerId → čas, kedy som sa naposledy pripojil k hovoru s daným priateľom. */
+export async function loadJoinedCalls(): Promise<Record<string, number>> {
+  try {
+    const raw = await AsyncStorage.getItem(JOINED_CALLS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+export async function markCallJoined(peerId: string): Promise<void> {
+  try {
+    const map = await loadJoinedCalls();
+    map[peerId] = Date.now();
+    await AsyncStorage.setItem(JOINED_CALLS_KEY, JSON.stringify(map));
+  } catch {
+    // Ignoruj — zmeškanosť sa len nezapamätá.
+  }
 }
 export async function loadContacts() {
   const { data, error } = await bilt.rpc('list_social_contacts');
