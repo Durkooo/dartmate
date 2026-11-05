@@ -106,12 +106,15 @@ function MatchChatContent({ userId, peerId, peerName }: MatchChatProps) {
           )}
           ListEmptyComponent={
             !query.error ? (
-              <Empty
+              // Invertovaný zoznam prevráti aj prázdny stav — vrátime ho späť.
+              <View style={{ transform: [{ scaleY: -1 }] }}>
+                <Empty
                 chat
                 text="Tu sa zobrazia správy so súperom."
                 action="Napísať správu"
                 onPress={() => inputRef.current?.focus()}
               />
+              </View>
             ) : undefined
           }
         />
