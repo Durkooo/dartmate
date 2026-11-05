@@ -68,7 +68,7 @@ export default function MatchStats() {
   const rival = computeMatchStats(turns, peerId);
   const won = match && userId ? match.winner_id === userId : false;
   return (
-    <Page>
+    <Page hideFallback>
       <Stack.Screen options={{ title: 'Štatistiky zápasu' }} />
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 32, maxWidth: 600, width: '100%', alignSelf: 'center', flexGrow: 1 }}
