@@ -5,13 +5,15 @@ import { router, useFocusEffect } from 'expo-router';
 import { Heading, Txt, Avatar, Empty, LoadingRows } from '@/components/DartsUI';
 import { useDarts } from '@/lib/darts';
 import { palette } from '@/lib/darts';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePlayers } from '@/lib/players';
 import {
+  hasUnread,
   isCallMessage,
   loadContacts,
   loadJoinedCalls,
   loadOpenMatches,
+  loadReadChats,
   timeLabel,
   useOnlineQuery,
 } from '@/lib/online';
@@ -29,6 +31,14 @@ export default function Messages() {
   return session ? <OnlineMessages userId={session.user.id} /> : <LocalMessages />;
 }
 function OnlineMessages({ userId }: { userId: string }) {
+  const [joined, setJoined] = useState<Record<string, number>>({});
+  const [read, setRead] = useState<Record<string, string>>({});
+  useFocusEffect(
+    useCallback(() => {
+      void loadJoinedCalls().then(setJoined);
+      void loadReadChats().then(setRead);
+    }, []),
+  );
   const query = useOnlineQuery(
     `inbox:${userId}`,
     useCallback(async () => {
@@ -40,7 +50,19 @@ function OnlineMessages({ userId }: { userId: string }) {
   return (
     <View className="bg-background flex-1" style={{ paddingTop: insets.top }}>
       <FlatList
-        data={query.data?.contacts.filter((c: any) => c.last_body) ?? []}
+        data={useMemo(
+          () =>
+            [...(query.data?.contacts.filter((c: any) => c.last_body) ?? [])].sort(
+              (a: any, b: any) => {
+                // Najprv neprečítané (abecedne), potom ostatné (abecedne).
+                const ua = hasUnread(a, userId, read) ? 0 : 1;
+                const ub = hasUnread(b, userId, read) ? 0 : 1;
+                if (ua !== ub) return ua - ub;
+                return (a.nickname ?? '').localeCompare(b.nickname ?? '', 'sk');
+              },
+            ),
+          [query.data, read, userId],
+        )}
         keyExtractor={(c) => c.user_id ?? ''}
         contentContainerStyle={{
           padding: 20,

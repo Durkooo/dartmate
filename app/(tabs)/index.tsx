@@ -1,14 +1,14 @@
 import { View, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Button, PressableFeedback } from 'heroui-native';
 import { ArrowUpRight, Target, ChevronRight, Trophy } from 'lucide-react-native';
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePlayers } from '@/lib/players';
-import { loadContacts, loadOpenMatches, useOnlineQuery } from '@/lib/online';
-import { OpenMatches, OnlineError, Presence } from '@/components/OnlineUI';
+import { hasUnread, loadContacts, loadOpenMatches, loadReadChats, useOnlineQuery } from '@/lib/online';
+import { OpenMatches, OnlineError, Presence, UnreadEnvelope } from '@/components/OnlineUI';
 
 function sortedContacts(
   contacts: {
@@ -16,6 +16,8 @@ function sortedContacts(
     nickname: string | null;
     online: boolean | null;
     in_match?: boolean | null;
+    last_sender_id?: string | null;
+    last_message_at?: string | null;
   }[],
 ) {
   // Online prví, potom podľa abecedy (bez diakritiky, malé písmená).
@@ -41,6 +43,12 @@ export default function Home() {
     useCallback(async () => {
       const [contacts, matches] = await Promise.all([loadContacts(), loadOpenMatches()]);
       return { contacts, matches };
+    }, []),
+  );
+  const [read, setRead] = useState<Record<string, string>>({});
+  useFocusEffect(
+    useCallback(() => {
+      void loadReadChats().then(setRead);
     }, []),
   );
   const friendsOnline = useMemo(
@@ -91,6 +99,10 @@ export default function Home() {
               >
                 @{contact.nickname}
               </Txt>
+              {session &&
+              hasUnread(contact, session.user.id, read) ? (
+                <UnreadEnvelope />
+              ) : null}
               <Presence
                 inline
                 online={!!contact.online}
