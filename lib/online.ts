@@ -33,10 +33,19 @@ export function isCallMessage(body: string | null | undefined): boolean {
 }
 const READ_CHATS_KEY = 'dartmate:read-chats';
 /** peerId → ISO čas poslednej prečítanej správy (zapíše sa pri otvorení konverzácie). */
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 export async function loadReadChats(): Promise<Record<string, string>> {
   try {
     const raw = await AsyncStorage.getItem(READ_CHATS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!isObjectRecord(parsed)) return {};
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed))
+      if (typeof value === 'string') out[key] = value;
+    return out;
   } catch {
     return {};
   }
@@ -66,7 +75,13 @@ const JOINED_CALLS_KEY = 'dartmate:joined-calls';
 export async function loadJoinedCalls(): Promise<Record<string, number>> {
   try {
     const raw = await AsyncStorage.getItem(JOINED_CALLS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!isObjectRecord(parsed)) return {};
+    const out: Record<string, number> = {};
+    for (const [key, value] of Object.entries(parsed))
+      if (typeof value === 'number') out[key] = value;
+    return out;
   } catch {
     return {};
   }
@@ -83,7 +98,7 @@ export async function markCallJoined(peerId: string): Promise<void> {
 export async function loadContacts() {
   const { data, error } = await bilt.rpc('list_social_contacts');
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((c: any) => c.user_id && c.nickname);
+  return (data ?? []).filter((c) => !!c?.user_id && !!c?.nickname);
 }
 export type SocialContact = Awaited<ReturnType<typeof loadContacts>>[number] & {
   /** Práve hrá online zápas (dopočíta backend; kým chýba, berie sa ako nehrá). */
