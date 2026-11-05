@@ -30,7 +30,10 @@ export async function loadContacts() {
   if (error) throw new Error(error.message);
   return (data ?? []).filter((c: any) => c.user_id && c.nickname);
 }
-export type SocialContact = Awaited<ReturnType<typeof loadContacts>>[number];
+export type SocialContact = Awaited<ReturnType<typeof loadContacts>>[number] & {
+  /** Práve hrá online zápas (dopočíta backend; kým chýba, berie sa ako nehrá). */
+  in_match?: boolean | null;
+};
 export async function loadOpenMatches() {
   const { data, error } = await bilt
     .from('online_matches')

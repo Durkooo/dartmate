@@ -16,6 +16,7 @@ export const palette = {
   peach: '#F6DED1',
   danger: '#B63044',
   success: '#28714E',
+  playing: '#E8850C',
 };
 export const feedback = {
   selection: () => {
