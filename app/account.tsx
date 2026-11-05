@@ -113,7 +113,7 @@ export default function Account() {
       router.dismissTo('/friends');
     });
   return (
-    <Page form fallbackHref="/friends" fallbackLabel="Späť k priateľom">
+    <Page form fallbackHref="/" fallbackLabel="Späť domov">
       <Stack.Screen options={{ title: 'Môj účet' }} />
       {!ready || (session && loading && !profile) ? (
         <LoadingRows />

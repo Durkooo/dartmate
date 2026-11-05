@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Video, X, Delete, Undo2, Check, Trophy } from 'lucide-react-native';
+import { Delete, Undo2, Check, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import {
@@ -29,7 +29,6 @@ export default function Match() {
   const discardGame = useDarts((s) => s.discardGame);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
-  const [video, setVideo] = useState(false);
   const [discard, setDiscard] = useState(false);
   if (!hydrated)
     return (
@@ -95,22 +94,7 @@ export default function Match() {
   const lastTurn = game.turns.at(-1);
   return (
     <View className="bg-background flex-1">
-      <Stack.Screen
-        options={{
-          title: 'Zápas',
-          headerRight: () => (
-            <Button
-              variant="ghost"
-              isIconOnly
-              size="sm"
-              accessibilityLabel="Videohovor"
-              onPress={() => setVideo((v) => !v)}
-            >
-              <Video size={22} color={palette.ink} strokeWidth={1.8} />
-            </Button>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ title: 'Zápas' }} />
       <FlatList
         data={game.turns.toReversed()}
         keyExtractor={(_, index) => `${game.id}-${game.turns.length - index}`}
@@ -124,46 +108,8 @@ export default function Match() {
         ListHeaderComponent={
           <View>
             <StorageNotice />
-            <View className="mb-4 flex-row items-center justify-between">
-              <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
-                {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'}
-                {game.legsToWin > 1 && ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`}
-              </Txt>
-              <Txt className="text-muted mt-2 text-[12px]">Lokálna hra</Txt>
-            </View>
-            {!finished && !legBreak && game.legsToWin > 1 && (
-              <Txt className="text-muted mb-3 text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-                Leg {legNo} · začína {currentLeg(game) % 2 === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
-              </Txt>
-            )}
-            {video && (
-              <View className="bg-default mb-4 rounded-2xl p-5">
-                <View className="flex-row items-center justify-between">
-                  <Video size={26} color={palette.ink} />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    isIconOnly
-                    accessibilityLabel="Zavrieť informácie o videu"
-                    onPress={() => setVideo(false)}
-                  >
-                    <X size={20} color={palette.ink} />
-                  </Button>
-                </View>
-                <Txt style={{ fontFamily: 'Inter_600SemiBold' }} className="mt-3">
-                  Videohovor v online zápase
-                </Txt>
-                <Txt className="text-muted mt-2 text-[13px] leading-5">
-                  Pre videohovor pozvi priateľa do online zápasu. Lokálna hra je určená na hranie
-                  pri jednom terči.
-                </Txt>
-                <Button className="mt-3" variant="secondary" onPress={() => router.push('/online')}>
-                  <Button.Label>Online zápasy</Button.Label>
-                </Button>
-              </View>
-            )}
-            <View className="bg-ink overflow-hidden rounded-[22px]">
-              <View className="flex-row items-center justify-center gap-2 pt-4">
+            <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
+              <View className="flex-row items-center justify-center gap-2 pt-3">
                 <View className="bg-accent h-1.5 w-1.5 rounded-full" />
                 <Txt className="text-on-ink text-[12px]">
                   {finished
@@ -171,34 +117,34 @@ export default function Match() {
                     : `Kolo ${Math.floor(legTurns(game).length / 2) + 1}${game.legsToWin > 1 ? ` · leg ${legNo}` : ''}`}
                 </Txt>
               </View>
-              <View className="flex-row px-4 py-4">
+              <View className="flex-row px-4 py-2">
                 {([0, 1] as const).map((p) => (
                   <View
                     key={p}
                     className={`flex-1 items-center px-2 ${p === 0 ? 'border-on-ink/20 border-r' : ''}`}
                   >
-                    <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
+                    <Txt className="text-on-ink text-[13px]" numberOfLines={1}>
                       {p === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
                     </Txt>
                     <Txt
-                      className={`text-[54px] leading-[66px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
+                      className={`text-[40px] leading-[48px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                       minimumFontScale={0.8}
                       style={{
                         fontFamily: 'Inter_700Bold',
                         fontVariant: ['tabular-nums'],
-                        letterSpacing: -3,
+                        letterSpacing: -2,
                       }}
                       maxFontSizeMultiplier={1.15}
                     >
                       {currentScores[p]}
                     </Txt>
-                    <Txt className="text-on-ink text-[12px]">Priemer {average(game, p)}</Txt>
+                    <Txt className="text-on-ink text-[11px]">Priemer {average(game, p)}</Txt>
                   </View>
                 ))}
               </View>
-              <View className="bg-accent px-4 py-3">
+              <View className="bg-accent px-4 py-2">
                 <Txt
                   className="text-center text-[13px]"
                   style={{ fontFamily: 'Inter_600SemiBold' }}
@@ -211,6 +157,18 @@ export default function Match() {
                 </Txt>
               </View>
             </View>
+            <View className="mb-4 flex-row items-center justify-between">
+              <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
+                {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'}
+                {game.legsToWin > 1 && ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`}
+              </Txt>
+              <Txt className="text-muted mt-2 text-[12px]">Lokálna hra</Txt>
+            </View>
+            {!finished && !legBreak && game.legsToWin > 1 && (
+              <Txt className="text-muted mb-3 text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                Leg {legNo} · začína {currentLeg(game) % 2 === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
+              </Txt>
+            )}
             {finished ? (
               <View className="items-center gap-4 py-6">
                 <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
