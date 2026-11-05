@@ -52,8 +52,8 @@ function OnlineMessages({ userId }: { userId: string }) {
       <FlatList
         data={useMemo(
           () =>
-            [...(query.data?.contacts.filter((c: any) => c.last_body) ?? [])].sort(
-              (a: any, b: any) => {
+            [...(query.data?.contacts.filter((c) => c.last_body) ?? [])].sort(
+              (a, b) => {
                 // Najprv neprečítané (abecedne), potom ostatné (abecedne).
                 const ua = hasUnread(a, userId, read) ? 0 : 1;
                 const ub = hasUnread(b, userId, read) ? 0 : 1;
@@ -113,7 +113,7 @@ function OnlineMessages({ userId }: { userId: string }) {
               </View>
               <Presence
                 online={!!item.online}
-                playing={!!(item as { in_match?: boolean | null }).in_match}
+                playing={!!item.in_match}
                 unknown={!!query.error}
               />
               {call ? (
