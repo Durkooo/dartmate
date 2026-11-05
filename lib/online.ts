@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import type { Tables } from '@biltme/backend';
+import type { Tables, Database } from '@biltme/backend';
 import { bilt } from '@/lib/bilt';
 import { feedback } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
@@ -95,15 +95,25 @@ export async function markCallJoined(peerId: string): Promise<void> {
     // Ignoruj — zmeškanosť sa len nezapamätá.
   }
 }
-export async function loadContacts() {
+export async function loadContacts(): Promise<SocialContactRow[]> {
   const { data, error } = await bilt.rpc('list_social_contacts');
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((c) => !!c?.user_id && !!c?.nickname);
+  const raw: unknown = data;
+  const rows = Array.isArray(raw) ? raw.filter(isContactRow) : [];
+  return rows.filter((c) => !!c.user_id && !!c.nickname);
 }
-export type SocialContact = Awaited<ReturnType<typeof loadContacts>>[number] & {
-  /** Práve hrá online zápas (dopočíta backend; kým chýba, berie sa ako nehrá). */
-  in_match?: boolean | null;
-};
+/** Jeden riadok z list_social_contacts — presný typ z databázy, žiadne any. */
+type SocialContactRow =
+  Database['public']['Functions']['list_social_contacts']['Returns'][number];
+function isContactRow(value: unknown): value is SocialContactRow {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'user_id' in value &&
+    'nickname' in value
+  );
+}
+export type SocialContact = SocialContactRow;
 export async function loadOpenMatches() {
   const { data, error } = await bilt
     .from('online_matches')
