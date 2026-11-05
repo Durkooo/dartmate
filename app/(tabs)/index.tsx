@@ -174,11 +174,11 @@ export default function Home() {
                 style={{
                   fontFamily: 'Inter_700Bold',
                   letterSpacing: -4,
-                  fontSize: compact ? 56 : 68,
-                  lineHeight: compact ? 66 : 76,
+                  fontSize: compact ? 34 : 42,
+                  lineHeight: compact ? 42 : 50,
                 }}
               >
-                501
+                DartMate
               </Txt>
               <View className="mt-3 flex-row gap-2">
                 <Button
