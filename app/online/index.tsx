@@ -2,9 +2,11 @@ import { useCallback } from 'react';
 import { View, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
+import { Target } from 'lucide-react-native';
+import { Heading, Txt, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError, MatchRow } from '@/components/OnlineUI';
 import { loadOpenMatches, useOnlineQuery } from '@/lib/online';
+import { palette } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
 
 export default function OnlineLobby() {
@@ -29,9 +31,6 @@ export default function OnlineLobby() {
         ListHeaderComponent={
           <View className="mb-5 gap-4">
             <Heading>Hráme spolu</Heading>
-            <Button onPress={() => router.push('/online/new')}>
-              <Button.Label>Pozvať priateľa</Button.Label>
-            </Button>
             <OnlineError error={query.error} retry={() => void query.refresh()} />
             <Txt className="text-muted text-[13px]">Pozvánky a rozhrané zápasy</Txt>
           </View>
@@ -42,16 +41,28 @@ export default function OnlineLobby() {
             {query.loading ? (
               <LoadingRows />
             ) : !query.error ? (
-              <Empty
-                text="Pozvi priateľa a počkaj na jeho prijatie."
-                action="Vybrať priateľa"
-                onPress={() => router.push('/online/new')}
-              />
+              <View className="items-center gap-4 py-10">
+                <Target color={palette.muted} size={32} strokeWidth={1.8} />
+                <Txt className="text-muted text-center">
+                  Pozvi priateľa a počkaj na jeho prijatie.
+                </Txt>
+                <Button
+                  className="w-full"
+                  onPress={() => router.push('/online/new')}
+                >
+                  <Button.Label>Pozvať priateľa na zápas</Button.Label>
+                </Button>
+              </View>
             ) : null}
           </OnlineGate>
         }
         ListFooterComponent={
           <View className="mt-6 gap-2">
+            {query.data && query.data.length > 0 && (
+              <Button onPress={() => router.push('/online/new')}>
+                <Button.Label>Pozvať priateľa na zápas</Button.Label>
+              </Button>
+            )}
             <Button variant="secondary" onPress={() => router.push('/statistics')}>
               <Button.Label>Moje štatistiky</Button.Label>
             </Button>
