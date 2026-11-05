@@ -56,7 +56,7 @@ export default function OnlineLobby() {
               <Button.Label>Moje štatistiky</Button.Label>
             </Button>
             <Button variant="ghost" onPress={() => router.dismissTo('/')}>
-              <Button.Label>Späť na hru</Button.Label>
+              <Button.Label>Späť domov</Button.Label>
             </Button>
           </View>
         }

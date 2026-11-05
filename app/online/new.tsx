@@ -185,14 +185,14 @@ export default function NewOnlineMatch() {
             >
               <Button.Label>{pending ? 'Odosielam…' : 'Poslať pozvánku'}</Button.Label>
             </Button>
-            <Button variant="ghost" className="mt-1" onPress={() => router.dismissTo('/online')}>
-              <Button.Label>Späť na online zápasy</Button.Label>
+            <Button variant="ghost" className="mt-1" onPress={() => router.dismissTo('/')}>
+              <Button.Label>Späť domov</Button.Label>
             </Button>
           </View>
         </OnlineGate>
         {(!userId || !profile) && (
-          <Button variant="ghost" className="mx-5 mt-1" onPress={() => router.dismissTo('/online')}>
-            <Button.Label>Späť na online zápasy</Button.Label>
+          <Button variant="ghost" className="mx-5 mt-1" onPress={() => router.dismissTo('/')}>
+            <Button.Label>Späť domov</Button.Label>
           </Button>
         )}
       </View>

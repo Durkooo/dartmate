@@ -517,8 +517,8 @@ export default function OnlineGame() {
             </Button>
           ))}
 
-        <Button variant="ghost" onPress={() => router.dismissTo('/online')}>
-          <Button.Label>Späť na online zápasy</Button.Label>
+        <Button variant="ghost" onPress={() => router.dismissTo('/')}>
+          <Button.Label>Späť domov</Button.Label>
         </Button>
       </ScrollView>
     </KeyboardAvoidingView>
