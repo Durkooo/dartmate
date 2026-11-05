@@ -101,9 +101,14 @@ export default function MatchStats() {
               <Txt className="text-muted mt-4 text-center text-[12px]">
                 Priemer ráta aj pokazené hody.
               </Txt>
-              <Button variant="ghost" className="mt-6" onPress={() => router.dismissTo('/')}>
-                <Button.Label>Späť domov</Button.Label>
-              </Button>
+              <View className="mt-6 gap-1">
+                <Button variant="ghost" onPress={() => router.dismissTo('/statistics')}>
+                  <Button.Label>Späť na štatistiky</Button.Label>
+                </Button>
+                <Button variant="ghost" onPress={() => router.dismissTo('/')}>
+                  <Button.Label>Späť domov</Button.Label>
+                </Button>
+              </View>
             </View>
           ) : !query.error ? (
             <Txt className="text-muted mt-6 text-center">Štatistiky nie sú k dispozícii.</Txt>
