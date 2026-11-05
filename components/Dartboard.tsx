@@ -13,7 +13,7 @@ function sector(inner: number, outer: number, a: number, b: number) {
     p4 = point(inner, a);
   return `M ${p1.x} ${p1.y} A ${outer} ${outer} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${inner} ${inner} 0 0 0 ${p4.x} ${p4.y} Z`;
 }
-export function Dartboard({ size = 190 }: { size?: number }) {
+export function Dartboard({ size = 190, dart = true }: { size?: number; dart?: boolean }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 240 240" accessibilityLabel="Šípkový terč">
       <Circle cx="120" cy="120" r="119" fill={palette.ink} stroke={palette.onInk} strokeWidth="1" />
@@ -58,13 +58,17 @@ export function Dartboard({ size = 190 }: { size?: number }) {
       </G>
       <Circle cx="120" cy="120" r="12" fill={palette.blue} stroke={palette.ink} />
       <Circle cx="120" cy="120" r="5" fill={palette.yellow} />
-      <Line x1="142" y1="92" x2="192" y2="39" stroke={palette.yellow} strokeWidth="3" />
-      <Path
-        d="M 179 52 L 179 31 L 204 22 L 200 46 Z"
-        fill={palette.yellow}
-        stroke={palette.ink}
-        strokeWidth="2"
-      />
+      {dart ? (
+        <>
+          <Line x1="142" y1="92" x2="192" y2="39" stroke={palette.yellow} strokeWidth="3" />
+          <Path
+            d="M 179 52 L 179 31 L 204 22 L 200 46 Z"
+            fill={palette.yellow}
+            stroke={palette.ink}
+            strokeWidth="2"
+          />
+        </>
+      ) : null}
     </Svg>
   );
 }
