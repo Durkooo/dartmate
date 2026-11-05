@@ -149,6 +149,7 @@ export default function Friends() {
                   <View className="mt-2">
                     <Presence
                       online={!!social.data?.find((c: any) => c.user_id === item.id)?.online}
+                      playing={!!social.data?.find((c: any) => c.user_id === item.id)?.in_match}
                       unknown={social.loading || !!social.error}
                     />
                   </View>

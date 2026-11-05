@@ -74,7 +74,11 @@ function OnlineMessages({ userId }: { userId: string }) {
                   <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
                 )}
               </View>
-              <Presence online={!!item.online} unknown={!!query.error} />
+              <Presence
+                online={!!item.online}
+                playing={!!(item as { in_match?: boolean | null }).in_match}
+                unknown={!!query.error}
+              />
               <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
                 {item.last_sender_id === userId ? 'Ty: ' : ''}
                 {item.last_body}

@@ -11,7 +11,12 @@ import { loadContacts, loadOpenMatches, useOnlineQuery } from '@/lib/online';
 import { OpenMatches, OnlineError, Presence } from '@/components/OnlineUI';
 
 function sortedContacts(
-  contacts: { user_id: string | null; nickname: string | null; online: boolean | null }[],
+  contacts: {
+    user_id: string | null;
+    nickname: string | null;
+    online: boolean | null;
+    in_match?: boolean | null;
+  }[],
 ) {
   // Online prví, potom podľa abecedy (bez diakritiky, malé písmená).
   return [...contacts].sort((a, b) => {
@@ -86,7 +91,12 @@ export default function Home() {
               >
                 @{contact.nickname}
               </Txt>
-              <Presence inline online={!!contact.online} unknown={!!social.error} />
+              <Presence
+                inline
+                online={!!contact.online}
+                playing={!!contact.in_match}
+                unknown={!!social.error}
+              />
             </PressableFeedback>
           ))
         ) : (
