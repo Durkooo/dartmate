@@ -286,6 +286,8 @@ declare module '@biltme/backend' {
             last_body: string | null
             last_message_at: string | null
             last_sender_id: string | null
+            in_match: boolean | null
+            avg: number | null
           }[]
         }
         my_online_statistics: {
