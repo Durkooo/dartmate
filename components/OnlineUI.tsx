@@ -143,7 +143,16 @@ export function SyncStatus({ error, syncedAt }: { error: string; syncedAt: numbe
     </View>
   );
 }
-export function MatchRow({ match, userId }: { match: OnlineMatch; userId: string }) {
+export function MatchRow({
+  match,
+  userId,
+  stats = false,
+}: {
+  match: OnlineMatch;
+  userId: string;
+  /** Po ťuknutí otvorí štatistiky zápasu namiesto detailu/hry. */
+  stats?: boolean;
+}) {
   const incoming = match.guest_id === userId;
   const label =
     match.status === 'active'
@@ -161,7 +170,13 @@ export function MatchRow({ match, userId }: { match: OnlineMatch; userId: string
             : 'Zrušený';
   return (
     <PressableFeedback
-      onPress={() => router.push({ pathname: '/online/[id]', params: { id: match.id } })}
+      onPress={() =>
+        router.push(
+          stats
+            ? { pathname: '/online/stats/[id]', params: { id: match.id } }
+            : { pathname: '/online/[id]', params: { id: match.id } },
+        )
+      }
       className="border-border flex-row items-center gap-3 border-b py-4"
     >
       <View className="flex-1 gap-1">
