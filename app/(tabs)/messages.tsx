@@ -1,12 +1,20 @@
 import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, PressableFeedback } from 'heroui-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Heading, Txt, Avatar, Empty, LoadingRows } from '@/components/DartsUI';
 import { useDarts } from '@/lib/darts';
-import { useCallback } from 'react';
+import { palette } from '@/lib/darts';
+import { useCallback, useState } from 'react';
 import { usePlayers } from '@/lib/players';
-import { loadContacts, loadOpenMatches, timeLabel, useOnlineQuery } from '@/lib/online';
+import {
+  isCallMessage,
+  loadContacts,
+  loadJoinedCalls,
+  loadOpenMatches,
+  timeLabel,
+  useOnlineQuery,
+} from '@/lib/online';
 import { OnlineGate, OnlineError, Presence, OpenMatches } from '@/components/OnlineUI';
 
 export default function Messages() {
@@ -54,7 +62,14 @@ function OnlineMessages({ userId }: { userId: string }) {
             {query.data && <OpenMatches matches={query.data.matches} userId={userId} />}
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const call = isCallMessage(item.last_body);
+          const missedCall =
+            call &&
+            item.last_sender_id !== userId &&
+            (joined[item.user_id ?? ''] ?? 0) <=
+              new Date(item.last_message_at ?? 0).getTime();
+          return (
           <PressableFeedback
             className="flex-row items-start gap-3 py-3"
             onPress={() =>
@@ -79,13 +94,28 @@ function OnlineMessages({ userId }: { userId: string }) {
                 playing={!!(item as { in_match?: boolean | null }).in_match}
                 unknown={!!query.error}
               />
-              <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
-                {item.last_sender_id === userId ? 'Ty: ' : ''}
-                {item.last_body}
-              </Txt>
+              {call ? (
+                <Txt
+                  numberOfLines={2}
+                  className="text-muted text-[13px] leading-5"
+                  style={
+                    missedCall
+                      ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
+                      : undefined
+                  }
+                >
+                  {missedCall ? '📹 Miss call' : '📹 Videohovor'}
+                </Txt>
+              ) : (
+                <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
+                  {item.last_sender_id === userId ? 'Ty: ' : ''}
+                  {item.last_body}
+                </Txt>
+              )}
             </View>
           </PressableFeedback>
-        )}
+          );
+        }}
         ListEmptyComponent={
           <OnlineGate>
             {query.loading ? (
