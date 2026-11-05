@@ -94,9 +94,9 @@ export default function Account() {
         .insert({ user_id: session.user.id, nickname });
       if (e) {
         // Súbeh: medzitým si nick zabral niekto iný (databáza to nepustí dvakrát).
-        const code =
+        const errorCode =
           typeof e === 'object' && e !== null && 'code' in e ? e.code : undefined;
-        if (code === '23505') {
+        if (errorCode === '23505') {
           fail('Táto prezývka je už obsadená. Vyber si inú.');
           return;
         }
