@@ -436,9 +436,9 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
             variant="ghost"
             size="sm"
             className="mt-1"
-            onPress={() => router.dismissTo('/messages')}
+            onPress={() => router.dismissTo('/')}
           >
-            <Button.Label>Všetky správy</Button.Label>
+            <Button.Label>Späť domov</Button.Label>
           </Button>
         </View>
       </View>
