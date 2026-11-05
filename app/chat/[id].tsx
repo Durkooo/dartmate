@@ -123,9 +123,9 @@ export default function Chat() {
             className="mt-1"
             variant="ghost"
             size="sm"
-            onPress={() => router.dismissTo('/messages')}
+            onPress={() => router.dismissTo('/')}
           >
-            <Button.Label>Všetky správy</Button.Label>
+            <Button.Label>Späť domov</Button.Label>
           </Button>
         </View>
       </View>
