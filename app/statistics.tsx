@@ -177,7 +177,7 @@ export default function Statistics() {
               </Button>
             )}
             <Button variant="ghost" onPress={() => router.dismissTo('/')}>
-              <Button.Label>Späť na hru</Button.Label>
+              <Button.Label>Späť domov</Button.Label>
             </Button>
           </View>
         }

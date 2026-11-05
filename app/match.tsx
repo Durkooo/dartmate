@@ -47,7 +47,7 @@ export default function Match() {
           onPress={() => router.replace('/new-match')}
         />
         <Button variant="ghost" onPress={() => router.replace('/')}>
-          <Button.Label>Späť na hru</Button.Label>
+          <Button.Label>Späť domov</Button.Label>
         </Button>
       </View>
     );
@@ -480,7 +480,7 @@ export default function Match() {
             ) : (
               <>
                 <Button variant="ghost" onPress={() => router.dismissTo('/')}>
-                  <Button.Label>Späť na hru</Button.Label>
+                  <Button.Label>Späť domov</Button.Label>
                 </Button>
                 {!finished && (
                   <Button variant="ghost" onPress={() => setDiscard(true)}>

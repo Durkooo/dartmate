@@ -211,7 +211,7 @@ export default function NewMatch() {
               </View>
             )}
             <Button className="mt-5" variant="ghost" onPress={() => router.dismissTo('/')}>
-              <Button.Label>Späť na hru</Button.Label>
+              <Button.Label>Späť domov</Button.Label>
             </Button>
           </View>
         }
