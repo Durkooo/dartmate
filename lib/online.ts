@@ -31,8 +31,38 @@ export const CALL_PREFIX = '📹call:';
 export function isCallMessage(body: string | null | undefined): boolean {
   return !!body && body.startsWith(CALL_PREFIX);
 }
-const JOINED_CALLS_KEY = 'dartmate:joined-calls';
+const READ_CHATS_KEY = 'dartmate:read-chats';
+/** peerId → ISO čas poslednej prečítanej správy (zapíše sa pri otvorení konverzácie). */
+export async function loadReadChats(): Promise<Record<string, string>> {
+  try {
+    const raw = await AsyncStorage.getItem(READ_CHATS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+export async function markChatRead(peerId: string, at?: string): Promise<void> {
+  try {
+    const map = await loadReadChats();
+    const stamp = at ?? new Date().toISOString();
+    if ((map[peerId] ?? '') >= stamp) return;
+    map[peerId] = stamp;
+    await AsyncStorage.setItem(READ_CHATS_KEY, JSON.stringify(map));
+  } catch {
+    // Ignoruj — neprečítanosť sa len nezapamätá.
+  }
+}
+/** Neprečítaná = posledná správa je od priateľa a je novšia než posledné čítanie. */
+export function hasUnread(
+  contact: { user_id?: string | null; last_sender_id?: string | null; last_message_at?: string | null },
+  myId: string,
+  read: Record<string, string>,
+): boolean {
+  if (!contact.last_message_at || contact.last_sender_id === myId) return false;
+  return (read[contact.user_id ?? ''] ?? '') < contact.last_message_at;
+}
 /** peerId → čas, kedy som sa naposledy pripojil k hovoru s daným priateľom. */
+const JOINED_CALLS_KEY = 'dartmate:joined-calls';
 export async function loadJoinedCalls(): Promise<Record<string, number>> {
   try {
     const raw = await AsyncStorage.getItem(JOINED_CALLS_KEY);
