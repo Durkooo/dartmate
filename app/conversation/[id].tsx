@@ -218,7 +218,11 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
               <LoadingRows />
             ) : contact ? (
               <View className="flex-row items-center justify-between gap-3">
-                <Presence online={!!contact.online} unknown={!!query.error} />
+                <Presence
+                  online={!!contact.online}
+                  playing={!!(contact as { in_match?: boolean | null }).in_match}
+                  unknown={!!query.error}
+                />
                 <View className="flex-row items-center gap-2">
                   <Button
                     size="sm"
