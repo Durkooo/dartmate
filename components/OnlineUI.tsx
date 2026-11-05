@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';

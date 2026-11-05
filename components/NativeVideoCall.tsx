@@ -212,7 +212,7 @@ export default function NativeVideoCall({
         }
       }).catch(() => undefined);
     };
-  }, [request, room, getCredentials]);
+  }, [request.matchId, room, getCredentials]);
   if (!credentials)
     return (
       <VideoNotice

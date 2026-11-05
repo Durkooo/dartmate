@@ -37,7 +37,9 @@ export default function VideoCall({
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [pending, setPending] = useState(false);
   const micRef = useRef(micWanted);
-  micRef.current = micWanted;
+  useEffect(() => {
+    micRef.current = micWanted;
+  }, [micWanted]);
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
@@ -47,7 +49,9 @@ export default function VideoCall({
   const [previousSession, setPreviousSession] = useState(request);
   // Vlastné credentials (chat) cez refku, aby sa efekt nespúšťal dookola.
   const credsRef = useRef(getCredentials);
-  credsRef.current = getCredentials;
+  useEffect(() => {
+    credsRef.current = getCredentials;
+  }, [getCredentials]);
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
     setPreviousSession(request);
