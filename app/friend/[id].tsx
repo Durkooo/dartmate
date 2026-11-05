@@ -79,6 +79,7 @@ export default function PlayerFriend() {
           <Heading>@{friend.handle}</Heading>
           <Presence
             online={!!social.data?.find((c: any) => c.user_id === id)?.online}
+            playing={!!social.data?.find((c: any) => c.user_id === id)?.in_match}
             unknown={social.loading || !!social.error}
           />
           <OnlineError error={social.error} retry={() => void social.refresh()} />
