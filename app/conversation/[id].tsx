@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input } from 'heroui-native';
 import { Send, Video } from 'lucide-react-native';
@@ -16,7 +16,11 @@ import { notifyRecipient } from '@/lib/sendPush';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
+  CALL_PREFIX,
+  isCallMessage,
+  loadJoinedCalls,
   loadOpenMatches,
+  markCallJoined,
   timeLabel,
   useOnlineQuery,
   uuidPattern,
@@ -30,10 +34,6 @@ export default function Conversation() {
 }
 
 /** Pozvánka k videohovoru v chate — správa, čo sa vykreslí ako karta s tlačidlom. */
-export const CALL_PREFIX = '📹call:';
-export function isCallMessage(body: string): boolean {
-  return body.startsWith(CALL_PREFIX);
-}
 function ConversationContent({ id, userId }: { id: string; userId: string | undefined }) {
   const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   const key = userId && uuidPattern.test(id) ? `${userId}:${id}` : null;
@@ -63,6 +63,12 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [callOpen, setCallOpen] = useState(false);
+  const [joined, setJoined] = useState<Record<string, number>>({});
+  useFocusEffect(
+    useCallback(() => {
+      void loadJoinedCalls().then(setJoined);
+    }, []),
+  );
   const [micWanted, setMicWanted] = useState(true);
   // Credentials pre súkromnú miestnosť dvojice (stabilné počas konverzácie).
   const loadCallCredentials = useCallback(() => getCallCredentials(id), [id]);
@@ -81,6 +87,8 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
       if (!data?.[0]) throw new Error('Pozvánku k hovoru sa nepodarilo odoslať.');
       if (usePlayers.getState().session?.user.id !== userId) return;
       setCallOpen(true);
+      void markCallJoined(id);
+      setJoined((j) => ({ ...j, [id]: Date.now() }));
       feedback.success();
       const invitingNick = usePlayers.getState().profile?.nickname;
       if (invitingNick)
@@ -288,6 +296,8 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
           renderItem={({ item }) => {
             const mine = item.sender_id === userId;
             if (isCallMessage(item.body)) {
+              const missedCall =
+                !mine && (joined[id] ?? 0) <= new Date(item.created_at).getTime();
               return (
                 <Animated.View
                   entering={FadeIn.duration(160)}
@@ -297,14 +307,28 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                   <View className="bg-surface gap-2 rounded-2xl p-4">
                     <View className="flex-row items-center gap-2">
                       <Video size={18} color={palette.ink} strokeWidth={1.8} />
-                      <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
-                        {mine ? 'Pozval si priateľa k hovoru' : 'Pozvánka k videohovoru'}
+                      <Txt
+                        style={
+                          missedCall
+                            ? { fontFamily: 'Inter_600SemiBold', color: palette.danger }
+                            : { fontFamily: 'Inter_600SemiBold' }
+                        }
+                      >
+                        {mine
+                          ? 'Pozval si priateľa k hovoru'
+                          : missedCall
+                            ? '📹 Miss call'
+                            : 'Pozvánka k videohovoru'}
                       </Txt>
                     </View>
                     <Button
                       variant="secondary"
                       isDisabled={callOpen}
-                      onPress={() => setCallOpen(true)}
+                      onPress={() => {
+                        void markCallJoined(id);
+                        setJoined((j) => ({ ...j, [id]: Date.now() }));
+                        setCallOpen(true);
+                      }}
                     >
                       <Button.Label>{callOpen ? 'Hovor prebieha' : 'Pripojiť sa'}</Button.Label>
                     </Button>
