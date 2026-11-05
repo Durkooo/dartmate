@@ -377,12 +377,15 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
           }}
           ListEmptyComponent={
             contact && !query.loading && !query.error ? (
-              <Empty
-                chat
-                text="Napíš priateľovi, či si chce zahrať."
-                action="Napísať pozdrav"
-                onPress={() => setText('Ahoj, dáme si šípky?')}
-              />
+              // Invertovaný zoznam prevráti aj prázdny stav — vrátime ho späť.
+              <View style={{ transform: [{ scaleY: -1 }] }}>
+                <Empty
+                  chat
+                  text="Napíš priateľovi, či si chce zahrať."
+                  action="Napísať pozdrav"
+                  onPress={() => setText('Ahoj, dáme si šípky?')}
+                />
+              </View>
             ) : undefined
           }
           ListFooterComponent={
