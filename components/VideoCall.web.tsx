@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { Room, RoomEvent, Track, ConnectionState, LocalVideoTrack, VideoPresets } from 'livekit-client';
+import {
+  Room,
+  RoomEvent,
+  Track,
+  ConnectionState,
+  LocalVideoTrack,
+  VideoPresets,
+  ConnectionQuality,
+  type Participant,
+} from 'livekit-client';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import { feedback, palette } from '@/lib/darts';
@@ -40,6 +49,9 @@ export default function VideoCall({
   useEffect(() => {
     micRef.current = micWanted;
   }, [micWanted]);
+  // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p (max raz za 8 s).
+  const videoTier = useRef(1);
+  const videoPresets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
@@ -65,6 +77,31 @@ export default function VideoCall({
       dynacast: true,
       videoCaptureDefaults: { resolution: VideoPresets.h720 },
     });
+    let cooling = false;
+    const applyQuality = (quality: ConnectionQuality) => {
+      const tier =
+        quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
+      if (tier === videoTier.current || cooling) return;
+      videoTier.current = tier;
+      cooling = true;
+      setTimeout(() => {
+        cooling = false;
+      }, 8000);
+      const pub = session.localParticipant.getTrackPublication(Track.Source.Camera);
+      const track = pub?.track;
+      if (track instanceof LocalVideoTrack && session.localParticipant.isCameraEnabled) {
+        const res = videoPresets[tier].resolution;
+        void track
+          .restartTrack({
+            resolution: { width: res.width, height: res.height, frameRate: 30 },
+          })
+          .catch(() => undefined);
+      }
+    };
+    const qualityHandler = (quality: ConnectionQuality, participant: Participant) => {
+      if (participant.isLocal) applyQuality(quality);
+    };
+    session.on(RoomEvent.ConnectionQualityChanged, qualityHandler);
     const fail = (e: unknown) => {
       if (active) {
         setError(e instanceof Error ? e.message : 'Video sa nepodarilo pripojiť.');
@@ -280,9 +317,11 @@ export default function VideoCall({
             const next = facing === 'user' ? 'environment' : 'user';
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
+            // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
+            const res = videoPresets[videoTier.current].resolution;
             await track.restartTrack({
               facingMode: next,
-              resolution: { width: 1280, height: 720, frameRate: 30 },
+              resolution: { width: res.width, height: res.height, frameRate: 30 },
             });
             setFacing(next);
           })
