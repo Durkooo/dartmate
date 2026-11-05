@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import {
   loadJoinedCalls,
   loadOpenMatches,
   markCallJoined,
+  markChatRead,
   timeLabel,
   useOnlineQuery,
   uuidPattern,
@@ -137,6 +138,11 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
     const rows = [...(query.data?.messages ?? []), ...(older?.key === key ? older.rows : [])];
     return [...new Map(rows.map((m) => [m.id, m])).values()].sort((a, b) => b.id - a.id);
   }, [query.data, older, key]);
+  // Otvorená konverzácia = prečítané: zapamätá najnovšiu správu, obálka aj preskočenie v poradí zmiznú.
+  useEffect(() => {
+    const newest = messages[0]?.created_at;
+    if (newest) void markChatRead(id, newest);
+  }, [messages, id]);
   const send = async () => {
     const body = text.trim();
     if (!body || pending || !key) return;
