@@ -144,7 +144,7 @@ export default function NewOnlineMatch() {
                   </Txt>
                   <Presence
                     online={!!item.online}
-                    playing={!!(item as { in_match?: boolean | null }).in_match}
+                    playing={!!item.in_match}
                     unknown={!!query.error}
                   />
                 </View>

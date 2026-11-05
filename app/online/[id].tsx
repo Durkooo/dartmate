@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { AppState, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Button } from 'heroui-native';
@@ -42,11 +42,13 @@ export default function OnlineGame() {
     }
     return undefined;
   }, [watchedStatus, watchedPeer]);
-  const videoRef = useRef<ScrollView | null>(null);
+  const videoRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
   const watchedTurnCount = query.data?.match?.turn_count ?? 0;
   // Po prestriedaní ťahu vyrolovať stránku čo najvyššie,
   // aby bolo skóre vidno pre oboch hráčov.
   useEffect(() => {
+    // Zámerne sa spúšťa pri zmene počtu ťahov — po prestriedaní vyroluje stránku hore.
+    if (watchedTurnCount === 0) return;
     videoRef.current?.scrollTo({ y: 0, animated: true });
   }, [watchedTurnCount]);
   const [input, setInput] = useState('');
