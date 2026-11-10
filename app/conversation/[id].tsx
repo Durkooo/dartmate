@@ -349,6 +349,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                 getCredentials={loadCallCredentials}
                 peerName={contact?.nickname ?? undefined}
                 initialFacing={camPrefs.call}
+                initialDeviceId={camPrefs.callDeviceId}
               />
             </View>
           )}
