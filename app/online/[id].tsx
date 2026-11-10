@@ -11,6 +11,7 @@ import { MatchChat } from '@/components/MatchChat';
 import { bilt } from '@/lib/bilt';
 import { feedback, palette, validScore, canFinish, validCheckout } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
+import { loadCameraPrefs, type CameraPrefs } from '@/lib/video';
 import {
   appIsActive,
   loadMatch,
@@ -58,6 +59,10 @@ export default function OnlineGame() {
   // Stav mikrofónu si pamätáme po celý zápas: raz vypnutý = vypnutý,
   // kým ho hráč v tomto zápase znova nezapne. Platí od prvého pripojenia.
   const [micWanted, setMicWanted] = useState(true);
+  const [camPrefs, setCamPrefs] = useState<CameraPrefs>({ match: 'environment', call: 'user' });
+  useEffect(() => {
+    void loadCameraPrefs().then(setCamPrefs);
+  }, []);
   const [abandon, setAbandon] = useState(false);
   const [showTurns, setShowTurns] = useState(false);
   const [foreground, setForeground] = useState(appIsActive());
@@ -374,6 +379,7 @@ export default function OnlineGame() {
             micWanted={micWanted}
             onMicChange={setMicWanted}
             peerName={peerName}
+            initialFacing={camPrefs.match}
           />
         )}
 
