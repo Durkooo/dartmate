@@ -119,10 +119,10 @@ export default function Match() {
                 </Txt>
               </View>
               <View className="flex-row px-4 py-2">
-                {([0, 1] as const).map((p) => (
+                {(game.solo ? [0] as const : [0, 1] as const).map((p) => (
                   <View
                     key={p}
-                    className={`flex-1 items-center px-2 ${p === 0 ? 'border-on-ink/20 border-r' : ''}`}
+                    className={`flex-1 items-center px-2 ${p === 0 && !game.solo ? 'border-on-ink/20 border-r' : ''}`}
                   >
                     <Txt className="text-on-ink text-[13px]" numberOfLines={1}>
                       {p === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
@@ -161,7 +161,10 @@ export default function Match() {
             <View className="mb-4 flex-row items-center justify-between">
               <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'}
-                {game.legsToWin > 1 && ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`}
+                {game.legsToWin > 1 &&
+                  (game.solo
+                    ? ` · Vyhrané legy ${game.legs[0]} z ${game.legsToWin}`
+                    : ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`)}
               </Txt>
               <Txt className="text-muted mt-2 text-[12px]">Lokálna hra</Txt>
             </View>

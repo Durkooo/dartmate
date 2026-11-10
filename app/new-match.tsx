@@ -15,6 +15,13 @@ const practice: Friend = {
   color: 'blue',
   demo: false,
 };
+const soloFriend: Friend = {
+  id: 'solo',
+  name: 'Hrám sám',
+  handle: 'sam',
+  color: 'peach',
+  demo: false,
+};
 export default function NewMatch() {
   const { friendId } = useLocalSearchParams<{ friendId?: string }>();
   const localFriends = useDarts((s) => s.friends);
@@ -40,7 +47,12 @@ export default function NewMatch() {
     color: 'peach',
     demo: false,
   };
-  const opponent = trimmed ? tempOpponent : (friends.find((f) => f.id === selected) ?? practice);
+  const opponent =
+    selected === 'solo'
+      ? soloFriend
+      : trimmed
+        ? tempOpponent
+        : (friends.find((f) => f.id === selected) ?? practice);
   if (!hydrated)
     return (
       <Page>
@@ -52,7 +64,11 @@ export default function NewMatch() {
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: 'Nový zápas' }} />
       <FlatList
-        data={trimmed ? [tempOpponent, ...friends, practice] : [...friends, practice]}
+        data={
+          trimmed
+            ? [tempOpponent, soloFriend, ...friends, practice]
+            : [soloFriend, ...friends, practice]
+        }
         keyExtractor={(friend) => friend.id}
         contentContainerStyle={{
           padding: 20,
@@ -66,18 +82,25 @@ export default function NewMatch() {
             <StorageNotice />
             <Heading className="mt-2 mb-4">S kým hráš?</Heading>
             <Txt className="text-muted mb-4 text-[13px]">
-              Lokálny zápas · skóre zadávaš za oboch hráčov
+              {selected === 'solo'
+                ? 'Sólo hra · odpočítavaš len svoje skóre'
+                : 'Lokálny zápas · skóre zadávaš za oboch hráčov'}
             </Txt>
-            <Input
-              value={tempName}
-              onChangeText={setTempName}
-              placeholder="Meno dočasného súpera…"
-              accessibilityLabel="Meno dočasného súpera"
-              className="rounded-xl"
-            />
-            <Txt className="text-muted mt-2 mb-4 text-[12px]">
-              Dočasný súper sa neuloží medzi priateľov — po zápase zmizne, zápas ostane v odohraných.
-            </Txt>
+            {selected !== 'solo' && (
+              <>
+                <Input
+                  value={tempName}
+                  onChangeText={setTempName}
+                  placeholder="Meno dočasného súpera…"
+                  accessibilityLabel="Meno dočasného súpera"
+                  className="rounded-xl"
+                />
+                <Txt className="text-muted mt-2 mb-4 text-[12px]">
+                  Dočasný súper sa neuloží medzi priateľov — po zápase zmizne, zápas ostane v
+                  odohraných.
+                </Txt>
+              </>
+            )}
           </View>
         }
         renderItem={({ item: friend }) => (
@@ -96,8 +119,15 @@ export default function NewMatch() {
             <Avatar friend={friend} size={42} />
             <View className="flex-1">
               <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
-                {friend.id === 'practice' ? 'Dvaja pri jednom terči' : friend.name}
+                {friend.id === 'practice'
+                  ? 'Dvaja pri jednom terči'
+                  : friend.id === 'solo'
+                    ? 'Hrám sám'
+                    : friend.name}
               </Txt>
+              {friend.id === 'solo' && (
+                <Txt className="text-muted mt-1 text-[12px]">Len pre jedného hráča</Txt>
+              )}
               {friend.demo && <Txt className="text-muted mt-1 text-[12px]">Ukážkový hráč</Txt>}
             </View>
             {opponent.id === friend.id && <Check size={22} color={palette.ink} strokeWidth={1.8} />}
@@ -200,7 +230,7 @@ export default function NewMatch() {
                 <Button
                   size="lg"
                   onPress={() => {
-                    startGame(opponent, starting, doubleOut, legsToWin);
+                    startGame(opponent, starting, doubleOut, legsToWin, selected === 'solo');
                     feedback.success();
                     router.replace('/match');
                   }}
