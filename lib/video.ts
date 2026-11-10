@@ -3,7 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bilt } from '@/lib/bilt';
 
 export type Facing = 'user' | 'environment';
-export type CameraPrefs = { match: Facing; call: Facing };
+export type CameraDevice = { deviceId: string; label: string; facing: Facing };
+export type CameraPrefs = {
+  match: Facing;
+  call: Facing;
+  matchDeviceId?: string;
+  callDeviceId?: string;
+};
 const CAMERA_PREFS_KEY = 'dartmate:camera-prefs';
 const DEFAULT_CAMERA_PREFS: CameraPrefs = { match: 'environment', call: 'user' };
 export async function loadCameraPrefs(): Promise<CameraPrefs> {
@@ -16,7 +22,16 @@ export async function loadCameraPrefs(): Promise<CameraPrefs> {
       const v = (parsed as Record<string, unknown>)[k];
       return v === 'user' || v === 'environment' ? v : fallback;
     };
-    return { match: get('match', 'environment'), call: get('call', 'user') };
+    const getId = (k: 'matchDeviceId' | 'callDeviceId'): string | undefined => {
+      const v = (parsed as Record<string, unknown>)[k];
+      return typeof v === 'string' && v ? v : undefined;
+    };
+    return {
+      match: get('match', 'environment'),
+      call: get('call', 'user'),
+      matchDeviceId: getId('matchDeviceId'),
+      callDeviceId: getId('callDeviceId'),
+    };
   } catch {
     return DEFAULT_CAMERA_PREFS;
   }
@@ -27,6 +42,63 @@ export async function saveCameraPrefs(prefs: CameraPrefs): Promise<void> {
   } catch {
     // Ignoruj — predvoľba sa len neuloží.
   }
+}
+/** Všetky kamery v telefóne (po povolení kamery majú aj mená). */
+export async function listCameras(): Promise<CameraDevice[]> {
+  try {
+    const { Room } = await import('livekit-client');
+    const getLocal =
+      typeof (Room as unknown as Record<string, unknown>).getLocalDevices === 'function'
+        ? ((Room as unknown as { getLocalDevices: (kind: string) => Promise<MediaDeviceInfo[]> }).getLocalDevices.bind(Room) as (kind: string) => Promise<MediaDeviceInfo[]>)
+        : null;
+    const raw: MediaDeviceInfo[] = getLocal
+      ? await getLocal('videoinput')
+      : typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices
+        ? await navigator.mediaDevices.enumerateDevices()
+        : [];
+    const videos = raw.filter((d) => d.kind === 'videoinput' && d.deviceId);
+    let back = 0;
+    let front = 0;
+    return videos.map((d, i) => {
+      const label = (d.label || '').toLowerCase();
+      const isFront =
+        label.includes('front') || label.includes('facing front') || label.includes('user');
+      const isBack =
+        label.includes('back') ||
+        label.includes('rear') ||
+        label.includes('environment') ||
+        label.includes('facing back');
+      // Bez mien (ešte nebolo povolenie) ber prvú ako zadnú, ostatné striedavo.
+      const facing: Facing =
+        d.label === '' ? (i === 0 ? 'environment' : i % 2 === 0 ? 'environment' : 'user') : isFront && !isBack ? 'user' : 'environment';
+      if (facing === 'environment') back += 1;
+      else front += 1;
+      const name =
+        d.label || (facing === 'environment' ? `Zadná kamera ${back}` : `Predná kamera ${front}`);
+      return { deviceId: d.deviceId, label: name, facing };
+    });
+  } catch {
+    return [];
+  }
+}
+/** Voľby pre lokálnu kameru: konkrétne zariadenie, inak len strana. */
+export function trackOptions(facing: Facing, deviceId?: string) {
+  return deviceId
+    ? { deviceId: { exact: deviceId } }
+    : { facingMode: facing };
+}
+/** Vytvorí kameru podľa predvoľby; pri zlom deviceId skúsi stranu. */
+export async function createPreferredTrack(facing: Facing, deviceId?: string) {
+  const { createLocalVideoTrack } = await import('livekit-client');
+  const res = { width: 1280, height: 720 };
+  if (deviceId) {
+    try {
+      return await createLocalVideoTrack({ ...trackOptions(facing, deviceId), resolution: res });
+    } catch {
+      // deviceId už neplatí (napr. web) — skús stranu.
+    }
+  }
+  return createLocalVideoTrack({ facingMode: facing, resolution: res });
 }
 
 export type VideoCredentials = { url: string; token: string };
