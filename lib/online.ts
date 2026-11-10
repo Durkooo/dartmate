@@ -4,7 +4,7 @@ import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import type { Tables, Database } from '@biltme/backend';
 import { bilt } from '@/lib/bilt';
-import { feedback } from '@/lib/darts';
+import { feedback, isMatchExpired } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 
 export type OnlineMatch = Tables<'online_matches'>;
@@ -186,7 +186,28 @@ export async function loadOpenMatches() {
     .in('status', ['invited', 'active'])
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const matches = data ?? [];
+  void expireOldMatches(matches);
+  return matches;
+}
+/** Raz za beh appky: zápasy staršie než 3 dni sa automaticky zrušia. */
+const expiryTried = new Set<string>();
+async function expireOldMatches(matches: OnlineMatch[]) {
+  const userId = usePlayers.getState().session?.user.id;
+  if (!userId) return;
+  for (const m of matches) {
+    if (m.status !== 'invited' && m.status !== 'active') continue;
+    if (!isMatchExpired(m.created_at)) continue;
+    if (expiryTried.has(m.id)) continue;
+    expiryTried.add(m.id);
+    try {
+      const decision =
+        m.status === 'invited' ? (m.guest_id === userId ? 'decline' : 'cancel') : 'abandon';
+      await respondMatch(m.id, decision);
+    } catch {
+      // Ignoruj (napr. súper to medzitým vyriešil) — skúsime znova po reštarte.
+    }
+  }
 }
 export async function inviteMatch(peer: string, starting: number, doubleOut: boolean, legsToWin = 1) {
   const { data, error } = await bilt.rpc('invite_online_match', {
@@ -225,6 +246,8 @@ export async function loadMatch(id: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!match) return null;
+  if (match.status === 'invited' || match.status === 'active')
+    void expireOldMatches([match as OnlineMatch]);
   // A turn may be written between these reads. Only show the same confirmed version.
   const turns: OnlineTurn[] = [];
   let before = match.turn_count + 1;

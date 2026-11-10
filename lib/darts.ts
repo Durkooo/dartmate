@@ -150,6 +150,13 @@ export function validCheckout(score: number, darts: 1 | 2 | 3, doubleOut: boolea
   }
   return finishes.some((finish) => totals.has(score - finish));
 }
+/** Nedokončený zápas (online aj offline) sa po tomto čase automaticky zruší. */
+export const MATCH_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
+export function isMatchExpired(dateIso: string | null | undefined): boolean {
+  if (!dateIso) return false;
+  const t = Date.parse(dateIso);
+  return Number.isFinite(t) && Date.now() - t > MATCH_EXPIRY_MS;
+}
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -359,9 +366,14 @@ export const useDarts = create<DartsState>()(
         if (state.game) state.game = fixGame(state.game);
         return { ...root, state };
       },
-      onRehydrateStorage: () => (_state, error) => {
+      onRehydrateStorage: () => (restored, error) => {
         useDarts.setState({ hydrated: true, storageError: !!error });
         if (error) feedback.error();
+        // Nedokončený lokálny zápas starší než 3 dni sa automaticky zruší.
+        const g = (restored as { game?: Game | null } | null)?.game;
+        if (g && g.winner === null && isMatchExpired(g.date)) {
+          useDarts.setState({ game: null });
+        }
       },
     },
   ),
