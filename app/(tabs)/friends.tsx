@@ -217,6 +217,7 @@ export default function Friends() {
                         online={!!contact?.online}
                         playing={!!contact?.in_match}
                         unknown={social.loading || !!social.error}
+                        lastSeen={contact?.last_seen ?? null}
                       />
                     </View>
                   </View>
