@@ -48,7 +48,6 @@ export default function Home() {
   const [titleWidth, setTitleWidth] = useState(0);
   const titleFont = titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
   const friends = useDarts((s) => s.friends);
-  const myFriends = usePlayers((s) => s.friends);
   const game = useDarts((s) => s.game);
   const history = useDarts((s) => s.history);
   const hydrated = useDarts((s) => s.hydrated);
@@ -68,17 +67,8 @@ export default function Home() {
   );
   const friendsOnline = useMemo(
     () =>
-      session
-        ? // Náhľad zoznamu za tlačidlom „Všetci“ — len pridaní priatelia, nie všetci známi.
-          sortedContacts(
-            (social.data?.contacts ?? []).filter((c) =>
-              myFriends.some((f) => f.id === c.user_id),
-            ),
-            session.user.id,
-            read,
-          ).slice(0, 3)
-        : [],
-    [social.data, session, read, myFriends],
+      session ? sortedContacts(social.data?.contacts ?? [], session.user.id, read).slice(0, 3) : [],
+    [social.data, session, read],
   );
   return (
     <Page safeTop>
