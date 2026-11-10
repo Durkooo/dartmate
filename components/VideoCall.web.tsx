@@ -143,11 +143,32 @@ export default function VideoCall({
           await session.disconnect();
           return;
         }
-        try {
-          await session.localParticipant.setCameraEnabled(true, {
+        const facingMode = initialFacing ?? 'user';
+        const enableCam = (deviceId?: string) =>
+          session.localParticipant.setCameraEnabled(true, {
             resolution: VideoPresets.h720,
-            ...(initialDeviceId ? { deviceId: { exact: initialDeviceId } } : { facingMode: initialFacing ?? 'user' }),
+            ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode }),
           });
+        try {
+          await enableCam(initialDeviceId);
+        } catch {
+          // Konkrétne zariadenie nemusí existovať — skús stranu.
+          try {
+            if (initialDeviceId) await enableCam(undefined);
+            else throw new Error('blocked');
+          } catch (e) {
+            if (active) {
+              const msg = e instanceof Error ? `${e.message} ${e.name}` : '';
+              const blocked = /notallowed|denied|permission/i.test(msg);
+              setError(
+                blocked
+                  ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
+                  : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
+              );
+            }
+          }
+        }
+        try {
           if (!active) {
             await session.disconnect();
             return;

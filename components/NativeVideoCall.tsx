@@ -92,22 +92,34 @@ function RoomContent({
     if (state !== ConnectionState.Connected || autoCam.current) return;
     autoCam.current = true;
     const facingMode = initialFacing ?? 'user';
-    void room.localParticipant
-      .setCameraEnabled(true, {
+    // Najprv konkrétne zariadenie, pri neúspechu strana (staré/blokované id).
+    const enable = (deviceId?: string) =>
+      room.localParticipant.setCameraEnabled(true, {
         resolution: VideoPresets.h720,
-        ...trackOptions(facingMode, initialDeviceId),
-      })
-      .catch(() => {
-        feedback.error();
+        ...trackOptions(facingMode, deviceId),
+      });
+    void enable(initialDeviceId)
+      .catch(() => (initialDeviceId ? enable(undefined) : Promise.reject(new Error('blocked'))))
+      .catch((e) => {
+        const blocked =
+          e instanceof Error &&
+          /notallowed|denied|permission/i.test(e.message || e.name);
+        setCamError(
+          blocked
+            ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
+            : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
+        );
       });
   }, [state, room, initialFacing, initialDeviceId]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [camError, setCamError] = useState('');
   const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
   const control = async (action: () => Promise<unknown>) => {
     if (pending) return;
     setPending(true);
     setError('');
+    setCamError('');
     try {
       await action();
       feedback.selection();
@@ -161,6 +173,11 @@ function RoomContent({
       ))}
       {large && participants.length < 2 && (
         <Txt className="text-muted text-[12px]">Súper sa ešte nepripojil k videohovoru.</Txt>
+      )}
+      {!!camError && (
+        <Txt className="text-danger mt-2 text-[13px]" accessibilityRole="alert">
+          {camError}
+        </Txt>
       )}
       {!!error && (
         <Txt className="text-danger mt-2 text-[12px]" accessibilityRole="alert">
