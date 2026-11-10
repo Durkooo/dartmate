@@ -11,7 +11,7 @@ import { OnlineGate, OnlineError, MatchInviteCard, Presence, OpenMatches } from 
 import { feedback, palette } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import VideoCall from '@/components/VideoCall';
-import { getCallCredentials, loadCameraPrefs, type CameraPrefs } from '@/lib/video';
+import { getCallCredentials, loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import { notifyRecipient } from '@/lib/sendPush';
 import { playerError, usePlayers } from '@/lib/players';
 import {
@@ -303,7 +303,11 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                     isIconOnly
                     accessibilityLabel="Videohovor"
                     isDisabled={pending || !!query.error}
-                    onPress={() => void startCall()}
+                    onPress={() => {
+                      // Povolenie kamery musí prísť z gesta — predhrejeme ju ešte pred hovorom.
+                      void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+                      void startCall();
+                    }}
                   >
                     <Video size={19} strokeWidth={1.8} color={palette.ink} />
                   </Button>
@@ -392,6 +396,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                       variant="secondary"
                       isDisabled={callOpen}
                       onPress={() => {
+                        void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
                         void markCallJoined(id);
                         setJoined((j) => ({ ...j, [id]: Date.now() }));
                         setCallOpen(true);
