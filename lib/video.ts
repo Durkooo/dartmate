@@ -98,7 +98,22 @@ export async function warmUpCamera(facing: Facing, deviceId?: string): Promise<b
     return false;
   }
 }
+/** Android: explicitne vyžiada povolenia systému (iOS/web si povolenie pýta samo
+ *  pri zapnutí kamery). Bez tohto kamera na Androide vôbec neštartuje. */
+export async function ensureCameraPermissions(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    const result = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    ]);
+    return result['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
 export async function createPreferredTrack(facing: Facing, deviceId?: string) {
+  if (!(await ensureCameraPermissions())) throw new Error('Camera permission denied');
   const { createLocalVideoTrack } = await import('livekit-client');
   const res = { width: 1280, height: 720 };
   if (deviceId) {
