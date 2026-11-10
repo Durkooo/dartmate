@@ -237,7 +237,9 @@ export default function Home() {
               <Trophy size={22} color={palette.ink} strokeWidth={1.8} />
               <View className="flex-1">
                 <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
-                  {g.winner === 0 ? 'Výhra' : 'Prehra'} proti {g.opponentName}
+                  {g.solo
+                    ? `Sólo hra · ${g.starting}`
+                    : `${g.winner === 0 ? 'Výhra' : 'Prehra'} proti ${g.opponentName}`}
                 </Txt>
                 <Txt className="text-muted mt-1 text-[12px]">
                   {g.starting} · {g.doubleOut ? 'Double out' : 'Straight out'} ·{' '}
