@@ -14,9 +14,10 @@ import {
   LoadingRows,
   StorageNotice,
 } from '@/components/DartsUI';
-import { palette, useDarts } from '@/lib/darts';
+import { palette, useDarts, feedback, type Friend } from '@/lib/darts';
+import { bilt } from '@/lib/bilt';
 import { usePlayers } from '@/lib/players';
-import { loadContacts, loadStatistics, useOnlineQuery } from '@/lib/online';
+import { loadContacts, loadStatistics, useOnlineQuery, type SocialContact } from '@/lib/online';
 import { OnlineError, Presence } from '@/components/OnlineUI';
 import { PushNotice } from '@/components/PushNotice';
 
@@ -48,6 +49,41 @@ export default function Friends() {
     }, [refresh]),
   );
   const friends = session ? onlineFriends : localFriends;
+  const [addingId, setAddingId] = useState<string | null>(null);
+  // Ľudia, s ktorými hráva/žne píše, ale nemá ich pridaných (napr. pridali si jeho).
+  // Samostatná sekcia — zoznam priateľov sa s nikým nezlučuje.
+  const suggestions: (SocialContact & { user_id: string })[] =
+    session && social.data
+      ? social.data.filter(
+          (c): c is SocialContact & { user_id: string } =>
+            !!c.user_id &&
+            c.user_id !== session.user.id &&
+            !onlineFriends.some((f) => f.id === c.user_id),
+        )
+      : [];
+  const q = query.trim().toLocaleLowerCase('sk');
+  const shownSuggestions = suggestions.filter((c) =>
+    (c.nickname ?? '').toLocaleLowerCase('sk').includes(q),
+  );
+  const addSuggested = (userId: string) => {
+    if (!session || addingId) return;
+    setAddingId(userId);
+    void (async () => {
+      try {
+        const { error: e } = await bilt
+          .from('player_friends')
+          .insert({ owner_id: session.user.id, friend_id: userId });
+        if (e) {
+          feedback.error();
+          return;
+        }
+        feedback.success();
+        await refresh();
+      } finally {
+        setAddingId(null);
+      }
+    })();
+  };
   const history = useDarts((s) => s.history);
   // Offline priemer priateľa: hody súpera (hráč 1) z lokálnych zápasov s rovnakým menom.
   const offlineAvg = useCallback(
@@ -257,6 +293,51 @@ export default function Friends() {
               onPress={() => (query ? setQuery('') : router.push('/friend/new'))}
             />
           )
+        }
+        ListFooterComponent={
+          session && !busy && !error && shownSuggestions.length ? (
+            <View className="mt-6 gap-1">
+              <Txt className="text-muted mb-2 text-[13px]">
+                Hrávaš s nimi, ale nemáš ich pridaných
+              </Txt>
+              {shownSuggestions.map((c) => {
+                const person: Friend = {
+                  id: c.user_id,
+                  name: c.nickname ?? '?',
+                  handle: c.nickname ?? '?',
+                  color: 'blue',
+                  demo: false,
+                };
+                return (
+                  <View key={c.user_id} className="flex-row items-center gap-3 py-3">
+                    <Avatar friend={person} />
+                    <View className="flex-1">
+                      <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        @{c.nickname}
+                      </Txt>
+                      <View className="mt-2">
+                        <Presence
+                          online={!!c.online}
+                          playing={!!c.in_match}
+                          lastSeen={c.last_seen ?? null}
+                        />
+                      </View>
+                    </View>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      isDisabled={addingId === c.user_id}
+                      onPress={() => addSuggested(c.user_id)}
+                    >
+                      <Button.Label>
+                        {addingId === c.user_id ? 'Pridávam…' : 'Pridať'}
+                      </Button.Label>
+                    </Button>
+                  </View>
+                );
+              })}
+            </View>
+          ) : undefined
         }
       />
     </KeyboardAvoidingView>
