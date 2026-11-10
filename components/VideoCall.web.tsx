@@ -18,6 +18,17 @@ import { getVideoCredentials } from '@/lib/video';
 import type { VideoCallProps } from '@/components/VideoCall';
 
 type MediaTrack = { track: Track | undefined; local: boolean };
+/** Stav súperovho obrazu pre diagnostiku (null = video svieti, netreba nič). */
+function peerStatus(room: Room, tracks: MediaTrack[]): string | null {
+  if (tracks.some((t) => !t.local && t.track && !t.track.isMuted)) return null;
+  const peer = [...room.remoteParticipants.values()][0];
+  if (!peer) return 'Súper sa ešte nepripojil';
+  const pub = peer.getTrackPublication(Track.Source.Camera);
+  if (!pub) return 'Súper je pripojený, kameru nevysiela';
+  if (pub.isMuted) return 'Súper má vypnutú kameru';
+  const subscribed = (pub as unknown as { isSubscribed?: boolean }).isSubscribed;
+  return subscribed === false ? 'Čakám na súperov obraz…' : 'Súperov obraz sa načítava…';
+}
 function snapshotTracks(room: Room): MediaTrack[] {
   const tracks: MediaTrack[] = [
     { track: room.localParticipant.getTrackPublication(Track.Source.Camera)?.track, local: true },
@@ -286,11 +297,14 @@ export default function VideoCall({
               overflow: 'hidden',
             }}
           />
-          {room.remoteParticipants.size === 0 && (
-            <Txt className="text-muted mt-2 text-[12px]">
-              Súper sa ešte nepripojil k videohovoru.
-            </Txt>
-          )}
+          {(() => {
+            const s = peerStatus(room, tracks);
+            return s ? (
+              <Txt className="text-muted mt-2 text-[12px]" numberOfLines={1}>
+                {s}
+              </Txt>
+            ) : null;
+          })()}
         </View>
         {large && (
           <View>

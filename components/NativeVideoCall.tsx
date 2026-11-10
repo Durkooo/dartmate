@@ -57,6 +57,7 @@ function RoomContent({
   // Hádžem (nie som čakajúci): malé okno ukazuje SÚPEROVU kameru,
   // nie moju lokálnu – vidím jeho reakciu, keď čaká on.
   const shownTracks = large ? tracks : tracks.filter((t) => !t.participant.isLocal);
+  // Ak súperovo video reálne svieti, diagnostiku skryjeme (neruší).
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled } = useLocalParticipant();
   // Mikrofón drží stav zvolený hráčom (z hornej obrazovky) po celý zápas.
   // active vo refke spúšťa efekt len raz za zmenu; samotný setState sem nepatrí
@@ -72,6 +73,18 @@ function RoomContent({
   }, [micWanted, localParticipant]);
   const state = useConnectionState();
   const participants = useParticipants();
+  // Diagnostika súperovho obrazu (vidí ju aj hráč — podľa nej spoznáme, kde to viazne).
+  const peer = participants.find((p) => !p.isLocal);
+  const peerPub = peer?.getTrackPublication(Track.Source.Camera);
+  const peerStatus = !peer
+    ? 'Súper sa ešte nepripojil'
+    : !peerPub
+      ? 'Súper je pripojený, kameru nevysiela'
+      : peerPub.isMuted
+        ? 'Súper má vypnutú kameru'
+        : !peerPub.isSubscribed
+          ? 'Čakám na súperov obraz…'
+          : 'Súperov obraz sa načítava…';
   // Kamera sa zapne sama hneď po pripojení (aj u priateľa) —
   // doteraz ostávala vypnutá, kým ju niekto ručne nezapol.
   const autoCam = useRef(false);
@@ -115,6 +128,13 @@ function RoomContent({
             ? 'Obnovujem spojenie…'
             : 'Pripájam…'}
       </Txt>
+      {!shownTracks.some(
+        (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
+      ) && (
+        <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
+          {peerStatus}
+        </Txt>
+      )}
       {shownTracks.map((track) => (
         <View key={track.participant.identity} className="mb-3">
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
