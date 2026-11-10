@@ -81,6 +81,7 @@ export default function PlayerFriend() {
             online={!!social.data?.find((c: any) => c.user_id === id)?.online}
             playing={!!social.data?.find((c: any) => c.user_id === id)?.in_match}
             unknown={social.loading || !!social.error}
+            lastSeen={social.data?.find((c: any) => c.user_id === id)?.last_seen ?? null}
           />
           <OnlineError error={social.error} retry={() => void social.refresh()} />
           <Button
