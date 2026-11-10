@@ -23,7 +23,7 @@ import {
 } from '@livekit/react-native';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
-import { getVideoCredentials } from '@/lib/video';
+import { getVideoCredentials, trackOptions, ensureCameraPermissions } from '@/lib/video';
 import { feedback, palette } from '@/lib/darts';
 import type { VideoCallProps } from '@/components/VideoCall';
 
@@ -91,7 +91,13 @@ function RoomContent({
   useEffect(() => {
     if (state !== ConnectionState.Connected || autoCam.current) return;
     autoCam.current = true;
-    const facingMode = initialFacing ?? 'user';
+    void (async () => {
+      // Android: bez povolenia systému kamera vôbec neštartuje.
+      if (!(await ensureCameraPermissions())) {
+        setCamError('Kamera nemá povolenie systému — povoľ ju v nastaveniach telefónu.');
+        return;
+      }
+      const facingMode = initialFacing ?? 'user';
     // Najprv konkrétne zariadenie, pri neúspechu strana (staré/blokované id).
     const enable = (deviceId?: string) =>
       room.localParticipant.setCameraEnabled(true, {
@@ -110,6 +116,7 @@ function RoomContent({
             : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
         );
       });
+    })();
   }, [state, room, initialFacing, initialDeviceId]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
