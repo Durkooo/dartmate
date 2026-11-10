@@ -1,5 +1,33 @@
 import { FunctionsHttpError } from '@biltme/backend';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bilt } from '@/lib/bilt';
+
+export type Facing = 'user' | 'environment';
+export type CameraPrefs = { match: Facing; call: Facing };
+const CAMERA_PREFS_KEY = 'dartmate:camera-prefs';
+const DEFAULT_CAMERA_PREFS: CameraPrefs = { match: 'environment', call: 'user' };
+export async function loadCameraPrefs(): Promise<CameraPrefs> {
+  try {
+    const raw = await AsyncStorage.getItem(CAMERA_PREFS_KEY);
+    if (!raw) return DEFAULT_CAMERA_PREFS;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return DEFAULT_CAMERA_PREFS;
+    const get = (k: 'match' | 'call', fallback: Facing): Facing => {
+      const v = (parsed as Record<string, unknown>)[k];
+      return v === 'user' || v === 'environment' ? v : fallback;
+    };
+    return { match: get('match', 'environment'), call: get('call', 'user') };
+  } catch {
+    return DEFAULT_CAMERA_PREFS;
+  }
+}
+export async function saveCameraPrefs(prefs: CameraPrefs): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CAMERA_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Ignoruj — predvoľba sa len neuloží.
+  }
+}
 
 export type VideoCredentials = { url: string; token: string };
 
