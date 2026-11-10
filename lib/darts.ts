@@ -50,6 +50,8 @@ export type Game = {
   id: string;
   opponentId: string;
   opponentName: string;
+  /** Sólo hra pre jedného hráča — ťahá vždy len on. */
+  solo?: boolean;
   starting: 301 | 501;
   doubleOut: boolean;
   /** Na koľko víťazných legov sa hrá (1 = jeden leg ako doteraz). */
@@ -101,6 +103,7 @@ export function legTurns(game: Game): Turn[] {
   return game.turns.filter((t) => t.leg === leg);
 }
 export function activePlayer(game: Game): 0 | 1 {
+  if (game.solo) return 0;
   // Začínajúceho v legu striedame: párny leg začína hráč 0, nepárny hráč 1.
   // active = (starter + odohrané ťahy) % 2 — vetvenie namiesto pretypovania.
   const starterIsFirst = currentLeg(game) % 2 === 0;
@@ -159,7 +162,7 @@ interface DartsState {
   storageError: boolean;
   addFriend: (name: string, handle: string) => string;
   sendMessage: (friendId: string, text: string) => void;
-  startGame: (friend: Friend, starting: 301 | 501, doubleOut: boolean, legsToWin?: number) => void;
+  startGame: (friend: Friend, starting: 301 | 501, doubleOut: boolean, legsToWin?: number, solo?: boolean) => void;
   submitTurn: (score: number, finishedDouble: boolean, darts?: 1 | 2 | 3) => void;
   undo: () => void;
   startNextLeg: () => void;
@@ -233,12 +236,13 @@ export const useDarts = create<DartsState>()(
             },
           ],
         })),
-      startGame: (friend, starting, doubleOut, legsToWin = 1) =>
+      startGame: (friend, starting, doubleOut, legsToWin = 1, solo = false) =>
         set({
           game: {
             id: id(),
             opponentId: friend.id,
             opponentName: friend.name,
+            solo,
             starting,
             doubleOut,
             legsToWin: Math.min(9, Math.max(1, Math.floor(legsToWin))),
