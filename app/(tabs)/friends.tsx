@@ -48,6 +48,27 @@ export default function Friends() {
     }, [refresh]),
   );
   const friends = session ? onlineFriends : localFriends;
+  const history = useDarts((s) => s.history);
+  // Offline priemer priateľa: hody súpera (hráč 1) z lokálnych zápasov s rovnakým menom.
+  const offlineAvg = useCallback(
+    (handle: string, name: string) => {
+      const norm = (s: string) => s.trim().toLocaleLowerCase('sk');
+      const keys = [norm(handle), norm(name)].filter(Boolean);
+      let score = 0;
+      let darts = 0;
+      for (const g of history) {
+        if (g.solo || !keys.includes(norm(g.opponentName ?? ''))) continue;
+        for (const t of g.turns ?? []) {
+          if (t.player !== 1) continue;
+          const d = typeof t.darts === 'number' && t.darts > 0 ? t.darts : 3;
+          score += t.score;
+          darts += d;
+        }
+      }
+      return darts > 0 ? (score / darts) * 3 : null;
+    },
+    [history],
+  );
   const insets = useSafeAreaInsets();
   const busy = !ready || (!session && !hydrated) || loading;
   const shown = friends.filter((f) =>
@@ -150,7 +171,21 @@ export default function Friends() {
             </View>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const contact = session
+            ? social.data?.find((c: any) => c.user_id === item.id)
+            : undefined;
+          const onlineAvg = typeof contact?.avg === 'number' ? contact.avg : null;
+          const offAvg = session ? offlineAvg(item.handle ?? '', item.name ?? '') : null;
+          const combined =
+            onlineAvg !== null && offAvg !== null
+              ? Math.round((onlineAvg + offAvg) / 2)
+              : onlineAvg !== null
+                ? Math.round(onlineAvg)
+                : offAvg !== null
+                  ? Math.round(offAvg)
+                  : null;
+          return (
           <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
             {session ? (
               <PressableFeedback
@@ -159,13 +194,28 @@ export default function Friends() {
               >
                 <Avatar friend={item} />
                 <View className="flex-1">
-                  <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
-                    @{item.handle}
-                  </Txt>
+                  <View className="flex-row items-baseline gap-2">
+                    <Txt
+                      numberOfLines={1}
+                      className="flex-1"
+                      style={{ fontFamily: 'Inter_600SemiBold' }}
+                    >
+                      @{item.handle}
+                    </Txt>
+                    {combined !== null ? (
+                      <Txt
+                        numberOfLines={1}
+                        className="text-[13px]"
+                        style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
+                      >
+                        avg. {combined}
+                      </Txt>
+                    ) : null}
+                  </View>
                   <View className="mt-2">
                     <Presence
-                      online={!!social.data?.find((c: any) => c.user_id === item.id)?.online}
-                      playing={!!social.data?.find((c: any) => c.user_id === item.id)?.in_match}
+                      online={!!contact?.online}
+                      playing={!!contact?.in_match}
                       unknown={social.loading || !!social.error}
                     />
                   </View>
@@ -181,7 +231,8 @@ export default function Friends() {
               />
             )}
           </Animated.View>
-        )}
+          );
+        }}
         ListEmptyComponent={
           busy ? (
             <LoadingRows />
