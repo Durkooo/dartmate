@@ -148,7 +148,11 @@ function RoomContent({
       )}
       {shownTracks.map((track) => {
         // Súperovo okno maximalizujeme, vlastné o 10 % menšie — obe vidno aj so skóre.
-        const h = track.participant.isLocal ? (large ? 150 : 120) : large ? 230 : 150;
+        // Odznak v rohu ukazuje živé rozlíšenie (vlastné = vysielané pásmo).
+        const isLocalTrack = track.participant.isLocal;
+        const h = isLocalTrack ? (large ? 140 : 120) : large ? 280 : 150;
+        const showing = isTrackReference(track) && !track.publication.isMuted;
+        const badge = !showing ? '' : isLocalTrack ? ['480p', '720p', '1080p'][pubTier] : rxSize;
         return (
         <View key={track.participant.identity} className="mb-2">
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
@@ -158,12 +162,29 @@ function RoomContent({
                 ? `@${peerName}`
                 : `@${track.participant.name || track.participant.identity}`}
           </Txt>
-          {isTrackReference(track) && !track.publication.isMuted ? (
-            <VideoTrack
-              trackRef={track}
-              objectFit={large ? 'contain' : 'cover'}
-              style={{ height: h, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
-            />
+          {showing && isTrackReference(track) ? (
+            <View style={{ position: 'relative', height: h }}>
+              <VideoTrack
+                trackRef={track}
+                objectFit={large ? 'contain' : 'cover'}
+                style={{ height: h, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
+              />
+              {!!badge && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    bottom: 8,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    borderRadius: 6,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
+                </View>
+              )}
+            </View>
           ) : (
             <View
               style={{ height: h }}
@@ -257,6 +278,8 @@ export default function NativeVideoCall({
   // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p.
   // Štart je 720p; prepína sa len pri zmene pásma + max raz za 8 s (nekmitá).
   const videoTier = useRef(1);
+  const [pubTier, setPubTier] = useState(1);
+  // Skutočné prijaté rozlíšenie súperovho obrazu (obnovuje sa každé 3 s).
   useEffect(() => {
     const presets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
     let cooling = false;
@@ -265,6 +288,7 @@ export default function NativeVideoCall({
         quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
       if (tier === videoTier.current || cooling) return;
       videoTier.current = tier;
+      setPubTier(tier);
       cooling = true;
       setTimeout(() => {
         cooling = false;
@@ -290,6 +314,37 @@ export default function NativeVideoCall({
       room.off(RoomEvent.ConnectionQualityChanged, handler);
     };
   }, [room, facing, deviceId]);
+  const [rxSize, setRxSize] = useState('');
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        const remote = tracks.find(
+          (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
+        );
+        const pub = (remote?.publication ?? null) as unknown as {
+          track?: unknown;
+        } | null;
+        const rt = (pub?.track ?? null) as unknown as {
+          mediaStreamTrack?: unknown;
+        } | null;
+        const ms = (rt?.mediaStreamTrack ?? null) as unknown as {
+          getSettings?: () => unknown;
+        } | null;
+        const s = (typeof ms?.getSettings === 'function' ? ms.getSettings() : {}) as {
+          width?: unknown;
+          height?: unknown;
+        };
+        const label =
+          typeof s.width === 'number' && typeof s.height === 'number'
+            ? `${s.width}×${s.height}`
+            : '';
+        setRxSize((prev) => (prev === label ? prev : label));
+      } catch {
+        // Ignoruj — údaj sa len neobnoví.
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [tracks]);
   const [previousSession, setPreviousSession] = useState(request);
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {

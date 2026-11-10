@@ -219,6 +219,35 @@ export default function VideoCall({
       room.off(RoomEvent.ConnectionQualityChanged, qualityHandler);
     };
   }, [room, facing, deviceId]);
+  const [rxSize, setRxSize] = useState('');
+  useEffect(() => {
+    if (!room) return undefined;
+    const id = setInterval(() => {
+      try {
+        const pub = [...room.remoteParticipants.values()]
+          .map((p) => p.getTrackPublication(Track.Source.Camera))
+          .find((p) => p && !p.isMuted && p.track);
+        const t = (pub?.track ?? null) as unknown as {
+          mediaStreamTrack?: unknown;
+        } | null;
+        const ms = (t?.mediaStreamTrack ?? null) as unknown as {
+          getSettings?: () => unknown;
+        } | null;
+        const s = (typeof ms?.getSettings === 'function' ? ms.getSettings() : {}) as {
+          width?: unknown;
+          height?: unknown;
+        };
+        const label =
+          typeof s.width === 'number' && typeof s.height === 'number'
+            ? `${s.width}×${s.height}`
+            : '';
+        setRxSize((prev) => (prev === label ? prev : label));
+      } catch {
+        // Ignoruj — údaj sa len neobnoví.
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [room]);
   useEffect(() => {
     if (!room) return;
     if (room.localParticipant.isMicrophoneEnabled === microphone) return;
@@ -227,7 +256,7 @@ export default function VideoCall({
       feedback.error();
     });
   }, [microphone, room]);
-  const remoteHeight = large ? 380 : 160; // veľké okno súpera, keď čakám
+  const remoteHeight = large ? 440 : 160; // veľké okno súpera, keď čakám
   useEffect(() => {
     if (!room) return undefined;
     const elements: { track: Track; element: HTMLMediaElement }[] = [];
@@ -304,28 +333,64 @@ export default function VideoCall({
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
             {peerName ? `@${peerName}` : large ? 'Súper' : 'Súperova kamera'}
           </Txt>
-          <div
-            ref={remoteHost}
-            style={{
-              minHeight: remoteHeight,
-              backgroundColor: palette.ink,
-              borderRadius: 10,
-              overflow: 'hidden',
-            }}
-          />
-        </View>
-        {large && (
-          <View>
-            <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
+          <div style={{ position: 'relative' }}>
             <div
-              ref={localHost}
+              ref={remoteHost}
               style={{
-                minHeight: 150,
+                minHeight: remoteHeight,
                 backgroundColor: palette.ink,
                 borderRadius: 10,
                 overflow: 'hidden',
               }}
             />
+            {!!rxSize && (
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  bottom: 8,
+                  backgroundColor: 'rgba(0,0,0,0.55)',
+                  borderRadius: 6,
+                  padding: '2px 6px',
+                  color: '#fff',
+                  fontSize: 11,
+                }}
+              >
+                {rxSize}
+              </div>
+            )}
+          </div>
+        </View>
+        {large && (
+          <View>
+            <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
+            <div style={{ position: 'relative' }}>
+              <div
+                ref={localHost}
+                style={{
+                  minHeight: 140,
+                  backgroundColor: palette.ink,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                }}
+              />
+              {camera && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    bottom: 8,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    borderRadius: 6,
+                    padding: '2px 6px',
+                    color: '#fff',
+                    fontSize: 11,
+                  }}
+                >
+                  {['480p', '720p', '1080p'][pubTier]}
+                </div>
+              )}
+            </div>
           </View>
         )}
       </View>
