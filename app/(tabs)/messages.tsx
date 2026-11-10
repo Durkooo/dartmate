@@ -17,7 +17,7 @@ import {
   timeLabel,
   useOnlineQuery,
 } from '@/lib/online';
-import { OnlineGate, OnlineError, Presence, OpenMatches } from '@/components/OnlineUI';
+import { OnlineGate, OnlineError, Presence, OpenMatches, UnreadEnvelope } from '@/components/OnlineUI';
 
 export default function Messages() {
   const session = usePlayers((s) => s.session);
@@ -107,6 +107,7 @@ function OnlineMessages({ userId }: { userId: string }) {
                 >
                   @{item.nickname}
                 </Txt>
+                {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
                 {item.last_message_at && (
                   <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
                 )}
