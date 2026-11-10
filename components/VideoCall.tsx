@@ -13,6 +13,8 @@ export type VideoCallProps = {
   getCredentials?: () => Promise<VideoCredentials>;
   /** Meno protihráča nad jeho kamerou (namiesto „Súper“). */
   peerName?: string;
+  /** Počiatočná kamera (predná/zadná); predvoľba z Môjho účtu. */
+  initialFacing?: 'user' | 'environment';
 };
 
 const expoGoError =

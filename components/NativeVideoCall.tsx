@@ -41,6 +41,7 @@ function RoomContent({
   micWanted,
   onMicChange,
   peerName,
+  initialFacing,
 }: {
   room: Room;
   onLeave: () => void;
@@ -48,6 +49,7 @@ function RoomContent({
   micWanted: boolean;
   onMicChange?: (on: boolean) => void;
   peerName?: string;
+  initialFacing?: 'user' | 'environment';
 }) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   // Hádžem (nie som čakajúci): malé okno ukazuje SÚPEROVU kameru,
@@ -68,9 +70,22 @@ function RoomContent({
   }, [micWanted, localParticipant]);
   const state = useConnectionState();
   const participants = useParticipants();
+  // Kamera sa zapne sama hneď po pripojení (aj u priateľa) —
+  // doteraz ostávala vypnutá, kým ju niekto ručne nezapol.
+  const autoCam = useRef(false);
+  useEffect(() => {
+    if (state !== ConnectionState.Connected || autoCam.current) return;
+    autoCam.current = true;
+    const facingMode = initialFacing ?? 'user';
+    void room.localParticipant
+      .setCameraEnabled(true, { resolution: VideoPresets.h720, facingMode })
+      .catch(() => {
+        feedback.error();
+      });
+  }, [state, room, initialFacing]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const [facing, setFacing] = useState<'user' | 'environment'>('user');
+  const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
   const control = async (action: () => Promise<unknown>) => {
     if (pending) return;
     setPending(true);
@@ -175,6 +190,7 @@ export default function NativeVideoCall({
   onMicChange,
   getCredentials,
   peerName,
+  initialFacing,
 }: VideoCallProps) {
   const [credentials, setCredentials] = useState<Awaited<
     ReturnType<typeof getVideoCredentials>
@@ -311,6 +327,7 @@ export default function NativeVideoCall({
           micWanted={micWanted}
           onMicChange={onMicChange}
           peerName={peerName}
+          initialFacing={initialFacing}
         />
       </LiveKitRoom>
     </View>

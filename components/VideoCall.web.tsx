@@ -38,6 +38,7 @@ export default function VideoCall({
   onMicChange,
   getCredentials,
   peerName,
+  initialFacing,
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
@@ -54,7 +55,7 @@ export default function VideoCall({
   const videoPresets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
-  const [facing, setFacing] = useState<'user' | 'environment'>('user');
+  const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
   const currentRoom = useRef<Room | null>(null);
   const localHost = useRef<HTMLDivElement>(null);
   const remoteHost = useRef<HTMLDivElement>(null);
@@ -156,6 +157,7 @@ export default function VideoCall({
         try {
           await session.localParticipant.setCameraEnabled(true, {
             resolution: VideoPresets.h720,
+            facingMode: initialFacing ?? 'user',
           });
           if (!active) {
             await session.disconnect();
