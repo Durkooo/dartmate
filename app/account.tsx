@@ -1,11 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Button, Input, Label, TextField } from 'heroui-native';
 import { Page, Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { CameraPreview } from '@/components/CameraPreview';
 import { bilt } from '@/lib/bilt';
 import { feedback } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
+import {
+  loadCameraPrefs,
+  saveCameraPrefs,
+  type CameraPrefs,
+  type Facing,
+} from '@/lib/video';
+
+function FacingPicker({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: Facing;
+  onChange: (f: Facing) => void;
+}) {
+  return (
+    <View className="gap-2">
+      <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>{label}</Txt>
+      <View className="flex-row gap-2">
+        {(
+          [
+            ['user', 'Predná'],
+            ['environment', 'Zadná'],
+          ] as const
+        ).map(([f, name]) => (
+          <Button
+            key={f}
+            className="flex-1"
+            variant={value === f ? 'primary' : 'secondary'}
+            onPress={() => onChange(f)}
+          >
+            <Button.Label>{name}</Button.Label>
+          </Button>
+        ))}
+      </View>
+      <Txt className="text-muted text-[12px]">{hint}</Txt>
+    </View>
+  );
+}
 
 export default function Account() {
   const ready = usePlayers((s) => s.ready);
@@ -21,6 +64,16 @@ export default function Account() {
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
+  const [camPrefs, setCamPrefs] = useState<CameraPrefs>({ match: 'environment', call: 'user' });
+  const [previewFacing, setPreviewFacing] = useState<Facing | null>(null);
+  useEffect(() => {
+    void loadCameraPrefs().then(setCamPrefs);
+  }, []);
+  const updatePrefs = (next: CameraPrefs) => {
+    setCamPrefs(next);
+    void saveCameraPrefs(next);
+    feedback.selection();
+  };
   const fail = (message: string) => {
     setError(message);
     feedback.error();
@@ -199,14 +252,67 @@ export default function Account() {
                 />
               </TextField>
               <Txt className="text-muted text-[13px]">
-                3 až 24 znakov: písmená bez diakritiky, čísla alebo podčiarkovník. Nick bude
-                viditeľný ostatným hráčom.
+                3 až 24 znakov: písmená (aj s diakritikou), čísla, medzera, bodka,
+                podčiarkovník alebo pomlčka. Nick bude viditeľný ostatným hráčom.
               </Txt>
               <Button isDisabled={pending} onPress={save}>
                 <Button.Label>{pending ? 'Ukladám…' : 'Uložiť nick'}</Button.Label>
               </Button>
             </>
           ) : null}
+          {!!session && (
+            <View className="mt-7 gap-4">
+              <View>
+                <Heading className="text-[20px]">Kamera</Heading>
+                <Txt className="text-muted mt-1 text-[13px]">
+                  Predvolená kamera pre online zápas a videohovor. Prepínať ju vieš aj priamo v
+                  hovore.
+                </Txt>
+              </View>
+              <FacingPicker
+                label="Online zápas"
+                hint="Zadná kamera mierie na terč, predná na teba."
+                value={camPrefs.match}
+                onChange={(f) => updatePrefs({ ...camPrefs, match: f })}
+              />
+              <FacingPicker
+                label="Videohovor"
+                hint="Predná kamera ukazuje tvoju tvár."
+                value={camPrefs.call}
+                onChange={(f) => updatePrefs({ ...camPrefs, call: f })}
+              />
+              {previewFacing ? (
+                <View className="gap-2">
+                  <View className="flex-row gap-2">
+                    {(
+                      [
+                        ['user', 'Predná'],
+                        ['environment', 'Zadná'],
+                      ] as const
+                    ).map(([f, name]) => (
+                      <Button
+                        key={f}
+                        size="sm"
+                        className="flex-1"
+                        variant={previewFacing === f ? 'primary' : 'secondary'}
+                        onPress={() => setPreviewFacing(f)}
+                      >
+                        <Button.Label>{name}</Button.Label>
+                      </Button>
+                    ))}
+                  </View>
+                  <CameraPreview key={previewFacing} facing={previewFacing} />
+                  <Button variant="ghost" size="sm" onPress={() => setPreviewFacing(null)}>
+                    <Button.Label>Zavrieť náhľad</Button.Label>
+                  </Button>
+                </View>
+              ) : (
+                <Button variant="secondary" onPress={() => setPreviewFacing(camPrefs.match)}>
+                  <Button.Label>Náhľad kamery</Button.Label>
+                </Button>
+              )}
+            </View>
+          )}
           {!!(error || remoteError) && (
             <Txt accessibilityRole="alert" className="text-danger">
               {error || remoteError}
