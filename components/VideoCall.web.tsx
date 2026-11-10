@@ -4,7 +4,6 @@ import {
   Room,
   RoomEvent,
   Track,
-  ConnectionState,
   LocalVideoTrack,
   VideoPresets,
   ConnectionQuality,
@@ -55,7 +54,6 @@ export default function VideoCall({
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
-  const [status, setStatus] = useState('Pripájam…');
   const [request, setRequest] = useState({ matchId });
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [pending, setPending] = useState(false);
@@ -113,17 +111,7 @@ export default function VideoCall({
       .on(RoomEvent.TrackMuted, update)
       .on(RoomEvent.TrackUnmuted, update)
       .on(RoomEvent.ParticipantConnected, update)
-      .on(RoomEvent.ParticipantDisconnected, update)
-      .on(RoomEvent.ConnectionStateChanged, (state) => {
-        if (active)
-          setStatus(
-            state === ConnectionState.Connected
-              ? 'Pripojený'
-              : state === ConnectionState.Reconnecting
-                ? 'Obnovujem spojenie…'
-                : 'Odpojený',
-          );
-      });
+      .on(RoomEvent.ParticipantDisconnected, update);
     void (async () => {
       try {
         const credentials = await (credsRef.current
@@ -239,7 +227,7 @@ export default function VideoCall({
       feedback.error();
     });
   }, [microphone, room]);
-  const remoteHeight = large ? 300 : 120; // kompaktné okno súpera, keď hádžem
+  const remoteHeight = large ? 380 : 160; // veľké okno súpera, keď čakám
   useEffect(() => {
     if (!room) return undefined;
     const elements: { track: Track; element: HTMLMediaElement }[] = [];
@@ -250,7 +238,7 @@ export default function VideoCall({
       if (element instanceof HTMLVideoElement) {
         element.playsInline = true;
         element.style.width = '100%';
-        element.style.height = local ? '170px' : `${remoteHeight}px`;
+        element.style.height = local ? '150px' : `${remoteHeight}px`;
         element.style.objectFit = 'contain';
       }
       if (local) element.muted = true;
@@ -303,7 +291,14 @@ export default function VideoCall({
     );
   return (
     <View className="bg-surface rounded-xl p-3">
-      <Txt className="text-muted mb-2 text-[12px]">Video · {status}</Txt>
+      {(() => {
+        const s = room ? peerStatus(room, tracks) : null;
+        return s ? (
+          <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
+            {s}
+          </Txt>
+        ) : null;
+      })()}
       <View className="gap-3">
         <View>
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
@@ -318,14 +313,6 @@ export default function VideoCall({
               overflow: 'hidden',
             }}
           />
-          {(() => {
-            const s = peerStatus(room, tracks);
-            return s ? (
-              <Txt className="text-muted mt-2 text-[12px]" numberOfLines={1}>
-                {s}
-              </Txt>
-            ) : null;
-          })()}
         </View>
         {large && (
           <View>
@@ -333,7 +320,7 @@ export default function VideoCall({
             <div
               ref={localHost}
               style={{
-                minHeight: 170,
+                minHeight: 150,
                 backgroundColor: palette.ink,
                 borderRadius: 10,
                 overflow: 'hidden',

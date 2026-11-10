@@ -139,14 +139,6 @@ function RoomContent({
   };
   return (
     <View className="bg-surface rounded-xl p-3">
-      <Txt className="text-muted mb-2 text-[12px]">
-        Video ·{' '}
-        {state === ConnectionState.Connected
-          ? 'Pripojený'
-          : state === ConnectionState.Reconnecting
-            ? 'Obnovujem spojenie…'
-            : 'Pripájam…'}
-      </Txt>
       {!shownTracks.some(
         (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
       ) && (
@@ -154,8 +146,11 @@ function RoomContent({
           {peerStatus}
         </Txt>
       )}
-      {shownTracks.map((track) => (
-        <View key={track.participant.identity} className="mb-3">
+      {shownTracks.map((track) => {
+        // Súperovo okno maximalizujeme, vlastné o 10 % menšie — obe vidno aj so skóre.
+        const h = track.participant.isLocal ? (large ? 150 : 120) : large ? 230 : 150;
+        return (
+        <View key={track.participant.identity} className="mb-2">
           <Txt className="mb-1 text-[12px]" numberOfLines={1}>
             {track.participant.isLocal
               ? 'Tvoja kamera'
@@ -167,17 +162,19 @@ function RoomContent({
             <VideoTrack
               trackRef={track}
               objectFit={large ? 'contain' : 'cover'}
-              style={{ height: large ? 170 : 120, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
+              style={{ height: h, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
             />
           ) : (
             <View
-              className={`bg-ink items-center justify-center rounded-xl ${large ? 'h-[170px]' : 'h-[120px]'}`}
+              style={{ height: h }}
+              className="bg-ink items-center justify-center rounded-xl"
             >
               <Txt className="text-on-ink">Kamera je vypnutá</Txt>
             </View>
           )}
         </View>
-      ))}
+        );
+      })}
       {large && participants.length < 2 && (
         <Txt className="text-muted text-[12px]">Súper sa ešte nepripojil k videohovoru.</Txt>
       )}
