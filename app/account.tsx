@@ -4,11 +4,11 @@ import { Stack, router } from 'expo-router';
 import { Button, Input, Label, TextField } from 'heroui-native';
 import { Page, Heading, Txt, LoadingRows } from '@/components/DartsUI';
 import { CameraPreview } from '@/components/CameraPreview';
+import { FunctionsHttpError } from '@biltme/backend';
 import { bilt } from '@/lib/bilt';
 import { feedback } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 import {
-  listCameras,
   loadCameraPrefs,
   saveCameraPrefs,
   type CameraDevice,
@@ -163,7 +163,7 @@ export default function Account() {
     run(async () => {
       if (!session) return;
       const nickname = nick.trim().replace(/^@/, '').toLowerCase();
-      if (!/^[\p{L}\p{N} _.\-]{3,24}$/u.test(nickname)) {
+      if (!/^[\p{L}\p{N} _.-]{3,24}$/u.test(nickname)) {
         fail(
           'Nick musí mať 3 až 24 znakov: písmená (aj s diakritikou), čísla, medzera, bodka, podčiarkovník alebo pomlčka.',
         );
@@ -188,8 +188,7 @@ export default function Account() {
         .insert({ user_id: session.user.id, nickname });
       if (e) {
         // Súbeh: medzitým si nick zabral niekto iný (databáza to nepustí dvakrát).
-        const errorCode =
-          typeof e === 'object' && e !== null && 'code' in e ? e.code : undefined;
+        const errorCode = typeof e === 'object' && e !== null && 'code' in e ? e.code : undefined;
         if (errorCode === '23505') {
           fail('Táto prezývka je už obsadená. Vyber si inú.');
           return;
@@ -289,8 +288,8 @@ export default function Account() {
                 />
               </TextField>
               <Txt className="text-muted text-[13px]">
-                3 až 24 znakov: písmená (aj s diakritikou), čísla, medzera, bodka,
-                podčiarkovník alebo pomlčka. Nick bude viditeľný ostatným hráčom.
+                3 až 24 znakov: písmená (aj s diakritikou), čísla, medzera, bodka, podčiarkovník
+                alebo pomlčka. Nick bude viditeľný ostatným hráčom.
               </Txt>
               <Button isDisabled={pending} onPress={save}>
                 <Button.Label>{pending ? 'Ukladám…' : 'Uložiť nick'}</Button.Label>
@@ -449,8 +448,8 @@ export default function Account() {
               ) : (
                 <View className="gap-3">
                   <Txt className="text-danger text-[13px] leading-5">
-                    Naozaj odstrániť účet{profile ? ` @${profile.nickname}` : ''}? Vymaže sa
-                    profil, priatelia, zápasy aj správy. Túto akciu nemožno vrátiť.
+                    Naozaj odstrániť účet{profile ? ` @${profile.nickname}` : ''}? Vymaže sa profil,
+                    priatelia, zápasy aj správy. Túto akciu nemožno vrátiť.
                   </Txt>
                   <Button
                     variant="danger"
@@ -458,24 +457,36 @@ export default function Account() {
                     onPress={() =>
                       run(async () => {
                         // Mazanie beží ako Edge Function (vie zmazať aj auth účet).
-                        const { error: e } =
-                          await bilt.functions.invoke('delete-own-account');
+                        const { error: e } = await bilt.functions.invoke('delete-own-account');
                         if (e) {
                           // Funkcia odpovedala chybou — ukáž aj jej vlastnú správu zo servera.
-                          let detail = '';
-                          try {
-                            const ctx = (e as { context?: unknown }).context;
-                            if (ctx instanceof Response) {
-                              const text = await ctx.text();
-                              if (text) detail = ` ${text.slice(0, 300)}`;
+                          let message = e.message;
+                          if (e instanceof FunctionsHttpError) {
+                            try {
+                              const result: unknown = await e.context.json();
+                              if (
+                                result &&
+                                typeof result === 'object' &&
+                                'message' in result &&
+                                typeof result.message === 'string'
+                              ) {
+                                message = result.message;
+                              }
+                            } catch {
+                              // Keep the SDK error if the response cannot be read.
                             }
-                          } catch {
-                            // Ignoruj — ostane všeobecná chyba.
                           }
-                          fail(`Operácia sa nepodarila.${detail}`);
+                          fail(playerError({ message }));
                           return;
                         }
-                        await bilt.auth.signOut();
+                        const { error: signOutError } = await bilt.auth.signOut({ scope: 'local' });
+                        if (signOutError) {
+                          setConfirmDelete(false);
+                          fail(
+                            `Účet bol odstránený, ale odhlásenie zlyhalo. ${signOutError.message}`,
+                          );
+                          return;
+                        }
                         setSentEmail('');
                         setCode('');
                         setConfirmDelete(false);

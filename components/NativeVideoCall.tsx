@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { View } from 'react-native';
 import {
   Room,
@@ -23,11 +23,18 @@ import {
 } from '@livekit/react-native';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
-import { getVideoCredentials, trackOptions, ensureCameraPermissions, singleShotFocus } from '@/lib/video';
+import {
+  getVideoCredentials,
+  registerNativeVideoGlobals,
+  trackOptions,
+  ensureCameraPermissions,
+  singleShotFocus,
+  VIDEO_PRESETS,
+} from '@/lib/video';
 import { feedback, palette } from '@/lib/darts';
 import type { VideoCallProps } from '@/components/VideoCall';
 
-registerGlobals();
+registerNativeVideoGlobals(registerGlobals);
 let audioTransition = Promise.resolve();
 function serializeAudio(action: () => Promise<void>): Promise<void> {
   const next = audioTransition.then(action);
@@ -87,6 +94,78 @@ function RoomContent({
           : 'Súperov obraz sa načítava…';
   // Kamera sa zapne sama hneď po pripojení (aj u priateľa) —
   // doteraz ostávala vypnutá, kým ju niekto ručne nezapol.
+  const [camError, setCamError] = useState('');
+  const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
+  const [deviceId, setDeviceId] = useState<string | undefined>(initialDeviceId);
+  const videoTier = useRef(1);
+  const [pubTier, setPubTier] = useState(1);
+  const [rxSize, setRxSize] = useState('');
+  useEffect(() => {
+    let active = true;
+    let cooling = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const handler = (quality: ConnectionQuality, participant: Participant) => {
+      if (!participant.isLocal) return;
+      const tier =
+        quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
+      const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+      if (
+        tier === videoTier.current ||
+        cooling ||
+        !(track instanceof LocalVideoTrack) ||
+        !room.localParticipant.isCameraEnabled
+      )
+        return;
+      cooling = true;
+      void track
+        .restartTrack({
+          resolution: VIDEO_PRESETS[tier].resolution,
+          ...trackOptions(facing, deviceId),
+        })
+        .then(() => {
+          if (!active) return;
+          videoTier.current = tier;
+          setPubTier(tier);
+        })
+        .catch(() => {
+          if (active) setCamError('Kvalitu kamery sa nepodarilo zmeniť. Skús to znova.');
+        })
+        .finally(() => {
+          if (active)
+            timer = setTimeout(() => {
+              cooling = false;
+            }, 8000);
+        });
+    };
+    room.on(RoomEvent.ConnectionQualityChanged, handler);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      room.off(RoomEvent.ConnectionQualityChanged, handler);
+    };
+  }, [room, facing, deviceId]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        const remote = tracks.find(
+          (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
+        );
+        const ms =
+          remote && isTrackReference(remote)
+            ? remote.publication.track?.mediaStreamTrack
+            : undefined;
+        const s = typeof ms?.getSettings === 'function' ? ms.getSettings() : {};
+        const label =
+          typeof s.width === 'number' && typeof s.height === 'number'
+            ? `${s.width}×${s.height}`
+            : '';
+        setRxSize((prev) => (prev === label ? prev : label));
+      } catch {
+        // Diagnostics are optional on devices without getSettings support.
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [tracks]);
   const autoCam = useRef(false);
   useEffect(() => {
     if (state !== ConnectionState.Connected || autoCam.current) return;
@@ -98,30 +177,27 @@ function RoomContent({
         return;
       }
       const facingMode = initialFacing ?? 'user';
-    // Najprv konkrétne zariadenie, pri neúspechu strana (staré/blokované id).
-    const enable = (deviceId?: string) =>
-      room.localParticipant.setCameraEnabled(true, {
-        resolution: VideoPresets.h720,
-        ...trackOptions(facingMode, deviceId),
-      });
-    void enable(initialDeviceId)
-      .catch(() => (initialDeviceId ? enable(undefined) : Promise.reject(new Error('blocked'))))
-      .catch((e) => {
-        const blocked =
-          e instanceof Error &&
-          /notallowed|denied|permission/i.test(e.message || e.name);
-        setCamError(
-          blocked
-            ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
-            : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
-        );
-      });
+      // Najprv konkrétne zariadenie, pri neúspechu strana (staré/blokované id).
+      const enable = (cameraDeviceId?: string) =>
+        room.localParticipant.setCameraEnabled(true, {
+          resolution: VIDEO_PRESETS[videoTier.current].resolution,
+          ...trackOptions(facingMode, cameraDeviceId),
+        });
+      void enable(initialDeviceId)
+        .catch(() => (initialDeviceId ? enable(undefined) : Promise.reject(new Error('blocked'))))
+        .catch((e) => {
+          const blocked =
+            e instanceof Error && /notallowed|denied|permission/i.test(e.message || e.name);
+          setCamError(
+            blocked
+              ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
+              : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
+          );
+        });
     })();
   }, [state, room, initialFacing, initialDeviceId]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const [camError, setCamError] = useState('');
-  const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
   const control = async (action: () => Promise<unknown>) => {
     if (pending) return;
     setPending(true);
@@ -154,46 +230,48 @@ function RoomContent({
         const showing = isTrackReference(track) && !track.publication.isMuted;
         const badge = !showing ? '' : isLocalTrack ? ['480p', '720p', '1080p'][pubTier] : rxSize;
         return (
-        <View key={track.participant.identity} className="mb-2">
-          <Txt className="mb-1 text-[12px]" numberOfLines={1}>
-            {track.participant.isLocal
-              ? 'Tvoja kamera'
-              : peerName
-                ? `@${peerName}`
-                : `@${track.participant.name || track.participant.identity}`}
-          </Txt>
-          {showing && isTrackReference(track) ? (
-            <View style={{ position: 'relative', height: h }}>
-              <VideoTrack
-                trackRef={track}
-                objectFit={large ? 'contain' : 'cover'}
-                style={{ height: h, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
-              />
-              {!!badge && (
-                <View
+          <View key={track.participant.identity} className="mb-2">
+            <Txt className="mb-1 text-[12px]" numberOfLines={1}>
+              {track.participant.isLocal
+                ? 'Tvoja kamera'
+                : peerName
+                  ? `@${peerName}`
+                  : `@${track.participant.name || track.participant.identity}`}
+            </Txt>
+            {showing && isTrackReference(track) ? (
+              <View style={{ position: 'relative', height: h }}>
+                <VideoTrack
+                  trackRef={track}
+                  objectFit={large ? 'contain' : 'cover'}
                   style={{
-                    position: 'absolute',
-                    right: 8,
-                    bottom: 8,
-                    backgroundColor: 'rgba(0,0,0,0.55)',
-                    borderRadius: 6,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
+                    height: h,
+                    width: '100%',
+                    backgroundColor: palette.ink,
+                    borderRadius: 10,
                   }}
-                >
-                  <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View
-              style={{ height: h }}
-              className="bg-ink items-center justify-center rounded-xl"
-            >
-              <Txt className="text-on-ink">Kamera je vypnutá</Txt>
-            </View>
-          )}
-        </View>
+                />
+                {!!badge && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      bottom: 8,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      borderRadius: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                    }}
+                  >
+                    <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ height: h }} className="bg-ink items-center justify-center rounded-xl">
+                <Txt className="text-on-ink">Kamera je vypnutá</Txt>
+              </View>
+            )}
+          </View>
         );
       })}
       {large && participants.length < 2 && (
@@ -216,7 +294,7 @@ function RoomContent({
         onCamera={() =>
           void control(() =>
             localParticipant.setCameraEnabled(!isCameraEnabled, {
-              resolution: VideoPresets.h720,
+              resolution: VIDEO_PRESETS[videoTier.current].resolution,
               ...trackOptions(facing, deviceId),
             }),
           )
@@ -235,9 +313,7 @@ function RoomContent({
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
-            const res = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080][
-              videoTier.current
-            ].resolution;
+            const res = VIDEO_PRESETS[videoTier.current].resolution;
             await track.restartTrack({
               facingMode: next,
               resolution: { width: res.width, height: res.height, frameRate: 30 },
@@ -284,76 +360,6 @@ export default function NativeVideoCall({
         videoCaptureDefaults: { resolution: VideoPresets.h720 },
       }),
   );
-  // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p.
-  // Štart je 720p; prepína sa len pri zmene pásma + max raz za 8 s (nekmitá).
-  const videoTier = useRef(1);
-  const [pubTier, setPubTier] = useState(1);
-  // Skutočné prijaté rozlíšenie súperovho obrazu (obnovuje sa každé 3 s).
-  useEffect(() => {
-    const presets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
-    let cooling = false;
-    const apply = (quality: ConnectionQuality) => {
-      const tier =
-        quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
-      if (tier === videoTier.current || cooling) return;
-      videoTier.current = tier;
-      setPubTier(tier);
-      cooling = true;
-      setTimeout(() => {
-        cooling = false;
-      }, 8000);
-      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
-      const track = pub?.track;
-      if (track instanceof LocalVideoTrack && room.localParticipant.isCameraEnabled) {
-        const res = presets[tier].resolution;
-        // restartTrack bez zdroja by prepol na prednú kameru — držíme stranu aj zariadenie.
-        void track
-          .restartTrack({
-            resolution: { width: res.width, height: res.height, frameRate: 30 },
-            ...trackOptions(facing, deviceId),
-          })
-          .catch(() => undefined);
-      }
-    };
-    const handler = (quality: ConnectionQuality, participant: Participant) => {
-      if (participant.isLocal) apply(quality);
-    };
-    room.on(RoomEvent.ConnectionQualityChanged, handler);
-    return () => {
-      room.off(RoomEvent.ConnectionQualityChanged, handler);
-    };
-  }, [room, facing, deviceId]);
-  const [rxSize, setRxSize] = useState('');
-  useEffect(() => {
-    const id = setInterval(() => {
-      try {
-        const remote = tracks.find(
-          (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
-        );
-        const pub = (remote?.publication ?? null) as unknown as {
-          track?: unknown;
-        } | null;
-        const rt = (pub?.track ?? null) as unknown as {
-          mediaStreamTrack?: unknown;
-        } | null;
-        const ms = (rt?.mediaStreamTrack ?? null) as unknown as {
-          getSettings?: () => unknown;
-        } | null;
-        const s = (typeof ms?.getSettings === 'function' ? ms.getSettings() : {}) as {
-          width?: unknown;
-          height?: unknown;
-        };
-        const label =
-          typeof s.width === 'number' && typeof s.height === 'number'
-            ? `${s.width}×${s.height}`
-            : '';
-        setRxSize((prev) => (prev === label ? prev : label));
-      } catch {
-        // Ignoruj — údaj sa len neobnoví.
-      }
-    }, 3000);
-    return () => clearInterval(id);
-  }, [tracks]);
   const [previousSession, setPreviousSession] = useState(request);
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
@@ -361,12 +367,29 @@ export default function NativeVideoCall({
     setError('');
     setCredentials(null);
   }
+  const fetchCredentials = useEffectEvent((session: { matchId: string }) =>
+    getCredentials ? getCredentials() : getVideoCredentials(session.matchId),
+  );
   useEffect(() => {
     let mounted = true;
     let ownsAudio = false;
+    const disconnected = () => {
+      if (!mounted) return;
+      setCredentials(null);
+      setError(
+        'Videohovor je odpojený. Skús ho pripojiť znova; v hre môžeš pokračovať bez kamery.',
+      );
+      feedback.error();
+      void serializeAudio(async () => {
+        if (ownsAudio) {
+          ownsAudio = false;
+          await AudioSession.stopAudioSession();
+        }
+      }).catch(() => undefined);
+    };
     void (async () => {
       try {
-        const data = await (getCredentials ? getCredentials() : getVideoCredentials(request.matchId));
+        const data = await fetchCredentials(request);
         if (!mounted) return;
         await serializeAudio(async () => {
           if (!mounted) return;
@@ -378,7 +401,10 @@ export default function NativeVideoCall({
             ownsAudio = false;
             throw e;
           }
-          if (mounted) setCredentials(data);
+          if (mounted) {
+            room.on(RoomEvent.Disconnected, disconnected);
+            setCredentials(data);
+          }
         });
       } catch (e) {
         if (mounted) {
@@ -389,6 +415,7 @@ export default function NativeVideoCall({
     })();
     return () => {
       mounted = false;
+      room.off(RoomEvent.Disconnected, disconnected);
       void serializeAudio(async () => {
         try {
           await room.disconnect();
@@ -400,9 +427,9 @@ export default function NativeVideoCall({
         }
       }).catch(() => undefined);
     };
-  // room vzniká raz (useState inicializátor) a nikdy sa nemení — v závislostiach
-  // je kvôli cleanupu (odpojenie), ale re-rendery navyše nespôsobuje.
-  }, [request.matchId, room, getCredentials]);
+    // room vzniká raz (useState inicializátor) a nikdy sa nemení — v závislostiach
+    // je kvôli cleanupu (odpojenie), ale re-rendery navyše nespôsobuje.
+  }, [request, room]);
   if (!credentials)
     return (
       <VideoNotice
@@ -425,13 +452,9 @@ export default function NativeVideoCall({
         token={credentials.token}
         connect
         audio={micWanted}
-        video
+        video={false}
         onError={(e) => {
           setError(e.message);
-          feedback.error();
-        }}
-        onDisconnected={() => {
-          setError('Videohovor je odpojený. V hre môžeš pokračovať bez kamery.');
           feedback.error();
         }}
       >

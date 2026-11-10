@@ -169,7 +169,13 @@ interface DartsState {
   storageError: boolean;
   addFriend: (name: string, handle: string) => string;
   sendMessage: (friendId: string, text: string) => void;
-  startGame: (friend: Friend, starting: 301 | 501, doubleOut: boolean, legsToWin?: number, solo?: boolean) => void;
+  startGame: (
+    friend: Friend,
+    starting: 301 | 501,
+    doubleOut: boolean,
+    legsToWin?: number,
+    solo?: boolean,
+  ) => void;
   submitTurn: (score: number, finishedDouble: boolean, darts?: 1 | 2 | 3) => void;
   undo: () => void;
   startNextLeg: () => void;
@@ -209,7 +215,8 @@ function fixGame(g: unknown): Record<string, unknown> {
     winner: game.winner === 0 || game.winner === 1 ? game.winner : null,
     turns: rawTurns.filter(isObject).map((t) => ({
       ...t,
-      leg: typeof t.leg === 'number' && Number.isFinite(t.leg) && t.leg >= 0 ? Math.floor(t.leg) : 0,
+      leg:
+        typeof t.leg === 'number' && Number.isFinite(t.leg) && t.leg >= 0 ? Math.floor(t.leg) : 0,
     })),
   };
 }
@@ -318,7 +325,9 @@ export const useDarts = create<DartsState>()(
           };
         }),
       startNextLeg: () =>
-        set((s) => (s.game && s.game.betweenLegs ? { game: { ...s.game, betweenLegs: false } } : {})),
+        set((s) =>
+          s.game && s.game.betweenLegs ? { game: { ...s.game, betweenLegs: false } } : {},
+        ),
       archiveGame: () =>
         set((s) => ({
           history: s.game && s.game.winner !== null ? [s.game, ...s.history] : s.history,
@@ -370,8 +379,9 @@ export const useDarts = create<DartsState>()(
         useDarts.setState({ hydrated: true, storageError: !!error });
         if (error) feedback.error();
         // Nedokončený lokálny zápas starší než 3 dni sa automaticky zruší.
-        const g = (restored as { game?: Game | null } | null)?.game;
-        if (g && g.winner === null && isMatchExpired(g.date)) {
+        const value: unknown = restored;
+        const g = isObject(value) && isObject(value.game) ? value.game : null;
+        if (g && g.winner === null && typeof g.date === 'string' && isMatchExpired(g.date)) {
           useDarts.setState({ game: null });
         }
       },

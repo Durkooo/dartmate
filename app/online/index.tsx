@@ -46,10 +46,7 @@ export default function OnlineLobby() {
                 <Txt className="text-muted text-center">
                   Pozvi priateľa a počkaj na jeho prijatie.
                 </Txt>
-                <Button
-                  className="w-full"
-                  onPress={() => router.push('/online/new')}
-                >
+                <Button className="w-full" onPress={() => router.push('/online/new')}>
                   <Button.Label>Pozvať priateľa na zápas</Button.Label>
                 </Button>
               </View>

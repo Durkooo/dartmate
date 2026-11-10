@@ -88,7 +88,7 @@ export function pushBlockReason(): string | null {
 export type PushResult = { ok: boolean; reason?: string };
 
 function errText(e: unknown): string {
-  return e instanceof Error ? (e.message || e.name) : String(e);
+  return e instanceof Error ? e.message || e.name : String(e);
 }
 
 /** VAPID public key je verejný – je v build-e, netreba ho tajiť. */
@@ -223,8 +223,7 @@ export function needsAndroidChrome(): boolean {
 export function pushHintLine(): string {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return '';
   const ua = navigator.userAgent || '';
-  if (/iPhone|iPad|iPod/i.test(ua))
-    return ' Na iPhone funguje len ak máš appku pridanú na plochu.';
+  if (/iPhone|iPad|iPod/i.test(ua)) return ' Na iPhone funguje len ak máš appku pridanú na plochu.';
   if (/Android/i.test(ua))
     return ' Na Androide stačí Chrome (aj bez inštalácie), najlepšie s appkou na ploche.';
   return '';
@@ -237,7 +236,11 @@ export function pushHintLine(): string {
 export async function disablePushSubscription(userId: string): Promise<PushResult> {
   try {
     if (pushSupported()) {
-      const reg = await withTimeout(navigator.serviceWorker.ready, 10000, 'Service Worker timeout.');
+      const reg = await withTimeout(
+        navigator.serviceWorker.ready,
+        10000,
+        'Service Worker timeout.',
+      );
       const sub = await reg.pushManager.getSubscription();
       if (sub?.endpoint) {
         await bilt.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);

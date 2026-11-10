@@ -127,10 +127,7 @@ export function usePlayerSession() {
         // onAuthStateChange vie doraziť skôr s prázdnou session (INITIAL_SESSION)
         // a platný výsledok getSession by sa potom zahodil — čerstvý tab by ostal
         // navždy odhlásený. Preskočíme len zhodnú session, ktorú už máme.
-        if (
-          receivedEvent &&
-          usePlayers.getState().session?.user.id === data.session?.user.id
-        )
+        if (receivedEvent && usePlayers.getState().session?.user.id === data.session?.user.id)
           return;
         if (error) {
           usePlayers.setState({ ready: true, error: playerError(error) });

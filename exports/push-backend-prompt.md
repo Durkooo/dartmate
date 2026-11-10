@@ -13,6 +13,7 @@ Sprav prosím tieto 4 kroky:
 
 1. **SQL tabuľka** — v Database → SQL editor spusti tento SQL (idempotentný):
    (súbor je aj v GitHub repozitári: exports/push-subscriptions.sql)
+
 ```sql
 create table if not exists public.push_subscriptions (
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -39,7 +40,7 @@ grant select, insert, update, delete on public.push_subscriptions to authenticat
    - `VAPID_SUBJECT` = `mailto:kristofjuraj@gmail.com`
 
 3. **Edge funkcia `send-push`** — nová funkcia (verify_jwt: true), ktorá:
-   - načíta VAPID_* z Deno.env,
+   - načíta VAPID\_\* z Deno.env,
    - z tela dostane `{ user_id, title, body, url }`,
    - overí, že volajúci je priateľ príjemcu (cez existujúcu logiku
      priateľstva — rovnaké pravidlá ako `send_direct_message`),
@@ -47,13 +48,13 @@ grant select, insert, update, delete on public.push_subscriptions to authenticat
    - každému endpointu pošle Web Push (VAPID, payload
      `{ title, body, url, tag: 'dartmate-message' }`),
    - endpointy s odpoveďou 404/410 zmaže z tabuľky.
-   Použi npm:web-push (`npm:web-push@3`) alebo ručný fetch na endpoint
-   s VAPID Authorization hlavicky. Daj mi vedieť, ktorú cestu si zvolil.
+     Použi npm:web-push (`npm:web-push@3`) alebo ručný fetch na endpoint
+     s VAPID Authorization hlavicky. Daj mi vedieť, ktorú cestu si zvolil.
 
 4. **Trigger na novú správu** — po úspešnom `send_direct_message`
    (alebo DB trigger na insert do `direct_messages`) zavolaj `send-push`
    s textom `@nick: úryvok správy (max ~80 znakov)` a `url:
-   /conversation/<sender_id>`. Len ak má príjemca aspoň jeden
+/conversation/<sender_id>`. Len ak má príjemca aspoň jeden
    subscription; chyby push nesmú zhodiť odoslanie správy.
    Foreground príjemca (otvorená konverzácia) push nepotrebuje —
    stačí mu existujúci polling, ale nevadí, ak push príde aj tak

@@ -1,27 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { LocalVideoTrack } from 'livekit-client';
 import { Txt } from '@/components/DartsUI';
 import { createPreferredTrack, listCameras, type CameraDevice, type Facing } from '@/lib/video';
 
 /** Živý náhľad kamery (web) — na výber prednej/zadnej. */
-export function CameraPreview({
-  facing,
-  deviceId,
-  onDevices,
-}: {
+type PreviewProps = {
   facing: Facing;
   deviceId?: string;
   onDevices?: (devices: CameraDevice[]) => void;
-}) {
+};
+export function CameraPreview(props: PreviewProps) {
+  return <PreviewSession key={JSON.stringify([props.facing, props.deviceId])} {...props} />;
+}
+function PreviewSession({ facing, deviceId, onDevices }: PreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const reportDevices = useEffectEvent((devices: CameraDevice[]) => onDevices?.(devices));
   useEffect(() => {
     let active = true;
     let track: LocalVideoTrack | null = null;
-    setReady(false);
-    setError('');
     void createPreferredTrack(facing, deviceId)
       .then((t) => {
         if (!active) {
@@ -34,7 +33,9 @@ export function CameraPreview({
           t.attach(el);
           setReady(true);
         }
-        if (onDevices) void listCameras().then((d) => active && onDevices(d));
+        void listCameras().then((devices) => {
+          if (active) reportDevices(devices);
+        });
       })
       .catch(() => {
         if (active) setError('Kameru sa nepodarilo zapnúť. Skontroluj povolenie prehliadača.');
@@ -59,7 +60,12 @@ export function CameraPreview({
         autoPlay
         muted
         playsInline
-        style={{ height: 220, width: '100%', objectFit: 'cover', display: ready ? 'block' : 'none' }}
+        style={{
+          height: 220,
+          width: '100%',
+          objectFit: 'cover',
+          display: ready ? 'block' : 'none',
+        }}
       />
     </View>
   );

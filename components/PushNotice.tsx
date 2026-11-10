@@ -17,7 +17,14 @@ import {
   wasPushAsked,
 } from '@/lib/push';
 
-type Status = 'loading' | 'prompt' | 'on' | 'denied' | 'unsupported' | 'ios-install' | 'android-chrome';
+type Status =
+  | 'loading'
+  | 'prompt'
+  | 'on'
+  | 'denied'
+  | 'unsupported'
+  | 'ios-install'
+  | 'android-chrome';
 
 /**
  * Ovládanie upozornení na nové správy v sekcii Priatelia.
@@ -135,8 +142,8 @@ export function PushNotice() {
           <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Upozornenia sú vypnuté</Txt>
         </View>
         <Txt className="text-muted text-[13px] leading-5">
-          V prehliadači si ich raz zamietol. Zapneš ich v adresnom riadku (ikonka zámku → Upozornenia
-          → Povoliť) a potom sa vráť sem.
+          V prehliadači si ich raz zamietol. Zapneš ich v adresnom riadku (ikonka zámku →
+          Upozornenia → Povoliť) a potom sa vráť sem.
         </Txt>
         <Button variant="secondary" isDisabled={pending} onPress={() => void refresh()}>
           <Button.Label>Skúsiť znova</Button.Label>
@@ -153,7 +160,9 @@ export function PushNotice() {
           <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Upozornenia zapnuté</Txt>
         </View>
         {failed && (
-          <Txt className="text-danger text-[13px]">Vypnutie sa nepodarilo ({failed}). Skús to znova.</Txt>
+          <Txt className="text-danger text-[13px]">
+            Vypnutie sa nepodarilo ({failed}). Skús to znova.
+          </Txt>
         )}
         <Button variant="ghost" isDisabled={pending} onPress={() => void turnOff()}>
           <Button.Label>{pending ? 'Čakaj…' : 'Vypnúť upozornenia'}</Button.Label>

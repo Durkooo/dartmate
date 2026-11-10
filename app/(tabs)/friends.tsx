@@ -186,51 +186,51 @@ export default function Friends() {
                   ? Math.round(offAvg)
                   : null;
           return (
-          <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
-            {session ? (
-              <PressableFeedback
-                onPress={() => router.push({ pathname: '/friend/[id]', params: { id: item.id } })}
-                className="flex-row items-center gap-3 py-3"
-              >
-                <Avatar friend={item} />
-                <View className="flex-1">
-                  <View className="flex-row items-baseline gap-2">
-                    <Txt
-                      numberOfLines={1}
-                      className="flex-1"
-                      style={{ fontFamily: 'Inter_600SemiBold' }}
-                    >
-                      @{item.handle}
-                    </Txt>
-                    {combined !== null ? (
+            <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
+              {session ? (
+                <PressableFeedback
+                  onPress={() => router.push({ pathname: '/friend/[id]', params: { id: item.id } })}
+                  className="flex-row items-center gap-3 py-3"
+                >
+                  <Avatar friend={item} />
+                  <View className="flex-1">
+                    <View className="flex-row items-baseline gap-2">
                       <Txt
                         numberOfLines={1}
-                        className="text-[13px]"
-                        style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
+                        className="flex-1"
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
                       >
-                        avg. {combined}
+                        @{item.handle}
                       </Txt>
-                    ) : null}
+                      {combined !== null ? (
+                        <Txt
+                          numberOfLines={1}
+                          className="text-[13px]"
+                          style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
+                        >
+                          avg. {combined}
+                        </Txt>
+                      ) : null}
+                    </View>
+                    <View className="mt-2">
+                      <Presence
+                        online={!!contact?.online}
+                        playing={!!contact?.in_match}
+                        unknown={social.loading || !!social.error}
+                      />
+                    </View>
                   </View>
-                  <View className="mt-2">
-                    <Presence
-                      online={!!contact?.online}
-                      playing={!!contact?.in_match}
-                      unknown={social.loading || !!social.error}
-                    />
-                  </View>
-                </View>
-                <ChevronRight size={20} color={palette.muted} strokeWidth={1.8} />
-              </PressableFeedback>
-            ) : (
-              <FriendRow
-                friend={item}
-                detail={
-                  item.demo ? `@${item.handle} · ukážkový hráč` : `@${item.handle} · lokálny hráč`
-                }
-              />
-            )}
-          </Animated.View>
+                  <ChevronRight size={20} color={palette.muted} strokeWidth={1.8} />
+                </PressableFeedback>
+              ) : (
+                <FriendRow
+                  friend={item}
+                  detail={
+                    item.demo ? `@${item.handle} · ukážkový hráč` : `@${item.handle} · lokálny hráč`
+                  }
+                />
+              )}
+            </Animated.View>
           );
         }}
         ListEmptyComponent={

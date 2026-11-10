@@ -17,7 +17,13 @@ import {
   timeLabel,
   useOnlineQuery,
 } from '@/lib/online';
-import { OnlineGate, OnlineError, Presence, OpenMatches, UnreadEnvelope } from '@/components/OnlineUI';
+import {
+  OnlineGate,
+  OnlineError,
+  Presence,
+  OpenMatches,
+  UnreadEnvelope,
+} from '@/components/OnlineUI';
 
 export default function Messages() {
   const session = usePlayers((s) => s.session);
@@ -52,15 +58,13 @@ function OnlineMessages({ userId }: { userId: string }) {
       <FlatList
         data={useMemo(
           () =>
-            [...(query.data?.contacts.filter((c) => c.last_body) ?? [])].sort(
-              (a, b) => {
-                // Najprv neprečítané (abecedne), potom ostatné (abecedne).
-                const ua = hasUnread(a, userId, read) ? 0 : 1;
-                const ub = hasUnread(b, userId, read) ? 0 : 1;
-                if (ua !== ub) return ua - ub;
-                return (a.nickname ?? '').localeCompare(b.nickname ?? '', 'sk');
-              },
-            ),
+            [...(query.data?.contacts.filter((c) => c.last_body) ?? [])].sort((a, b) => {
+              // Najprv neprečítané (abecedne), potom ostatné (abecedne).
+              const ua = hasUnread(a, userId, read) ? 0 : 1;
+              const ub = hasUnread(b, userId, read) ? 0 : 1;
+              if (ua !== ub) return ua - ub;
+              return (a.nickname ?? '').localeCompare(b.nickname ?? '', 'sk');
+            }),
           [query.data, read, userId],
         )}
         keyExtractor={(c) => c.user_id ?? ''}
@@ -89,54 +93,53 @@ function OnlineMessages({ userId }: { userId: string }) {
           const missedCall =
             call &&
             item.last_sender_id !== userId &&
-            (joined[item.user_id ?? ''] ?? 0) <=
-              new Date(item.last_message_at ?? 0).getTime();
+            (joined[item.user_id ?? ''] ?? 0) <= new Date(item.last_message_at ?? 0).getTime();
           return (
-          <PressableFeedback
-            className="flex-row items-start gap-3 py-3"
-            onPress={() =>
-              router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
-            }
-          >
-            <View className="flex-1 gap-2">
-              <View className="flex-row gap-3">
-                <Txt
-                  className="flex-1"
-                  numberOfLines={1}
-                  style={{ fontFamily: 'Inter_600SemiBold' }}
-                >
-                  @{item.nickname}
-                </Txt>
-                {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
-                {item.last_message_at && (
-                  <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
+            <PressableFeedback
+              className="flex-row items-start gap-3 py-3"
+              onPress={() =>
+                router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
+              }
+            >
+              <View className="flex-1 gap-2">
+                <View className="flex-row gap-3">
+                  <Txt
+                    className="flex-1"
+                    numberOfLines={1}
+                    style={{ fontFamily: 'Inter_600SemiBold' }}
+                  >
+                    @{item.nickname}
+                  </Txt>
+                  {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
+                  {item.last_message_at && (
+                    <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
+                  )}
+                </View>
+                <Presence
+                  online={!!item.online}
+                  playing={!!item.in_match}
+                  unknown={!!query.error}
+                />
+                {call ? (
+                  <Txt
+                    numberOfLines={2}
+                    className="text-muted text-[13px] leading-5"
+                    style={
+                      missedCall
+                        ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
+                        : undefined
+                    }
+                  >
+                    {missedCall ? '📹 Miss call' : '📹 Videohovor'}
+                  </Txt>
+                ) : (
+                  <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
+                    {item.last_sender_id === userId ? 'Ty: ' : ''}
+                    {item.last_body}
+                  </Txt>
                 )}
               </View>
-              <Presence
-                online={!!item.online}
-                playing={!!item.in_match}
-                unknown={!!query.error}
-              />
-              {call ? (
-                <Txt
-                  numberOfLines={2}
-                  className="text-muted text-[13px] leading-5"
-                  style={
-                    missedCall
-                      ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
-                      : undefined
-                  }
-                >
-                  {missedCall ? '📹 Miss call' : '📹 Videohovor'}
-                </Txt>
-              ) : (
-                <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
-                  {item.last_sender_id === userId ? 'Ty: ' : ''}
-                  {item.last_body}
-                </Txt>
-              )}
-            </View>
-          </PressableFeedback>
+            </PressableFeedback>
           );
         }}
         ListEmptyComponent={

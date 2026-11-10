@@ -9,7 +9,7 @@ import {
   ConnectionQuality,
   type Participant,
 } from 'livekit-client';
-import { trackOptions, singleShotFocus } from '@/lib/video';
+import { trackOptions, singleShotFocus, VIDEO_PRESETS } from '@/lib/video';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import { feedback, palette } from '@/lib/darts';
@@ -25,8 +25,7 @@ function peerStatus(room: Room, tracks: MediaTrack[]): string | null {
   const pub = peer.getTrackPublication(Track.Source.Camera);
   if (!pub) return 'Súper je pripojený, kameru nevysiela';
   if (pub.isMuted) return 'Súper má vypnutú kameru';
-  const subscribed = (pub as unknown as { isSubscribed?: boolean }).isSubscribed;
-  return subscribed === false ? 'Čakám na súperov obraz…' : 'Súperov obraz sa načítava…';
+  return !pub.isSubscribed ? 'Čakám na súperov obraz…' : 'Súperov obraz sa načítava…';
 }
 function snapshotTracks(room: Room): MediaTrack[] {
   const tracks: MediaTrack[] = [
@@ -63,7 +62,8 @@ export default function VideoCall({
   }, [micWanted]);
   // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p (max raz za 8 s).
   const videoTier = useRef(1);
-  const videoPresets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
+  const [pubTier, setPubTier] = useState(1);
+  const [rxSize, setRxSize] = useState('');
   const [deviceId, setDeviceId] = useState<string | undefined>(initialDeviceId);
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
@@ -103,7 +103,19 @@ export default function VideoCall({
         setMicrophone(session.localParticipant.isMicrophoneEnabled);
       }
     };
+    const disconnected = () => {
+      if (!active) return;
+      active = false;
+      currentRoom.current = null;
+      setRoom(null);
+      setTracks([]);
+      setError(
+        'Videohovor je odpojený. Skús ho pripojiť znova; v hre môžeš pokračovať bez kamery.',
+      );
+      feedback.error();
+    };
     session
+      .on(RoomEvent.Disconnected, disconnected)
       .on(RoomEvent.TrackSubscribed, update)
       .on(RoomEvent.TrackUnsubscribed, update)
       .on(RoomEvent.LocalTrackPublished, update)
@@ -123,6 +135,11 @@ export default function VideoCall({
           await session.disconnect();
           return;
         }
+        videoTier.current = 1;
+        setPubTier(1);
+        setRxSize('');
+        setFacing(initialFacing ?? 'user');
+        setDeviceId(initialDeviceId);
         currentRoom.current = session;
         setRoom(session);
         update();
@@ -132,10 +149,10 @@ export default function VideoCall({
           return;
         }
         const facingMode = initialFacing ?? 'user';
-        const enableCam = (deviceId?: string) =>
+        const enableCam = (cameraDeviceId?: string) =>
           session.localParticipant.setCameraEnabled(true, {
             resolution: VideoPresets.h720,
-            ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode }),
+            ...(cameraDeviceId ? { deviceId: { exact: cameraDeviceId } } : { facingMode }),
           });
         try {
           await enableCam(initialDeviceId);
@@ -184,42 +201,55 @@ export default function VideoCall({
       session.removeAllListeners();
       void session.disconnect();
     };
-  }, [request]);
+  }, [request, initialFacing, initialDeviceId]);
   // Auto-kvalita podľa internetu (vlastný efekt — vidí aktuálnu kameru).
   useEffect(() => {
     if (!room) return undefined;
+    let active = true;
     let cooling = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const applyQuality = (quality: ConnectionQuality) => {
       const tier =
         quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
-      if (tier === videoTier.current || cooling) return;
-      videoTier.current = tier;
+      const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+      if (
+        tier === videoTier.current ||
+        cooling ||
+        !(track instanceof LocalVideoTrack) ||
+        !room.localParticipant.isCameraEnabled
+      )
+        return;
       cooling = true;
-      setTimeout(() => {
-        cooling = false;
-      }, 8000);
-      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
-      const track = pub?.track;
-      if (track instanceof LocalVideoTrack && room.localParticipant.isCameraEnabled) {
-        const res = videoPresets[tier].resolution;
-        // restartTrack bez zdroja by prepol na prednú kameru — držíme stranu aj zariadenie.
-        void track
-          .restartTrack({
-            resolution: { width: res.width, height: res.height, frameRate: 30 },
-            ...trackOptions(facing, deviceId),
-          })
-          .catch(() => undefined);
-      }
+      void track
+        .restartTrack({
+          resolution: VIDEO_PRESETS[tier].resolution,
+          ...trackOptions(facing, deviceId),
+        })
+        .then(() => {
+          if (!active) return;
+          videoTier.current = tier;
+          setPubTier(tier);
+        })
+        .catch(() => {
+          if (active) setError('Kvalitu kamery sa nepodarilo zmeniť. Skús to znova.');
+        })
+        .finally(() => {
+          if (active)
+            timer = setTimeout(() => {
+              cooling = false;
+            }, 8000);
+        });
     };
     const qualityHandler = (quality: ConnectionQuality, participant: Participant) => {
       if (participant.isLocal) applyQuality(quality);
     };
     room.on(RoomEvent.ConnectionQualityChanged, qualityHandler);
     return () => {
+      active = false;
+      clearTimeout(timer);
       room.off(RoomEvent.ConnectionQualityChanged, qualityHandler);
     };
   }, [room, facing, deviceId]);
-  const [rxSize, setRxSize] = useState('');
   useEffect(() => {
     if (!room) return undefined;
     const id = setInterval(() => {
@@ -227,16 +257,8 @@ export default function VideoCall({
         const pub = [...room.remoteParticipants.values()]
           .map((p) => p.getTrackPublication(Track.Source.Camera))
           .find((p) => p && !p.isMuted && p.track);
-        const t = (pub?.track ?? null) as unknown as {
-          mediaStreamTrack?: unknown;
-        } | null;
-        const ms = (t?.mediaStreamTrack ?? null) as unknown as {
-          getSettings?: () => unknown;
-        } | null;
-        const s = (typeof ms?.getSettings === 'function' ? ms.getSettings() : {}) as {
-          width?: unknown;
-          height?: unknown;
-        };
+        const ms = pub?.track?.mediaStreamTrack;
+        const s = typeof ms?.getSettings === 'function' ? ms.getSettings() : {};
         const label =
           typeof s.width === 'number' && typeof s.height === 'number'
             ? `${s.width}×${s.height}`
@@ -249,13 +271,22 @@ export default function VideoCall({
     return () => clearInterval(id);
   }, [room]);
   useEffect(() => {
-    if (!room) return;
-    if (room.localParticipant.isMicrophoneEnabled === microphone) return;
-    // Priama synchronizácia (bez control): beží na pozadí pri zmene voľby.
-    void room.localParticipant.setMicrophoneEnabled(microphone).catch(() => {
-      feedback.error();
-    });
-  }, [microphone, room]);
+    if (!room) return undefined;
+    let active = true;
+    // Apply the requested prop, not the observed microphone state.
+    void room.localParticipant
+      .setMicrophoneEnabled(micWanted)
+      .then(() => {
+        if (active && currentRoom.current === room)
+          setMicrophone(room.localParticipant.isMicrophoneEnabled);
+      })
+      .catch(() => {
+        if (active) feedback.error();
+      });
+    return () => {
+      active = false;
+    };
+  }, [micWanted, room]);
   const remoteHeight = large ? 440 : 160; // veľké okno súpera, keď čakám
   useEffect(() => {
     if (!room) return undefined;
@@ -406,7 +437,7 @@ export default function VideoCall({
         onCamera={() =>
           void control(() =>
             room.localParticipant.setCameraEnabled(!camera, {
-              resolution: VideoPresets.h720,
+              resolution: VIDEO_PRESETS[videoTier.current].resolution,
               ...trackOptions(facing, deviceId),
             }),
           )
@@ -415,6 +446,7 @@ export default function VideoCall({
           void control(async () => {
             const next = !microphone;
             await room.localParticipant.setMicrophoneEnabled(next);
+            micRef.current = next;
             setMicrophone(next);
             onMicChange?.(next);
           })
@@ -425,7 +457,7 @@ export default function VideoCall({
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
-            const res = videoPresets[videoTier.current].resolution;
+            const res = VIDEO_PRESETS[videoTier.current].resolution;
             await track.restartTrack({
               facingMode: next,
               resolution: { width: res.width, height: res.height, frameRate: 30 },

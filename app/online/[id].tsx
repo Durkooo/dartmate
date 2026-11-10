@@ -32,8 +32,7 @@ export default function OnlineGame() {
   // VŠETKY háky musia byť pred prvým podmieneným returnom (stabilný počet).
   // Zamietnutá/zrušená pozvánka: vrátime sa do správ s tým človekom.
   const watchedStatus = query.data?.match?.status;
-  const watchedPeer =
-    query.data?.match && userId ? opponentId(query.data.match, userId) : '';
+  const watchedPeer = query.data?.match && userId ? opponentId(query.data.match, userId) : '';
   useEffect(() => {
     if ((watchedStatus === 'declined' || watchedStatus === 'cancelled') && watchedPeer) {
       const t = setTimeout(() => {

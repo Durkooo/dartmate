@@ -7,7 +7,13 @@ import { Send, Video, X } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Empty, LoadingRows } from '@/components/DartsUI';
-import { OnlineGate, OnlineError, MatchInviteCard, Presence, OpenMatches } from '@/components/OnlineUI';
+import {
+  OnlineGate,
+  OnlineError,
+  MatchInviteCard,
+  Presence,
+  OpenMatches,
+} from '@/components/OnlineUI';
 import { feedback, palette } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import VideoCall from '@/components/VideoCall';
@@ -103,7 +109,12 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
       feedback.success();
       const invitingNick = usePlayers.getState().profile?.nickname;
       if (invitingNick)
-        notifyRecipient(id, `@${invitingNick}`, '📹 Videohovor — klepni pre pripojenie', `/conversation/${userId}`);
+        notifyRecipient(
+          id,
+          `@${invitingNick}`,
+          '📹 Videohovor — klepni pre pripojenie',
+          `/conversation/${userId}`,
+        );
       await query.refresh();
     } catch (e) {
       if (usePlayers.getState().session?.user.id === userId) {
@@ -149,9 +160,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
     return [...new Map(rows.map((m) => [m.id, m])).values()].sort((a, b) => b.id - a.id);
   }, [query.data, older, key]);
   // Upraviť ide len vlastnú poslednú textovú správu (podržanie prsta).
-  const newestMineId = messages.find(
-    (m) => m.sender_id === userId && !isCallMessage(m.body),
-  )?.id;
+  const newestMineId = messages.find((m) => m.sender_id === userId && !isCallMessage(m.body))?.id;
   const startEdit = (item: DirectMessage) => {
     if (pending || item.id !== newestMineId) return;
     setEditingId(item.id);
@@ -159,22 +168,22 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
     setError('');
     feedback.selection();
   };
-  /** Uloženie úpravy vlastnej poslednej správy (RPC vytvorí agent). */
+  /** Uloženie úpravy vlastnej poslednej správy. */
   const saveEdit = async (body: string) => {
     if (editingId === null || !key) return;
     setPending(true);
     setError('');
     try {
-      const { error: e } = await bilt.rpc('edit_direct_message', {
+      const { data, error: e } = await bilt.rpc('edit_direct_message', {
         message_id: editingId,
         new_body: body,
       });
       if (e) throw new Error(e.message);
+      const updated = data?.[0];
+      if (!updated) throw new Error('Správu sa nepodarilo upraviť. Obnov správy a skús to znova.');
       if (usePlayers.getState().session?.user.id !== userId) return;
       setOlder((s) =>
-        s?.key === key
-          ? { ...s, rows: s.rows.map((m) => (m.id === editingId ? { ...m, body } : m)) }
-          : s,
+        s?.key === key ? { ...s, rows: s.rows.map((m) => (m.id === updated.id ? updated : m)) } : s,
       );
       setEditingId(null);
       setText('');
@@ -305,7 +314,9 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                     isDisabled={pending || !!query.error}
                     onPress={() => {
                       // Povolenie kamery musí prísť z gesta — predhrejeme ju ešte pred hovorom.
-                      void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+                      void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(
+                        () => undefined,
+                      );
                       void startCall();
                     }}
                   >
@@ -314,7 +325,9 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                   <Button
                     size="sm"
                     variant="secondary"
-                    onPress={() => router.push({ pathname: '/online/new', params: { friendId: id } })}
+                    onPress={() =>
+                      router.push({ pathname: '/online/new', params: { friendId: id } })
+                    }
                   >
                     <Button.Label>Pozvať na zápas</Button.Label>
                   </Button>
@@ -329,7 +342,12 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
             ) : null}
           </OnlineGate>
           <OnlineError error={query.error} retry={() => void query.refresh()} />
-          {query.data && userId && <OpenMatches matches={query.data.matches.filter((m: any) => m.status !== 'invited')} userId={userId} />}
+          {query.data && userId && (
+            <OpenMatches
+              matches={query.data.matches.filter((m: any) => m.status !== 'invited')}
+              userId={userId}
+            />
+          )}
           {query.data &&
             userId &&
             query.data.matches
@@ -367,8 +385,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
           renderItem={({ item }) => {
             const mine = item.sender_id === userId;
             if (isCallMessage(item.body)) {
-              const missedCall =
-                !mine && (joined[id] ?? 0) <= new Date(item.created_at).getTime();
+              const missedCall = !mine && (joined[id] ?? 0) <= new Date(item.created_at).getTime();
               return (
                 <Animated.View
                   entering={FadeIn.duration(160)}
@@ -396,7 +413,9 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                       variant="secondary"
                       isDisabled={callOpen}
                       onPress={() => {
-                        void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+                        void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(
+                          () => undefined,
+                        );
                         void markCallJoined(id);
                         setJoined((j) => ({ ...j, [id]: Date.now() }));
                         setCallOpen(true);
@@ -422,26 +441,26 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                   onLongPress={mine ? () => startEdit(item) : undefined}
                   delayLongPress={400}
                 >
-                <View
-                  className={
-                    mine
-                      ? 'bg-ink rounded-2xl rounded-br-sm px-4 py-3'
-                      : 'bg-surface rounded-2xl rounded-bl-sm px-4 py-3'
-                  }
-                >
-                  <Txt className={mine ? 'leading-6 text-white' : 'leading-6'}>{item.body}</Txt>
-                  <Txt
+                  <View
                     className={
                       mine
-                        ? 'text-on-ink mt-2 text-right text-[11px]'
-                        : 'text-muted mt-2 text-right text-[11px]'
+                        ? 'bg-ink rounded-2xl rounded-br-sm px-4 py-3'
+                        : 'bg-surface rounded-2xl rounded-bl-sm px-4 py-3'
                     }
                   >
-                    {new Date(item.created_at).toLocaleDateString('sk-SK')} ·{' '}
-                    {timeLabel(item.created_at)}
-                    {mine ? ' · Odoslané' : ''}
-                  </Txt>
-                </View>
+                    <Txt className={mine ? 'leading-6 text-white' : 'leading-6'}>{item.body}</Txt>
+                    <Txt
+                      className={
+                        mine
+                          ? 'text-on-ink mt-2 text-right text-[11px]'
+                          : 'text-muted mt-2 text-right text-[11px]'
+                      }
+                    >
+                      {new Date(item.created_at).toLocaleDateString('sk-SK')} ·{' '}
+                      {timeLabel(item.created_at)}
+                      {mine ? ' · Odoslané' : ''}
+                    </Txt>
+                  </View>
                 </Pressable>
               </Animated.View>
             );
@@ -489,45 +508,35 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
               {editingId !== null && (
                 <View className="mb-2 flex-row items-center justify-between">
                   <Txt className="text-muted text-[13px]">Upravuješ svoju správu</Txt>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    isDisabled={pending}
-                    onPress={cancelEdit}
-                  >
+                  <Button variant="ghost" size="sm" isDisabled={pending} onPress={cancelEdit}>
                     <X size={16} strokeWidth={1.8} color={palette.muted} />
                     <Button.Label>Zrušiť</Button.Label>
                   </Button>
                 </View>
               )}
               <View className="flex-row items-end gap-2">
-              <Input
-                className="bg-background max-h-28 flex-1"
-                value={text}
-                multiline
-                maxLength={2000}
-                editable={!pending}
-                placeholder="Napíš správu…"
-                accessibilityLabel="Správa"
-                onChangeText={setText}
-              />
-              <Button
-                isIconOnly
-                isDisabled={pending || !text.trim() || !!query.error}
-                accessibilityLabel={pending ? 'Odosielam správu' : 'Odoslať správu'}
-                onPress={() => void send()}
-              >
-                <Send size={21} strokeWidth={1.8} color={palette.ink} />
-              </Button>
+                <Input
+                  className="bg-background max-h-28 flex-1"
+                  value={text}
+                  multiline
+                  maxLength={2000}
+                  editable={!pending}
+                  placeholder="Napíš správu…"
+                  accessibilityLabel="Správa"
+                  onChangeText={setText}
+                />
+                <Button
+                  isIconOnly
+                  isDisabled={pending || !text.trim() || !!query.error}
+                  accessibilityLabel={pending ? 'Odosielam správu' : 'Odoslať správu'}
+                  onPress={() => void send()}
+                >
+                  <Send size={21} strokeWidth={1.8} color={palette.ink} />
+                </Button>
               </View>
             </>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-1"
-            onPress={() => router.dismissTo('/')}
-          >
+          <Button variant="ghost" size="sm" className="mt-1" onPress={() => router.dismissTo('/')}>
             <Button.Label>Späť domov</Button.Label>
           </Button>
         </View>

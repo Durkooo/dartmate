@@ -1,8 +1,16 @@
 import { FunctionsHttpError } from '@biltme/backend';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PermissionsAndroid, Platform } from 'react-native';
-import { Track, type Room } from 'livekit-client';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { Track, VideoPreset, VideoPresets, type Room } from 'livekit-client';
 import { bilt } from '@/lib/bilt';
+
+/** Real 16:9 480p capture tier; LiveKit does not provide h480. */
+export const VIDEO_PRESETS = [
+  new VideoPreset(854, 480, 900_000, 30),
+  VideoPresets.h720,
+  VideoPresets.h1080,
+];
 
 export type Facing = 'user' | 'environment';
 export type CameraDevice = { deviceId: string; label: string; facing: Facing };
@@ -14,18 +22,21 @@ export type CameraPrefs = {
 };
 const CAMERA_PREFS_KEY = 'dartmate:camera-prefs';
 const DEFAULT_CAMERA_PREFS: CameraPrefs = { match: 'environment', call: 'user' };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 export async function loadCameraPrefs(): Promise<CameraPrefs> {
   try {
     const raw = await AsyncStorage.getItem(CAMERA_PREFS_KEY);
     if (!raw) return DEFAULT_CAMERA_PREFS;
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null) return DEFAULT_CAMERA_PREFS;
+    if (!isRecord(parsed)) return DEFAULT_CAMERA_PREFS;
     const get = (k: 'match' | 'call', fallback: Facing): Facing => {
-      const v = (parsed as Record<string, unknown>)[k];
+      const v = k in parsed ? parsed[k] : undefined;
       return v === 'user' || v === 'environment' ? v : fallback;
     };
     const getId = (k: 'matchDeviceId' | 'callDeviceId'): string | undefined => {
-      const v = (parsed as Record<string, unknown>)[k];
+      const v = k in parsed ? parsed[k] : undefined;
       return typeof v === 'string' && v ? v : undefined;
     };
     return {
@@ -49,15 +60,7 @@ export async function saveCameraPrefs(prefs: CameraPrefs): Promise<void> {
 export async function listCameras(): Promise<CameraDevice[]> {
   try {
     const { Room } = await import('livekit-client');
-    const getLocal =
-      typeof (Room as unknown as Record<string, unknown>).getLocalDevices === 'function'
-        ? ((Room as unknown as { getLocalDevices: (kind: string) => Promise<MediaDeviceInfo[]> }).getLocalDevices.bind(Room) as (kind: string) => Promise<MediaDeviceInfo[]>)
-        : null;
-    const raw: MediaDeviceInfo[] = getLocal
-      ? await getLocal('videoinput')
-      : typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices
-        ? await navigator.mediaDevices.enumerateDevices()
-        : [];
+    const raw = await Room.getLocalDevices('videoinput');
     const videos = raw.filter((d) => d.kind === 'videoinput' && d.deviceId);
     let back = 0;
     let front = 0;
@@ -72,7 +75,15 @@ export async function listCameras(): Promise<CameraDevice[]> {
         label.includes('facing back');
       // Bez mien (ešte nebolo povolenie) ber prvú ako zadnú, ostatné striedavo.
       const facing: Facing =
-        d.label === '' ? (i === 0 ? 'environment' : i % 2 === 0 ? 'environment' : 'user') : isFront && !isBack ? 'user' : 'environment';
+        d.label === ''
+          ? i === 0
+            ? 'environment'
+            : i % 2 === 0
+              ? 'environment'
+              : 'user'
+          : isFront && !isBack
+            ? 'user'
+            : 'environment';
       if (facing === 'environment') back += 1;
       else front += 1;
       const name =
@@ -85,9 +96,7 @@ export async function listCameras(): Promise<CameraDevice[]> {
 }
 /** Voľby pre lokálnu kameru: konkrétne zariadenie, inak len strana. */
 export function trackOptions(facing: Facing, deviceId?: string) {
-  return deviceId
-    ? { deviceId: { exact: deviceId } }
-    : { facingMode: facing };
+  return deviceId ? { deviceId: { exact: deviceId } } : { facingMode: facing };
 }
 /** Rýchle „prebudenie“ kamery v ťuknutí prstom — iOS povolí kameru len z gesta.
  *  Vytvorí a hneď zruší stopu, aby pri pripojení už bolo povolenie dané. */
@@ -118,23 +127,44 @@ export async function ensureCameraPermissions(): Promise<boolean> {
 export async function singleShotFocus(room: Room): Promise<boolean> {
   try {
     const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
-    const t = (pub?.track ?? null) as unknown as { mediaStreamTrack?: unknown } | null;
-    const ms = (t?.mediaStreamTrack ?? null) as unknown as {
-      getCapabilities?: () => unknown;
-      applyConstraints?: (c: unknown) => Promise<void>;
-    } | null;
+    const ms = pub?.track?.mediaStreamTrack;
     if (!ms || typeof ms.applyConstraints !== 'function') return false;
-    const caps = (typeof ms.getCapabilities === 'function' ? ms.getCapabilities() : {}) as {
-      focusMode?: unknown;
-    };
-    if (!Array.isArray(caps.focusMode) || !caps.focusMode.includes('single-shot')) return false;
-    await ms.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+    const caps: unknown = typeof ms.getCapabilities === 'function' ? ms.getCapabilities() : {};
+    if (
+      !isRecord(caps) ||
+      !Array.isArray(caps.focusMode) ||
+      !caps.focusMode.includes('single-shot')
+    )
+      return false;
+    const focus: MediaTrackConstraintSet & { focusMode: string } = { focusMode: 'single-shot' };
+    await ms.applyConstraints({ advanced: [focus] });
     return true;
   } catch {
     return false;
   }
 }
+let nativeGlobalsRegistered = false;
+export function registerNativeVideoGlobals(register: () => void) {
+  if (nativeGlobalsRegistered) return;
+  register();
+  nativeGlobalsRegistered = true;
+}
+
+/** Load native support only outside Expo Go, before any local capture. */
+export async function loadNativeVideo() {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient)
+    throw new Error('Video nie je podporované v Expo Go. Otvor nainštalovanú aplikáciu.');
+  try {
+    const native = await import('@livekit/react-native');
+    registerNativeVideoGlobals(native.registerGlobals);
+    return native;
+  } catch {
+    throw new Error('V tejto verzii aplikácie chýba podpora videa. Nainštaluj nové zostavenie.');
+  }
+}
+
 export async function createPreferredTrack(facing: Facing, deviceId?: string) {
+  if (Platform.OS !== 'web') await loadNativeVideo();
   if (!(await ensureCameraPermissions())) throw new Error('Camera permission denied');
   const { createLocalVideoTrack } = await import('livekit-client');
   const res = { width: 1280, height: 720 };

@@ -7,7 +7,13 @@ import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
 import { useCallback, useMemo, useState } from 'react';
 import { usePlayers } from '@/lib/players';
-import { hasUnread, loadContacts, loadOpenMatches, loadReadChats, useOnlineQuery } from '@/lib/online';
+import {
+  hasUnread,
+  loadContacts,
+  loadOpenMatches,
+  loadReadChats,
+  useOnlineQuery,
+} from '@/lib/online';
 import { OpenMatches, OnlineError, Presence, UnreadEnvelope } from '@/components/OnlineUI';
 
 function sortedContacts(
@@ -40,8 +46,7 @@ export default function Home() {
   const boardSize = cardWidth * 1.8;
   // Šírka miesta pre nápis — písmo sa jej prispôsobí (na výšku menšie, na šírku väčšie).
   const [titleWidth, setTitleWidth] = useState(0);
-  const titleFont =
-    titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
+  const titleFont = titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
   const friends = useDarts((s) => s.friends);
   const game = useDarts((s) => s.game);
   const history = useDarts((s) => s.history);
@@ -62,9 +67,7 @@ export default function Home() {
   );
   const friendsOnline = useMemo(
     () =>
-      session
-        ? sortedContacts(social.data?.contacts ?? [], session.user.id, read).slice(0, 3)
-        : [],
+      session ? sortedContacts(social.data?.contacts ?? [], session.user.id, read).slice(0, 3) : [],
     [social.data, session, read],
   );
   return (
@@ -104,17 +107,10 @@ export default function Home() {
                 })
               }
             >
-              <Txt
-                numberOfLines={1}
-                className="flex-1"
-                style={{ fontFamily: 'Inter_600SemiBold' }}
-              >
+              <Txt numberOfLines={1} className="flex-1" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 @{contact.nickname}
               </Txt>
-              {session &&
-              hasUnread(contact, session.user.id, read) ? (
-                <UnreadEnvelope />
-              ) : null}
+              {session && hasUnread(contact, session.user.id, read) ? <UnreadEnvelope /> : null}
               <Presence
                 inline
                 online={!!contact.online}
@@ -178,27 +174,27 @@ export default function Home() {
               Terč doma.{'\n'}Súper kdekoľvek.
             </Txt>
             <View>
-            <View
-              onLayout={(e) => {
-                const w = e.nativeEvent.layout.width;
-                if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
-              }}
-            >
-              <Txt
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
-                className="text-accent"
-                style={{
-                  fontFamily: 'Inter_700Bold',
-                  letterSpacing: -4,
-                  fontSize: titleFont,
-                  lineHeight: Math.round(titleFont * 1.12),
+              <View
+                onLayout={(e) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
                 }}
               >
-                DartMate
-              </Txt>
-            </View>
+                <Txt
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                  className="text-accent"
+                  style={{
+                    fontFamily: 'Inter_700Bold',
+                    letterSpacing: -4,
+                    fontSize: titleFont,
+                    lineHeight: Math.round(titleFont * 1.12),
+                  }}
+                >
+                  DartMate
+                </Txt>
+              </View>
               <View className="mt-3 flex-row gap-2">
                 <Button
                   size="md"

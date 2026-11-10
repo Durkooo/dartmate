@@ -75,9 +75,7 @@ export function computeMatchStats(turns: OnlineTurn[], playerId: string): MatchP
     const ordered = [...list].sort((a, b) => a.turn_number - b.turn_number);
     const last = ordered[ordered.length - 1];
     if (!last || last.bust || last.remaining !== 0 || last.player_id !== playerId) continue;
-    const darts = list
-      .filter((t) => t.player_id === playerId)
-      .reduce((s, t) => s + t.darts, 0);
+    const darts = list.filter((t) => t.player_id === playerId).reduce((s, t) => s + t.darts, 0);
     if (darts > 0 && (bestLeg === null || darts < bestLeg)) bestLeg = darts;
   }
   return { tons80, tons100, tons140, tons170, count180, avg3, avg9, bestLeg };
@@ -128,7 +126,11 @@ export async function markChatRead(peerId: string, at?: string): Promise<void> {
 }
 /** Neprečítaná = posledná správa je od priateľa a je novšia než posledné čítanie. */
 export function hasUnread(
-  contact: { user_id?: string | null; last_sender_id?: string | null; last_message_at?: string | null },
+  contact: {
+    user_id?: string | null;
+    last_sender_id?: string | null;
+    last_message_at?: string | null;
+  },
   myId: string,
   read: Record<string, string>,
 ): boolean {
@@ -168,15 +170,9 @@ export async function loadContacts(): Promise<SocialContactRow[]> {
   return rows.filter((c) => !!c.user_id && !!c.nickname);
 }
 /** Jeden riadok z list_social_contacts — presný typ z databázy, žiadne any. */
-type SocialContactRow =
-  Database['public']['Functions']['list_social_contacts']['Returns'][number];
+type SocialContactRow = Database['public']['Functions']['list_social_contacts']['Returns'][number];
 function isContactRow(value: unknown): value is SocialContactRow {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'user_id' in value &&
-    'nickname' in value
-  );
+  return typeof value === 'object' && value !== null && 'user_id' in value && 'nickname' in value;
 }
 export type SocialContact = SocialContactRow;
 export async function loadOpenMatches() {
@@ -192,7 +188,26 @@ export async function loadOpenMatches() {
 }
 /** Raz za beh appky: zápasy staršie než 3 dni sa automaticky zrušia. */
 const expiryTried = new Set<string>();
-async function expireOldMatches(matches: OnlineMatch[]) {
+type ExpirableMatch = Pick<OnlineMatch, 'id' | 'status' | 'created_at' | 'guest_id'>;
+function isExpirableMatch(value: unknown): value is ExpirableMatch {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'guest_id' in value &&
+    typeof value.guest_id === 'string' &&
+    'created_at' in value &&
+    typeof value.created_at === 'string' &&
+    'status' in value &&
+    (value.status === 'invited' ||
+      value.status === 'active' ||
+      value.status === 'cancelled' ||
+      value.status === 'declined' ||
+      value.status === 'finished')
+  );
+}
+async function expireOldMatches(matches: ExpirableMatch[]) {
   const userId = usePlayers.getState().session?.user.id;
   if (!userId) return;
   for (const m of matches) {
@@ -209,7 +224,12 @@ async function expireOldMatches(matches: OnlineMatch[]) {
     }
   }
 }
-export async function inviteMatch(peer: string, starting: number, doubleOut: boolean, legsToWin = 1) {
+export async function inviteMatch(
+  peer: string,
+  starting: number,
+  doubleOut: boolean,
+  legsToWin = 1,
+) {
   const { data, error } = await bilt.rpc('invite_online_match', {
     peer,
     starting_score: starting,
@@ -246,8 +266,8 @@ export async function loadMatch(id: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!match) return null;
-  if (match.status === 'invited' || match.status === 'active')
-    void expireOldMatches([match as OnlineMatch]);
+  const expirable: unknown = match;
+  if (isExpirableMatch(expirable)) void expireOldMatches([expirable]);
   // A turn may be written between these reads. Only show the same confirmed version.
   const turns: OnlineTurn[] = [];
   let before = match.turn_count + 1;

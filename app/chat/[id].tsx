@@ -119,12 +119,7 @@ export default function Chat() {
               <Send size={21} color={palette.ink} strokeWidth={1.8} />
             </Button>
           </View>
-          <Button
-            className="mt-1"
-            variant="ghost"
-            size="sm"
-            onPress={() => router.dismissTo('/')}
-          >
+          <Button className="mt-1" variant="ghost" size="sm" onPress={() => router.dismissTo('/')}>
             <Button.Label>Späť domov</Button.Label>
           </Button>
         </View>

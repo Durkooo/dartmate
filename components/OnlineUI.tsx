@@ -87,8 +87,10 @@ export function Presence({
       <Animated.View
         style={[
           styles.dot,
-          { backgroundColor: unknown ? palette.muted : online ? palette.success : color,
-            opacity: blink },
+          {
+            backgroundColor: unknown ? palette.muted : online ? palette.success : color,
+            opacity: blink,
+          },
         ]}
       />
       <Txt
@@ -233,7 +235,9 @@ export function MatchInviteCard({
         onChanged();
       }
     } catch (e) {
-      setError(playerError({ message: e instanceof Error ? e.message : 'Akciu sa nepodarilo vykonať.' }));
+      setError(
+        playerError({ message: e instanceof Error ? e.message : 'Akciu sa nepodarilo vykonať.' }),
+      );
       feedback.error();
       onChanged();
     } finally {
@@ -261,11 +265,7 @@ export function MatchInviteCard({
       )}
       {incoming ? (
         <View className="flex-row gap-2">
-          <Button
-            className="flex-1"
-            isDisabled={pending}
-            onPress={() => void decide('accept')}
-          >
+          <Button className="flex-1" isDisabled={pending} onPress={() => void decide('accept')}>
             <Button.Label>{pending ? 'Čakaj…' : 'Prijať zápas'}</Button.Label>
           </Button>
           <Button
@@ -278,11 +278,7 @@ export function MatchInviteCard({
           </Button>
         </View>
       ) : (
-        <Button
-          variant="secondary"
-          isDisabled={pending}
-          onPress={() => void decide('cancel')}
-        >
+        <Button variant="secondary" isDisabled={pending} onPress={() => void decide('cancel')}>
           <Button.Label>{pending ? 'Čakaj…' : 'Zrušiť pozvánku'}</Button.Label>
         </Button>
       )}

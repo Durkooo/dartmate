@@ -57,7 +57,10 @@ export default function Match() {
   const name = player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
   const score = Number(input);
   const checkout =
-    !!input && score === currentScores[player] && validScore(score) && canFinish(score, game.doubleOut);
+    !!input &&
+    score === currentScores[player] &&
+    validScore(score) &&
+    canFinish(score, game.doubleOut);
   const finished = game.winner !== null;
   const legBreak = game.betweenLegs;
   const legNo = currentLeg(game) + 1;
@@ -119,7 +122,7 @@ export default function Match() {
                 </Txt>
               </View>
               <View className="flex-row px-4 py-2">
-                {(game.solo ? [0] as const : [0, 1] as const).map((p) => (
+                {(game.solo ? ([0] as const) : ([0, 1] as const)).map((p) => (
                   <View
                     key={p}
                     className={`flex-1 items-center px-2 ${p === 0 && !game.solo ? 'border-on-ink/20 border-r' : ''}`}

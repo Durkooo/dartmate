@@ -38,11 +38,21 @@ function StatRow({
 }) {
   return (
     <View className="flex-row items-baseline py-2.5">
-      <Txt numberOfLines={1} className="flex-1 text-left text-[17px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+      <Txt
+        numberOfLines={1}
+        className="flex-1 text-left text-[17px]"
+        style={{ fontFamily: 'Inter_600SemiBold' }}
+      >
         {statText(mine)}
       </Txt>
-      <Txt className="text-muted px-3 text-[13px]" style={{ fontFamily: 'Inter_400Regular' }}>{label}</Txt>
-      <Txt numberOfLines={1} className="flex-1 text-right text-[17px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+      <Txt className="text-muted px-3 text-[13px]" style={{ fontFamily: 'Inter_400Regular' }}>
+        {label}
+      </Txt>
+      <Txt
+        numberOfLines={1}
+        className="flex-1 text-right text-[17px]"
+        style={{ fontFamily: 'Inter_600SemiBold' }}
+      >
         {statText(peer)}
       </Txt>
     </View>
@@ -58,12 +68,7 @@ export default function MatchStats() {
   );
   const match = query.data?.match ?? null;
   const turns = query.data?.turns ?? [];
-  const peerId =
-    match && userId
-      ? match.host_id === userId
-        ? match.guest_id
-        : match.host_id
-      : '';
+  const peerId = match && userId ? (match.host_id === userId ? match.guest_id : match.host_id) : '';
   const me = userId ? computeMatchStats(turns, userId) : null;
   const rival = computeMatchStats(turns, peerId);
   const won = match && userId ? match.winner_id === userId : false;
@@ -71,7 +76,14 @@ export default function MatchStats() {
     <Page hideFallback>
       <Stack.Screen options={{ title: 'Štatistiky zápasu' }} />
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 32, maxWidth: 600, width: '100%', alignSelf: 'center', flexGrow: 1 }}
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: 32,
+          maxWidth: 600,
+          width: '100%',
+          alignSelf: 'center',
+          flexGrow: 1,
+        }}
       >
         <Heading className="text-center">Štatistiky zápasu</Heading>
         <OnlineError error={query.error} retry={() => void query.refresh()} />
@@ -86,10 +98,18 @@ export default function MatchStats() {
                 {match.doubleOut ? ' · Double out' : ''}
               </Txt>
               <View className="mt-6 flex-row items-baseline">
-                <Txt numberOfLines={1} className="flex-1 text-left text-[15px]" style={{ fontFamily: 'Inter_700Bold' }}>
+                <Txt
+                  numberOfLines={1}
+                  className="flex-1 text-left text-[15px]"
+                  style={{ fontFamily: 'Inter_700Bold' }}
+                >
                   Ty
                 </Txt>
-                <Txt numberOfLines={1} className="flex-1 text-right text-[15px]" style={{ fontFamily: 'Inter_700Bold' }}>
+                <Txt
+                  numberOfLines={1}
+                  className="flex-1 text-right text-[15px]"
+                  style={{ fontFamily: 'Inter_700Bold' }}
+                >
                   @{match && userId ? opponentName(match, userId) : ''}
                 </Txt>
               </View>
