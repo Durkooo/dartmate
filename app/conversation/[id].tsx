@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input } from 'heroui-native';
-import { Send, Video } from 'lucide-react-native';
+import { Send, Video, X } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Empty, LoadingRows } from '@/components/DartsUI';
@@ -11,7 +11,7 @@ import { OnlineGate, OnlineError, MatchInviteCard, Presence, OpenMatches } from 
 import { feedback, palette } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import VideoCall from '@/components/VideoCall';
-import { getCallCredentials } from '@/lib/video';
+import { getCallCredentials, loadCameraPrefs, type CameraPrefs } from '@/lib/video';
 import { notifyRecipient } from '@/lib/sendPush';
 import { playerError, usePlayers } from '@/lib/players';
 import {
@@ -63,8 +63,18 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
   const [text, setText] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setText('');
+    setError('');
+  }, []);
   const [callOpen, setCallOpen] = useState(false);
   const [joined, setJoined] = useState<Record<string, number>>({});
+  const [camPrefs, setCamPrefs] = useState<CameraPrefs>({ match: 'environment', call: 'user' });
+  useEffect(() => {
+    void loadCameraPrefs().then(setCamPrefs);
+  }, []);
   useFocusEffect(
     useCallback(() => {
       void loadJoinedCalls().then(setJoined);
@@ -138,7 +148,52 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
     const rows = [...(query.data?.messages ?? []), ...(older?.key === key ? older.rows : [])];
     return [...new Map(rows.map((m) => [m.id, m])).values()].sort((a, b) => b.id - a.id);
   }, [query.data, older, key]);
-  // Otvorená konverzácia = prečítané: zapamätá najnovšiu správu, obálka aj preskočenie v poradí zmiznú.
+  // Upraviť ide len vlastnú poslednú textovú správu (podržanie prsta).
+  const newestMineId = messages.find(
+    (m) => m.sender_id === userId && !isCallMessage(m.body),
+  )?.id;
+  const startEdit = (item: DirectMessage) => {
+    if (pending || item.id !== newestMineId) return;
+    setEditingId(item.id);
+    setText(item.body);
+    setError('');
+    feedback.selection();
+  };
+  /** Uloženie úpravy vlastnej poslednej správy (RPC vytvorí agent). */
+  const saveEdit = async (body: string) => {
+    if (editingId === null || !key) return;
+    setPending(true);
+    setError('');
+    try {
+      const { error: e } = await bilt.rpc('edit_direct_message', {
+        message_id: editingId,
+        new_body: body,
+      });
+      if (e) throw new Error(e.message);
+      if (usePlayers.getState().session?.user.id !== userId) return;
+      setOlder((s) =>
+        s?.key === key
+          ? { ...s, rows: s.rows.map((m) => (m.id === editingId ? { ...m, body } : m)) }
+          : s,
+      );
+      setEditingId(null);
+      setText('');
+      feedback.success();
+      await query.refresh();
+    } catch (e) {
+      if (usePlayers.getState().session?.user.id === userId) {
+        setError(
+          playerError({
+            message: e instanceof Error ? e.message : 'Správu sa nepodarilo upraviť.',
+          }),
+        );
+        feedback.error();
+      }
+    } finally {
+      setPending(false);
+    }
+  };
+  // Otvorená konverzácia = prečítané: zapamätá najnovšiu správu.
   useEffect(() => {
     const newest = messages[0]?.created_at;
     if (newest) void markChatRead(id, newest);
@@ -146,6 +201,10 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
   const send = async () => {
     const body = text.trim();
     if (!body || pending || !key) return;
+    if (editingId !== null) {
+      await saveEdit(body);
+      return;
+    }
     setPending(true);
     setError('');
     if (request.current?.body !== body || request.current.key !== key)
@@ -289,6 +348,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                 onMicChange={setMicWanted}
                 getCredentials={loadCallCredentials}
                 peerName={contact?.nickname ?? undefined}
+                initialFacing={camPrefs.call}
               />
             </View>
           )}
@@ -352,6 +412,10 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                 exiting={FadeOut.duration(100)}
                 style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '85%' }}
               >
+                <Pressable
+                  onLongPress={mine ? () => startEdit(item) : undefined}
+                  delayLongPress={400}
+                >
                 <View
                   className={
                     mine
@@ -372,6 +436,7 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                     {mine ? ' · Odoslané' : ''}
                   </Txt>
                 </View>
+                </Pressable>
               </Animated.View>
             );
           }}
@@ -414,7 +479,22 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
             </Txt>
           )}
           {contact && (
-            <View className="flex-row items-end gap-2">
+            <>
+              {editingId !== null && (
+                <View className="mb-2 flex-row items-center justify-between">
+                  <Txt className="text-muted text-[13px]">Upravuješ svoju správu</Txt>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    isDisabled={pending}
+                    onPress={cancelEdit}
+                  >
+                    <X size={16} strokeWidth={1.8} color={palette.muted} />
+                    <Button.Label>Zrušiť</Button.Label>
+                  </Button>
+                </View>
+              )}
+              <View className="flex-row items-end gap-2">
               <Input
                 className="bg-background max-h-28 flex-1"
                 value={text}
@@ -433,7 +513,8 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
               >
                 <Send size={21} strokeWidth={1.8} color={palette.ink} />
               </Button>
-            </View>
+              </View>
+            </>
           )}
           <Button
             variant="ghost"
