@@ -11,7 +11,7 @@ import { MatchChat } from '@/components/MatchChat';
 import { bilt } from '@/lib/bilt';
 import { feedback, palette, validScore, canFinish, validCheckout } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
-import { loadCameraPrefs, type CameraPrefs } from '@/lib/video';
+import { loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import {
   appIsActive,
   loadMatch,
@@ -390,6 +390,8 @@ export default function OnlineGame() {
           <Button
             variant="secondary"
             onPress={() => {
+              // Povolenie kamery musí prísť z gesta — predhrejeme ju ešte pred videom.
+              void warmUpCamera(camPrefs.match, camPrefs.matchDeviceId).catch(() => undefined);
               setVideo(true);
               feedback.selection();
             }}
