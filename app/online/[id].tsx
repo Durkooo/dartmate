@@ -380,6 +380,7 @@ export default function OnlineGame() {
             onMicChange={setMicWanted}
             peerName={peerName}
             initialFacing={camPrefs.match}
+            initialDeviceId={camPrefs.matchDeviceId}
           />
         )}
 
