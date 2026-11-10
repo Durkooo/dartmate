@@ -8,11 +8,46 @@ import { bilt } from '@/lib/bilt';
 import { feedback } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 import {
+  listCameras,
   loadCameraPrefs,
   saveCameraPrefs,
+  type CameraDevice,
   type CameraPrefs,
   type Facing,
 } from '@/lib/video';
+
+function DevicePicker({
+  devices,
+  value,
+  onChange,
+}: {
+  devices: CameraDevice[];
+  value?: string;
+  onChange: (device?: CameraDevice) => void;
+}) {
+  if (!devices.length) return null;
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      <Button
+        size="sm"
+        variant={!value ? 'primary' : 'secondary'}
+        onPress={() => onChange(undefined)}
+      >
+        <Button.Label>Automatická</Button.Label>
+      </Button>
+      {devices.map((d) => (
+        <Button
+          key={d.deviceId}
+          size="sm"
+          variant={value === d.deviceId ? 'primary' : 'secondary'}
+          onPress={() => onChange(d)}
+        >
+          <Button.Label numberOfLines={1}>{d.label}</Button.Label>
+        </Button>
+      ))}
+    </View>
+  );
+}
 
 function FacingPicker({
   label,
@@ -65,7 +100,9 @@ export default function Account() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
   const [camPrefs, setCamPrefs] = useState<CameraPrefs>({ match: 'environment', call: 'user' });
+  const [devices, setDevices] = useState<CameraDevice[]>([]);
   const [previewFacing, setPreviewFacing] = useState<Facing | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<string | undefined>(undefined);
   useEffect(() => {
     void loadCameraPrefs().then(setCamPrefs);
   }, []);
@@ -273,13 +310,35 @@ export default function Account() {
                 label="Online zápas"
                 hint="Zadná kamera mierie na terč, predná na teba."
                 value={camPrefs.match}
-                onChange={(f) => updatePrefs({ ...camPrefs, match: f })}
+                onChange={(f) => updatePrefs({ ...camPrefs, match: f, matchDeviceId: undefined })}
+              />
+              <DevicePicker
+                devices={devices}
+                value={camPrefs.matchDeviceId}
+                onChange={(d) =>
+                  updatePrefs({
+                    ...camPrefs,
+                    match: d?.facing ?? camPrefs.match,
+                    matchDeviceId: d?.deviceId,
+                  })
+                }
               />
               <FacingPicker
                 label="Videohovor"
                 hint="Predná kamera ukazuje tvoju tvár."
                 value={camPrefs.call}
-                onChange={(f) => updatePrefs({ ...camPrefs, call: f })}
+                onChange={(f) => updatePrefs({ ...camPrefs, call: f, callDeviceId: undefined })}
+              />
+              <DevicePicker
+                devices={devices}
+                value={camPrefs.callDeviceId}
+                onChange={(d) =>
+                  updatePrefs({
+                    ...camPrefs,
+                    call: d?.facing ?? camPrefs.call,
+                    callDeviceId: d?.deviceId,
+                  })
+                }
               />
               {previewFacing ? (
                 <View className="gap-2">
@@ -294,20 +353,51 @@ export default function Account() {
                         key={f}
                         size="sm"
                         className="flex-1"
-                        variant={previewFacing === f ? 'primary' : 'secondary'}
-                        onPress={() => setPreviewFacing(f)}
+                        variant={previewFacing === f && !previewDevice ? 'primary' : 'secondary'}
+                        onPress={() => {
+                          setPreviewFacing(f);
+                          setPreviewDevice(undefined);
+                        }}
                       >
                         <Button.Label>{name}</Button.Label>
                       </Button>
                     ))}
                   </View>
-                  <CameraPreview key={previewFacing} facing={previewFacing} />
+                  {devices.length > 0 && (
+                    <View className="flex-row flex-wrap gap-2">
+                      {devices.map((d) => (
+                        <Button
+                          key={d.deviceId}
+                          size="sm"
+                          variant={previewDevice === d.deviceId ? 'primary' : 'secondary'}
+                          onPress={() => {
+                            setPreviewDevice(d.deviceId);
+                            setPreviewFacing(d.facing);
+                          }}
+                        >
+                          <Button.Label numberOfLines={1}>{d.label}</Button.Label>
+                        </Button>
+                      ))}
+                    </View>
+                  )}
+                  <CameraPreview
+                    key={`${previewFacing}-${previewDevice ?? 'auto'}`}
+                    facing={previewFacing}
+                    deviceId={previewDevice}
+                    onDevices={setDevices}
+                  />
                   <Button variant="ghost" size="sm" onPress={() => setPreviewFacing(null)}>
                     <Button.Label>Zavrieť náhľad</Button.Label>
                   </Button>
                 </View>
               ) : (
-                <Button variant="secondary" onPress={() => setPreviewFacing(camPrefs.match)}>
+                <Button
+                  variant="secondary"
+                  onPress={() => {
+                    setPreviewDevice(undefined);
+                    setPreviewFacing(camPrefs.match);
+                  }}
+                >
                   <Button.Label>Náhľad kamery</Button.Label>
                 </Button>
               )}
