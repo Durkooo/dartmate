@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { Button } from 'heroui-native';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, SwitchCamera } from 'lucide-react-native';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, SwitchCamera, Focus } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
 import { palette } from '@/lib/darts';
 
@@ -12,6 +12,7 @@ export type VideoControlsProps = {
   onMicrophone: () => void;
   onLeave: () => void;
   onFlip: () => void;
+  onFocus: () => void;
 };
 export function VideoControls({
   camera,
@@ -21,6 +22,7 @@ export function VideoControls({
   onMicrophone,
   onLeave,
   onFlip,
+  onFocus,
 }: VideoControlsProps) {
   return (
     <View className="mt-3 flex-row gap-2">
@@ -36,6 +38,7 @@ export function VideoControls({
           action: onMicrophone,
         },
         { label: 'Otočiť kameru', Icon: SwitchCamera, action: onFlip },
+        { label: 'Zaostriť na terč', Icon: Focus, action: onFocus },
         { label: 'Odpojiť videohovor', Icon: PhoneOff, action: onLeave },
       ].map(({ label, Icon, action }) => (
         <Button

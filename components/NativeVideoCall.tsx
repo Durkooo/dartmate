@@ -23,7 +23,7 @@ import {
 } from '@livekit/react-native';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
-import { getVideoCredentials, trackOptions, ensureCameraPermissions } from '@/lib/video';
+import { getVideoCredentials, trackOptions, ensureCameraPermissions, singleShotFocus } from '@/lib/video';
 import { feedback, palette } from '@/lib/darts';
 import type { VideoCallProps } from '@/components/VideoCall';
 
@@ -246,6 +246,15 @@ function RoomContent({
             setDeviceId(undefined);
           })
         }
+        onFocus={() => {
+          void (async () => {
+            if (!(await singleShotFocus(room))) {
+              setCamError('Tento telefón nepodporuje ručné doostrenie — ostáva automatika.');
+            } else {
+              feedback.selection();
+            }
+          })();
+        }}
         onLeave={onLeave}
       />
     </View>

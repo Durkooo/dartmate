@@ -9,7 +9,7 @@ import {
   ConnectionQuality,
   type Participant,
 } from 'livekit-client';
-import { trackOptions } from '@/lib/video';
+import { trackOptions, singleShotFocus } from '@/lib/video';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import { feedback, palette } from '@/lib/darts';
@@ -434,6 +434,15 @@ export default function VideoCall({
             setDeviceId(undefined);
           })
         }
+        onFocus={() => {
+          void (async () => {
+            if (!(await singleShotFocus(room))) {
+              setError('Tento prehliadač nepodporuje ručné doostrenie — ostáva automatika.');
+            } else {
+              feedback.selection();
+            }
+          })();
+        }}
         onLeave={onLeave}
       />
     </View>
