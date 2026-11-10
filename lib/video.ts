@@ -1,5 +1,7 @@
 import { FunctionsHttpError } from '@biltme/backend';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PermissionsAndroid, Platform } from 'react-native';
+import { Track, type Room } from 'livekit-client';
 import { bilt } from '@/lib/bilt';
 
 export type Facing = 'user' | 'environment';
@@ -108,6 +110,26 @@ export async function ensureCameraPermissions(): Promise<boolean> {
       PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
     ]);
     return result['android.permission.CAMERA'] === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
+/** Jednorazové doostrenie na terč (single-shot). Vráti false, ak to telefón nevie. */
+export async function singleShotFocus(room: Room): Promise<boolean> {
+  try {
+    const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+    const t = (pub?.track ?? null) as unknown as { mediaStreamTrack?: unknown } | null;
+    const ms = (t?.mediaStreamTrack ?? null) as unknown as {
+      getCapabilities?: () => unknown;
+      applyConstraints?: (c: unknown) => Promise<void>;
+    } | null;
+    if (!ms || typeof ms.applyConstraints !== 'function') return false;
+    const caps = (typeof ms.getCapabilities === 'function' ? ms.getCapabilities() : {}) as {
+      focusMode?: unknown;
+    };
+    if (!Array.isArray(caps.focusMode) || !caps.focusMode.includes('single-shot')) return false;
+    await ms.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+    return true;
   } catch {
     return false;
   }
