@@ -236,9 +236,10 @@ export default function OnlineGame() {
       <ScrollView
         ref={videoRef}
         contentContainerStyle={{
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingTop: 4,
           paddingBottom: 32,
-          gap: 16,
+          gap: 12,
           maxWidth: 600,
           width: '100%',
           alignSelf: 'center',
@@ -248,16 +249,16 @@ export default function OnlineGame() {
         {/* 1) SKÓRE – vždy na vrchu */}
         <View className="bg-ink overflow-hidden rounded-[22px]">
           {legsToWin > 1 && (
-            <View className="flex-row items-center justify-center gap-2 px-4 pt-3">
+            <View className="flex-row items-center justify-center gap-2 px-4 pt-2">
               <Trophy size={14} strokeWidth={1.8} color={palette.ink} />
-              <Txt className="text-on-ink text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+              <Txt className="text-on-ink text-[12px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {m?.status === 'finished'
                   ? `Legy ${myLegs}:${peerLegs}`
                   : `Leg ${legNo} · legy ${myLegs}:${peerLegs} (do ${legsToWin}) · začína @${legStarterName}`}
               </Txt>
             </View>
           )}
-          <View className="flex-row p-4">
+          <View className="flex-row px-4 py-2">
             {[
               { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
               {
@@ -289,8 +290,8 @@ export default function OnlineGame() {
                 <Txt
                   className={
                     p.active
-                      ? 'text-accent text-[38px] leading-[46px]'
-                      : 'text-[38px] leading-[46px] text-white'
+                      ? 'text-accent text-[30px] leading-[38px]'
+                      : 'text-[30px] leading-[38px] text-white'
                   }
                   adjustsFontSizeToFit
                   numberOfLines={1}
