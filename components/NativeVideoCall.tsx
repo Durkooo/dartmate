@@ -155,6 +155,7 @@ function RoomContent({
           void control(() =>
             localParticipant.setCameraEnabled(!isCameraEnabled, {
               resolution: VideoPresets.h720,
+              ...trackOptions(facing, deviceId),
             }),
           )
         }
@@ -180,6 +181,7 @@ function RoomContent({
               resolution: { width: res.width, height: res.height, frameRate: 30 },
             });
             setFacing(next);
+            setDeviceId(undefined);
           })
         }
         onLeave={onLeave}
@@ -230,9 +232,11 @@ export default function NativeVideoCall({
       const track = pub?.track;
       if (track instanceof LocalVideoTrack && room.localParticipant.isCameraEnabled) {
         const res = presets[tier].resolution;
+        // restartTrack bez zdroja by prepol na prednú kameru — držíme stranu aj zariadenie.
         void track
           .restartTrack({
             resolution: { width: res.width, height: res.height, frameRate: 30 },
+            ...trackOptions(facing, deviceId),
           })
           .catch(() => undefined);
       }
@@ -244,7 +248,7 @@ export default function NativeVideoCall({
     return () => {
       room.off(RoomEvent.ConnectionQualityChanged, handler);
     };
-  }, [room]);
+  }, [room, facing, deviceId]);
   const [previousSession, setPreviousSession] = useState(request);
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {

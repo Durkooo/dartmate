@@ -10,6 +10,7 @@ import {
   ConnectionQuality,
   type Participant,
 } from 'livekit-client';
+import { trackOptions } from '@/lib/video';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import { feedback, palette } from '@/lib/darts';
@@ -54,6 +55,7 @@ export default function VideoCall({
   // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p (max raz za 8 s).
   const videoTier = useRef(1);
   const videoPresets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
+  const [deviceId, setDeviceId] = useState<string | undefined>(initialDeviceId);
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
   const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
@@ -79,31 +81,6 @@ export default function VideoCall({
       dynacast: true,
       videoCaptureDefaults: { resolution: VideoPresets.h720 },
     });
-    let cooling = false;
-    const applyQuality = (quality: ConnectionQuality) => {
-      const tier =
-        quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
-      if (tier === videoTier.current || cooling) return;
-      videoTier.current = tier;
-      cooling = true;
-      setTimeout(() => {
-        cooling = false;
-      }, 8000);
-      const pub = session.localParticipant.getTrackPublication(Track.Source.Camera);
-      const track = pub?.track;
-      if (track instanceof LocalVideoTrack && session.localParticipant.isCameraEnabled) {
-        const res = videoPresets[tier].resolution;
-        void track
-          .restartTrack({
-            resolution: { width: res.width, height: res.height, frameRate: 30 },
-          })
-          .catch(() => undefined);
-      }
-    };
-    const qualityHandler = (quality: ConnectionQuality, participant: Participant) => {
-      if (participant.isLocal) applyQuality(quality);
-    };
-    session.on(RoomEvent.ConnectionQualityChanged, qualityHandler);
     const fail = (e: unknown) => {
       if (active) {
         setError(e instanceof Error ? e.message : 'Video sa nepodarilo pripojiť.');
@@ -188,7 +165,40 @@ export default function VideoCall({
       void session.disconnect();
     };
   }, [request]);
-  // Zmena z hornej obrazovky (prepínač mikrofónu) sa premietne do miestnosti.
+  // Auto-kvalita podľa internetu (vlastný efekt — vidí aktuálnu kameru).
+  useEffect(() => {
+    if (!room) return undefined;
+    let cooling = false;
+    const applyQuality = (quality: ConnectionQuality) => {
+      const tier =
+        quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
+      if (tier === videoTier.current || cooling) return;
+      videoTier.current = tier;
+      cooling = true;
+      setTimeout(() => {
+        cooling = false;
+      }, 8000);
+      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+      const track = pub?.track;
+      if (track instanceof LocalVideoTrack && room.localParticipant.isCameraEnabled) {
+        const res = videoPresets[tier].resolution;
+        // restartTrack bez zdroja by prepol na prednú kameru — držíme stranu aj zariadenie.
+        void track
+          .restartTrack({
+            resolution: { width: res.width, height: res.height, frameRate: 30 },
+            ...trackOptions(facing, deviceId),
+          })
+          .catch(() => undefined);
+      }
+    };
+    const qualityHandler = (quality: ConnectionQuality, participant: Participant) => {
+      if (participant.isLocal) applyQuality(quality);
+    };
+    room.on(RoomEvent.ConnectionQualityChanged, qualityHandler);
+    return () => {
+      room.off(RoomEvent.ConnectionQualityChanged, qualityHandler);
+    };
+  }, [room, facing, deviceId]);
   useEffect(() => {
     if (!room) return;
     if (room.localParticipant.isMicrophoneEnabled === microphone) return;
@@ -306,7 +316,14 @@ export default function VideoCall({
         camera={camera}
         microphone={microphone}
         pending={pending}
-        onCamera={() => void control(() => room.localParticipant.setCameraEnabled(!camera))}
+        onCamera={() =>
+          void control(() =>
+            room.localParticipant.setCameraEnabled(!camera, {
+              resolution: VideoPresets.h720,
+              ...trackOptions(facing, deviceId),
+            }),
+          )
+        }
         onMicrophone={() =>
           void control(async () => {
             const next = !microphone;
@@ -327,6 +344,7 @@ export default function VideoCall({
               resolution: { width: res.width, height: res.height, frameRate: 30 },
             });
             setFacing(next);
+            setDeviceId(undefined);
           })
         }
         onLeave={onLeave}
