@@ -87,7 +87,17 @@ export function trackOptions(facing: Facing, deviceId?: string) {
     ? { deviceId: { exact: deviceId } }
     : { facingMode: facing };
 }
-/** Vytvorí kameru podľa predvoľby; pri zlom deviceId skúsi stranu. */
+/** Rýchle „prebudenie“ kamery v ťuknutí prstom — iOS povolí kameru len z gesta.
+ *  Vytvorí a hneď zruší stopu, aby pri pripojení už bolo povolenie dané. */
+export async function warmUpCamera(facing: Facing, deviceId?: string): Promise<boolean> {
+  try {
+    const track = await createPreferredTrack(facing, deviceId);
+    track.stop();
+    return true;
+  } catch {
+    return false;
+  }
+}
 export async function createPreferredTrack(facing: Facing, deviceId?: string) {
   const { createLocalVideoTrack } = await import('livekit-client');
   const res = { width: 1280, height: 720 };
