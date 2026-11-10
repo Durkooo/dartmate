@@ -9,6 +9,21 @@ import { feedback, palette } from '@/lib/darts';
 import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
 import { playerError, usePlayers } from '@/lib/players';
 
+/** „pred 5 min“, „pred 2 h“, „včera“, „pred 3 dňami“, inak dátum. */
+export function formatLastSeen(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 1) return 'práve teraz';
+  if (mins < 60) return `pred ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours === 1 ? 'pred hodinou' : `pred ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days < 2) return 'včera';
+  if (days < 7) return `pred ${days} dňami`;
+  return new Date(then).toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric' });
+}
+
 export function OnlineGate({ children }: { children: React.ReactNode }) {
   const session = usePlayers((s) => s.session);
   const profile = usePlayers((s) => s.profile);
@@ -48,12 +63,15 @@ export function Presence({
   unknown = false,
   inline = false,
   playing = false,
+  lastSeen = null,
 }: {
   online: boolean;
   unknown?: boolean;
   inline?: boolean;
   /** Práve hrá online zápas — oranžová bodka a text. */
   playing?: boolean;
+  /** ISO čas poslednej aktivity — pri offline ukáže „naposledy pred …“. */
+  lastSeen?: string | null;
 }) {
   // Online bodka bliká (opacity 1 ↔ 0.25), nápis „Online" ostáva stále zelený.
   // Hodnota vznikne raz pri prvom vykreslení (inicializátor useState).
@@ -98,7 +116,15 @@ export function Presence({
         style={{ color, fontSize: inline ? 13 : 12 }}
         className={inline ? undefined : 'text-[12px]'}
       >
-        {unknown ? 'Stav neznámy' : playing ? 'Práve hrá' : online ? 'Online' : 'Offline'}
+        {unknown
+          ? 'Stav neznámy'
+          : playing
+            ? 'Práve hrá'
+            : online
+              ? 'Online'
+              : lastSeen
+                ? `Offline · naposledy ${formatLastSeen(lastSeen)}`
+                : 'Offline'}
       </Txt>
     </View>
   );
