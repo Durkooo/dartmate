@@ -39,6 +39,7 @@ export default function VideoCall({
   getCredentials,
   peerName,
   initialFacing,
+  initialDeviceId,
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
@@ -157,7 +158,7 @@ export default function VideoCall({
         try {
           await session.localParticipant.setCameraEnabled(true, {
             resolution: VideoPresets.h720,
-            facingMode: initialFacing ?? 'user',
+            ...(initialDeviceId ? { deviceId: { exact: initialDeviceId } } : { facingMode: initialFacing ?? 'user' }),
           });
           if (!active) {
             await session.disconnect();

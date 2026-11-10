@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { VideoTrack } from '@livekit/react-native';
-import { createLocalVideoTrack, type LocalVideoTrack } from 'livekit-client';
+import type { LocalVideoTrack } from 'livekit-client';
 import { Txt } from '@/components/DartsUI';
-import type { Facing } from '@/lib/video';
+import { createPreferredTrack, listCameras, type CameraDevice, type Facing } from '@/lib/video';
 
 /** Živý náhľad kamery (mobil) — na výber prednej/zadnej. */
-export function CameraPreview({ facing }: { facing: Facing }) {
+export function CameraPreview({
+  facing,
+  deviceId,
+  onDevices,
+}: {
+  facing: Facing;
+  deviceId?: string;
+  onDevices?: (devices: CameraDevice[]) => void;
+}) {
   const [track, setTrack] = useState<LocalVideoTrack | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
     setTrack(null);
     setError('');
-    void createLocalVideoTrack({ facingMode: facing, resolution: { width: 1280, height: 720 } })
+    void createPreferredTrack(facing, deviceId)
       .then((t) => {
-        if (active) setTrack(t);
-        else t.stop();
+        if (!active) {
+          t.stop();
+          return;
+        }
+        setTrack(t);
+        if (onDevices) void listCameras().then((d) => active && onDevices(d));
       })
       .catch(() => {
         if (active) setError('Kameru sa nepodarilo zapnúť. Skontroluj povolenie.');
@@ -28,7 +40,7 @@ export function CameraPreview({ facing }: { facing: Facing }) {
         return null;
       });
     };
-  }, [facing]);
+  }, [facing, deviceId]);
   if (error) return <Txt className="text-danger text-[13px]">{error}</Txt>;
   if (!track)
     return (

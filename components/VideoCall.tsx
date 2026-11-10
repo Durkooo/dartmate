@@ -15,6 +15,8 @@ export type VideoCallProps = {
   peerName?: string;
   /** Počiatočná kamera (predná/zadná); predvoľba z Môjho účtu. */
   initialFacing?: 'user' | 'environment';
+  /** Konkrétne zariadenie (id z výberu kamier); má prednosť pred stranou. */
+  initialDeviceId?: string;
 };
 
 const expoGoError =

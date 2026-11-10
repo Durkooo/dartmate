@@ -42,6 +42,7 @@ function RoomContent({
   onMicChange,
   peerName,
   initialFacing,
+  initialDeviceId,
 }: {
   room: Room;
   onLeave: () => void;
@@ -50,6 +51,7 @@ function RoomContent({
   onMicChange?: (on: boolean) => void;
   peerName?: string;
   initialFacing?: 'user' | 'environment';
+  initialDeviceId?: string;
 }) {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   // Hádžem (nie som čakajúci): malé okno ukazuje SÚPEROVU kameru,
@@ -78,11 +80,14 @@ function RoomContent({
     autoCam.current = true;
     const facingMode = initialFacing ?? 'user';
     void room.localParticipant
-      .setCameraEnabled(true, { resolution: VideoPresets.h720, facingMode })
+      .setCameraEnabled(true, {
+        resolution: VideoPresets.h720,
+        ...trackOptions(facingMode, initialDeviceId),
+      })
       .catch(() => {
         feedback.error();
       });
-  }, [state, room, initialFacing]);
+  }, [state, room, initialFacing, initialDeviceId]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
@@ -191,6 +196,7 @@ export default function NativeVideoCall({
   getCredentials,
   peerName,
   initialFacing,
+  initialDeviceId,
 }: VideoCallProps) {
   const [credentials, setCredentials] = useState<Awaited<
     ReturnType<typeof getVideoCredentials>
@@ -328,6 +334,7 @@ export default function NativeVideoCall({
           onMicChange={onMicChange}
           peerName={peerName}
           initialFacing={initialFacing}
+          initialDeviceId={initialDeviceId}
         />
       </LiveKitRoom>
     </View>
