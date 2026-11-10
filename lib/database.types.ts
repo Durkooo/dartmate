@@ -239,6 +239,19 @@ declare module '@biltme/backend' {
           }
           Returns: boolean
         }
+        edit_direct_message: {
+          Args: {
+            message_id: number
+            new_body: string
+          }
+          Returns: Database['public']['Tables']['direct_messages']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'direct_messages'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
         find_player_by_nickname: {
           Args: {
             search_nickname: string
