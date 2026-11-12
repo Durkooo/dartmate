@@ -345,7 +345,7 @@ export default function Friends() {
                           onPress={() => addSuggested(c.user_id)}
                         >
                           <Button.Label>
-                            {addingId === c.user_id ? 'Pridávam…' : 'Pridať späť'}
+                            {addingId === c.user_id ? 'Pridávam…' : 'Pridať priateľa'}
                           </Button.Label>
                         </Button>
                       </View>
