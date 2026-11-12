@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { AppState, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { AppState, View, ScrollView, KeyboardAvoidingView, Modal, Platform } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Button } from 'heroui-native';
 import { Video, Trophy } from 'lucide-react-native';
@@ -55,6 +55,10 @@ export default function OnlineGame() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
+  // Vyskakovacie okno s kamerou: otvorí sa samo pri zmene ťahu na súpera;
+  // „Skryť“ vydrží do ďalšieho ťahu, kuk (peek) ho otvorí aj v mojom ťahu.
+  const [camHiddenTurn, setCamHiddenTurn] = useState<string | null>(null);
+  const [camPeek, setCamPeek] = useState(false);
   // Stav mikrofónu si pamätáme po celý zápas: raz vypnutý = vypnutý,
   // kým ho hráč v tomto zápase znova nezapne. Platí od prvého pripojenia.
   const [micWanted, setMicWanted] = useState(true);
@@ -209,6 +213,16 @@ export default function OnlineGame() {
   // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
   const waiting = !!m && m.status === 'active' && !mine;
   const videoVisible = video && !!m && m.status === 'active' && focused && foreground;
+  const turnId = m ? `${m.id}:${m.next_player}` : '';
+  const popupOpen = videoVisible && (camPeek || (waiting && camHiddenTurn !== turnId));
+  const closeCamPopup = () => {
+    if (waiting) setCamHiddenTurn(turnId);
+    setCamPeek(false);
+  };
+  const openCamPopup = () => {
+    setCamHiddenTurn(null);
+    setCamPeek(true);
+  };
 
   if (query.loading)
     return (
@@ -389,23 +403,100 @@ export default function OnlineGame() {
           </View>
         )}
 
-        {/* 3) VIDEO – pripojené RAZ za zápas, prepínač large len mení veľkosť.
-            Dôležité: VideoCall sa nesmie odmontovať pri prestriedaní ťahu
-            (inak by sa po každom hode znova pripájal = 5 s delay + reset kamery/miku).
-            Čakajúci = veľké video súpera, hádžuci = malé.
-            Po zápise skóre sa role prehodia len zmenou propu large. */}
-        {videoVisible && (
-          <VideoCall
-            matchId={id}
-            onLeave={() => setVideo(false)}
-            large={waiting}
-            micWanted={micWanted}
-            onMicChange={setMicWanted}
-            peerName={peerName}
-            initialFacing={camPrefs.match}
-            initialDeviceId={camPrefs.matchDeviceId}
-          />
-        )}
+        {/* 3) KAMERA SÚPERA – vyskakovacie okno, keď nie som na ťahu.
+            VideoCall je pripojený RAZ a nikdy sa neodmontúva (inak by sa po každom
+            hode znova pripájal = 5 s delay + reset kamery/miku).
+            Native = skutočný Modal (skrytý ostáva pripojený).
+            Web = ten istý obsah vložený priamo (webový Modal by video odmontoval).
+            Pri výmene ťahu sa okno a klávesnica prehodia samé na oboch telefónoch. */}
+        {videoVisible &&
+          (Platform.OS === 'web' ? (
+            popupOpen ? (
+              <View>
+                {/* mini skóre v okne */}
+                <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
+                  <View className="flex-row items-center justify-center px-4 py-2">
+                    <Txt
+                      className="text-on-ink text-[13px]"
+                      style={{ fontFamily: 'Inter_600SemiBold' }}
+                    >
+                      Ty {myRemaining} : {peerRemaining} @{peerName}
+                      {legsToWin > 1 ? ` · leg ${legNo} (${myLegs}:${peerLegs})` : ''}
+                    </Txt>
+                  </View>
+                </View>
+                <VideoCall
+                  matchId={id}
+                  onLeave={() => setVideo(false)}
+                  large
+                  micWanted={micWanted}
+                  onMicChange={setMicWanted}
+                  peerName={peerName}
+                  initialFacing={camPrefs.match}
+                  initialDeviceId={camPrefs.matchDeviceId}
+                />
+                <Button variant="secondary" className="mt-3" onPress={closeCamPopup}>
+                  <Button.Label>Skryť kameru</Button.Label>
+                </Button>
+              </View>
+            ) : (
+              <Button variant="secondary" onPress={openCamPopup}>
+                <Button.Label>📹 Kamera súpera</Button.Label>
+              </Button>
+            )
+          ) : (
+            <>
+              {!popupOpen && (
+                <Button variant="secondary" onPress={openCamPopup}>
+                  <Button.Label>📹 Kamera súpera</Button.Label>
+                </Button>
+              )}
+              <Modal
+                visible={popupOpen}
+                animationType="slide"
+                onRequestClose={closeCamPopup}
+              >
+                <View className="bg-background flex-1">
+                  <ScrollView
+                    contentContainerStyle={{
+                      padding: 16,
+                      paddingBottom: 32,
+                      gap: 12,
+                      maxWidth: 600,
+                      width: '100%',
+                      alignSelf: 'center',
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View className="bg-ink overflow-hidden rounded-[22px]">
+                      <View className="flex-row items-center justify-center px-4 py-2">
+                        <Txt
+                          className="text-on-ink text-[13px]"
+                          style={{ fontFamily: 'Inter_600SemiBold' }}
+                        >
+                          Ty {myRemaining} : {peerRemaining} @{peerName}
+                          {legsToWin > 1 ? ` · leg ${legNo} (${myLegs}:${peerLegs})` : ''}
+                        </Txt>
+                      </View>
+                    </View>
+                    <VideoCall
+                      matchId={id}
+                      onLeave={() => setVideo(false)}
+                      large
+                      micWanted={micWanted}
+                      onMicChange={setMicWanted}
+                      peerName={peerName}
+                      initialFacing={camPrefs.match}
+                      initialDeviceId={camPrefs.matchDeviceId}
+                    />
+                    <Button variant="secondary" onPress={closeCamPopup}>
+                      <Button.Label>Skryť kameru</Button.Label>
+                    </Button>
+                  </ScrollView>
+                </View>
+              </Modal>
+            </>
+          ))}
 
         {/* Tlačidlo kamery (schová sa pri zapnutej kamere –
             ovládanie je priamo vo video paneli) */}
