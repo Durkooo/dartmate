@@ -5,6 +5,7 @@ import { Accordion, Button, Input, PressableFeedback } from 'heroui-native';
 import { Check, Target, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Page, Heading, Txt, Avatar, LoadingRows, StorageNotice } from '@/components/DartsUI';
+import { LegPicker } from '@/components/LegPicker';
 import { feedback, palette, useDarts, type Friend } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
 import { BOTS, type BotId } from '@/lib/bots';
@@ -237,25 +238,7 @@ export default function NewMatch() {
               ))}
             </View>
             <Heading className="mt-7 mb-4 text-[20px]">Na koľko víťazných legov?</Heading>
-            <View className="flex-row gap-3">
-              {([1, 2, 3, 5] as const).map((n) => (
-                <Button
-                  key={n}
-                  className="h-16 flex-1 rounded-xl"
-                  variant={legsToWin === n ? 'primary' : 'secondary'}
-                  onPress={() => {
-                    if (legsToWin !== n) {
-                      setLegsToWin(n);
-                      feedback.selection();
-                    }
-                  }}
-                >
-                  <Button.Label className="text-[24px]" style={{ fontFamily: 'Inter_700Bold' }}>
-                    {n}
-                  </Button.Label>
-                </Button>
-              ))}
-            </View>
+            <LegPicker value={legsToWin} onChange={setLegsToWin} />
             <Heading className="mt-7 mb-4 text-[20px]">Ukončenie hry</Heading>
             <View className="flex-row gap-3">
               {[true, false].map((d) => (
