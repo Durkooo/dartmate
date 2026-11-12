@@ -155,7 +155,7 @@ export default function Match() {
                       {p === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
                     </Txt>
                     <Txt
-                      className={`text-[40px] leading-[48px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
+                      className={`text-[52px] leading-[62px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                       minimumFontScale={0.8}
@@ -295,23 +295,6 @@ export default function Match() {
                     {input || '—'}
                   </Txt>
                 </View>
-                <View className="mb-2 flex-row gap-2">
-                  {[26, 41, 60, 100].map((n) => (
-                    <Button
-                      key={n}
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1 rounded-lg"
-                      onPress={() => {
-                        setInput(String(n));
-                        setError('');
-                        feedback.selection();
-                      }}
-                    >
-                      <Button.Label>{n}</Button.Label>
-                    </Button>
-                  ))}
-                </View>
                 {[
                   [1, 2, 3],
                   [4, 5, 6],
@@ -322,11 +305,11 @@ export default function Match() {
                       <Button
                         key={n}
                         variant="secondary"
-                        className="bg-surface h-12 flex-1 rounded-xl"
+                        className="bg-surface h-15 flex-1 rounded-xl"
                         onPress={() => append(String(n))}
                       >
                         <Button.Label
-                          className="text-[21px]"
+                          className="text-[24px]"
                           style={{ fontFamily: 'Inter_600SemiBold' }}
                         >
                           {n}
@@ -337,7 +320,7 @@ export default function Match() {
                 ))}
                 <View className="mb-3 flex-row gap-2">
                   <Button
-                    className="h-12 flex-1 rounded-xl"
+                    className="h-15 flex-1 rounded-xl"
                     variant="secondary"
                     isDisabled={!game.turns.length}
                     accessibilityLabel="Vrátiť posledný ťah"
@@ -348,22 +331,22 @@ export default function Match() {
                       feedback.success();
                     }}
                   >
-                    <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+                    <Undo2 size={24} color={palette.ink} strokeWidth={1.8} />
                   </Button>
                   <Button
-                    className="bg-surface h-12 flex-1 rounded-xl"
+                    className="bg-surface h-15 flex-1 rounded-xl"
                     variant="secondary"
                     onPress={() => append('0')}
                   >
                     <Button.Label
-                      className="text-[21px]"
+                      className="text-[24px]"
                       style={{ fontFamily: 'Inter_600SemiBold' }}
                     >
                       0
                     </Button.Label>
                   </Button>
                   <Button
-                    className="h-12 flex-1 rounded-xl"
+                    className="h-15 flex-1 rounded-xl"
                     variant="secondary"
                     isDisabled={!input}
                     accessibilityLabel="Vymazať poslednú číslicu"
@@ -373,7 +356,7 @@ export default function Match() {
                       feedback.selection();
                     }}
                   >
-                    <Delete size={21} color={palette.ink} strokeWidth={1.8} />
+                    <Delete size={24} color={palette.ink} strokeWidth={1.8} />
                   </Button>
                 </View>
                 {checkout ? (
