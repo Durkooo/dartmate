@@ -116,11 +116,6 @@ export default function NewOnlineMatch() {
                     </Button>
                   ))}
                 </View>
-                <Txt className="text-muted mt-3 text-[13px] leading-5">
-                  {legsToWin === 1
-                    ? 'Jeden leg — kto prvý ukončí hru, vyhráva zápas.'
-                    : `Zápas končí, keď niekto vyhrá ${legsToWin} ${legsToWin === 5 ? 'legov' : 'legy'}. Jeden leg = jedna hra ${starting}.`}
-                </Txt>
                 <Heading className="mt-8 mb-3 text-[20px]">Koho vyzveš?</Heading>
                 <OnlineError error={query.error} retry={() => void query.refresh()} />
               </View>
