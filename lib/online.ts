@@ -209,6 +209,33 @@ export async function announceFriendAdd(
     return false;
   }
 }
+/** Ľudia, ktorí si ma pridali, ale ja som si nepridal ich. */
+export type IncomingFriend = {
+  user_id: string;
+  nickname: string;
+  online: boolean;
+  last_seen: string | null;
+};
+export async function loadIncomingFriends(): Promise<IncomingFriend[]> {
+  const { data, error } = await bilt.rpc('list_incoming_friends');
+  if (error) throw new Error(error.message);
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .filter(
+      (
+        r,
+      ): r is Database['public']['Functions']['list_incoming_friends']['Returns'][number] & {
+        user_id: string;
+        nickname: string;
+      } => !!r && !!r.user_id && !!r.nickname,
+    )
+    .map((r) => ({
+      user_id: r.user_id,
+      nickname: r.nickname,
+      online: !!r.online,
+      last_seen: r.last_seen ?? null,
+    }));
+}
 /** Jeden riadok z list_social_contacts — presný typ z databázy, žiadne any. */
 type SocialContactRow = Database['public']['Functions']['list_social_contacts']['Returns'][number];
 function isContactRow(value: unknown): value is SocialContactRow {
