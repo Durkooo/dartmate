@@ -28,6 +28,7 @@ import { initPostHog } from '@/lib/posthog';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { IncomingCallWatcher } from '@/components/IncomingCall';
 import { palette } from '@/lib/darts';
 import { usePlayerSession, usePlayers } from '@/lib/players';
 import { useOnlinePresence } from '@/lib/online';
@@ -194,6 +195,7 @@ export default function RootLayout() {
           <Stack.Screen name="chat/[id]" options={{ title: 'Konverzácia' }} />
         </Stack>
         <InstallPrompt />
+        <IncomingCallWatcher />
       </HeroUINativeProvider>
     </GestureHandlerRootView>
   );
