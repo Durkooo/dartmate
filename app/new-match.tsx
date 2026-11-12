@@ -10,13 +10,6 @@ import { feedback, palette, useDarts, type Friend } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
 import { BOTS, type BotId } from '@/lib/bots';
 
-const practice: Friend = {
-  id: 'practice',
-  name: 'Tréningový hráč',
-  handle: 'trening',
-  color: 'blue',
-  demo: false,
-};
 const soloFriend: Friend = {
   id: 'solo',
   name: 'Hrám sám',
@@ -28,14 +21,16 @@ export default function NewMatch() {
   const { friendId } = useLocalSearchParams<{ friendId?: string }>();
   const localFriends = useDarts((s) => s.friends);
   const remoteFriends = usePlayers((s) => s.friends);
-  // Ukážkoví hráči do offline zápasu nepatria — len ozajstní + tréning.
+  // Ukážkoví hráči do offline zápasu nepatria — len ozajstní súperi.
   const friends = [...remoteFriends, ...localFriends].filter((f) => !f.demo);
   const [tempName, setTempName] = useState('');
   const game = useDarts((s) => s.game);
   const hydrated = useDarts((s) => s.hydrated);
   const startGame = useDarts((s) => s.startGame);
   const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState(friendId ?? friends[0]?.id ?? 'practice');
+  const [selected, setSelected] = useState(
+    friends.find((friend) => friend.id === friendId)?.id ?? friends[0]?.id ?? 'solo',
+  );
   const [starting, setStarting] = useState<301 | 501>(501);
   const [doubleOut, setDoubleOut] = useState(true);
   const [legsToWin, setLegsToWin] = useState(2);
@@ -66,7 +61,7 @@ export default function NewMatch() {
         ? soloFriend
         : trimmed
           ? tempOpponent
-          : (friends.find((f) => f.id === selected) ?? practice);
+          : (friends.find((f) => f.id === selected) ?? soloFriend);
   if (!hydrated)
     return (
       <Page>
@@ -83,11 +78,7 @@ export default function NewMatch() {
       <Stack.Screen options={{ title: 'Nový zápas' }} />
       <FlatList
         keyboardShouldPersistTaps="handled"
-        data={
-          trimmed
-            ? [tempOpponent, soloFriend, ...friends, practice]
-            : [soloFriend, ...friends, practice]
-        }
+        data={trimmed ? [tempOpponent, soloFriend, ...friends] : [soloFriend, ...friends]}
         keyExtractor={(friend) => friend.id}
         contentContainerStyle={{
           padding: 20,
@@ -100,11 +91,15 @@ export default function NewMatch() {
           <View>
             <StorageNotice />
             <Heading className="mt-2 mb-4">S kým hráš?</Heading>
-            {selected !== 'solo' && selected !== 'bot' && (
+            {selected !== 'bot' && (
               <>
                 <Input
                   value={tempName}
-                  onChangeText={setTempName}
+                  onChangeText={(name) => {
+                    setTempName(name);
+                    if (selected === 'solo' && name.trim()) setSelected('temporary');
+                    if (selected === 'temporary' && !name.trim()) setSelected('solo');
+                  }}
                   placeholder="Meno dočasného súpera…"
                   accessibilityLabel="Meno dočasného súpera"
                   className="rounded-xl"
@@ -134,11 +129,7 @@ export default function NewMatch() {
               <Avatar friend={friend} size={42} />
               <View className="flex-1">
                 <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
-                  {friend.id === 'practice'
-                    ? 'Dvaja pri jednom terči'
-                    : friend.id === 'solo'
-                      ? 'Hrám sám'
-                      : friend.name}
+                  {friend.id === 'solo' ? 'Hrám sám' : friend.name}
                 </Txt>
                 {friend.id === 'solo' && (
                   <Txt className="text-muted mt-1 text-[12px]">Len pre jedného hráča</Txt>
@@ -294,7 +285,7 @@ export default function NewMatch() {
                       starting,
                       doubleOut,
                       legsToWin,
-                      selected === 'solo',
+                      opponent.id === 'solo',
                       selected === 'bot'
                         ? {
                             id: selectedBot.id,

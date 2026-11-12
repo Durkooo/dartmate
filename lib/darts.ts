@@ -127,7 +127,8 @@ export function topScores(scores: number[]): number[] {
     .map(([s]) => s)
     .sort((a, b) => a - b);
 }
-export function average(game: Game, player: 0 | 1): string {  const turns = game.turns.filter((t) => t.player === player);
+export function average(game: Game, player: 0 | 1): string {
+  const turns = game.turns.filter((t) => t.player === player);
   if (!turns.length) return '—';
   const points = turns.reduce((sum, t) => sum + (t.bust ? 0 : t.score), 0);
   const darts = turns.reduce((sum, t) => sum + (t.darts ?? 3), 0);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, View } from 'react-native';
+import { FlatList, Modal, Pressable, View, useWindowDimensions } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { Check, ChevronDown } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
@@ -22,6 +22,9 @@ export function LegPicker({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const { height } = useWindowDimensions();
+  // Reserve the modal's 48px outer padding and 16px panel padding.
+  const listHeight = Math.max(0, Math.min(OPTIONS.length * 56, height * 0.7, height - 64));
   return (
     <>
       <Button
@@ -37,12 +40,19 @@ export function LegPicker({
         <ChevronDown size={20} color={palette.ink} strokeWidth={2} />
       </Button>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable
-          className="flex-1 items-center justify-center bg-black/60 p-6"
-          onPress={() => setOpen(false)}
-        >
-          <View className="bg-surface max-h-[70%] w-full max-w-[340px] rounded-2xl p-2">
+        <View className="flex-1 items-center justify-center p-6">
+          <Pressable
+            className="absolute inset-0 bg-black/60"
+            accessibilityLabel="Zavrieť výber legov"
+            accessibilityRole="button"
+            onPress={() => setOpen(false)}
+          />
+          <View
+            className="bg-surface w-full max-w-[340px] rounded-2xl p-2"
+            style={{ height: listHeight + 16 }}
+          >
             <FlatList
+              style={{ flex: 1 }}
               data={OPTIONS}
               keyExtractor={(n) => String(n)}
               renderItem={({ item: n }) => {
@@ -65,13 +75,13 @@ export function LegPicker({
                     >
                       {legsLabel(n)}
                     </Txt>
-                    {active ? <Check size={20} color={palette.accent} strokeWidth={2.4} /> : null}
+                    {active ? <Check size={20} color={palette.ink} strokeWidth={2.4} /> : null}
                   </PressableFeedback>
                 );
               }}
             />
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </>
   );

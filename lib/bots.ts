@@ -13,6 +13,21 @@ export const BOTS = [
 export type BotId = (typeof BOTS)[number]['id'];
 export type BotConfig = { id: BotId; target: number };
 
+const PREFERRED_DOUBLES = [40, 32, 24, 20, 16, 8, 4];
+
+/** Prefer doubles that can be split and avoid bogey numbers in the setup. */
+function setupPenalty(remaining: number): number {
+  if (remaining > 170) return 0;
+  if (!validCheckout(remaining, 3, true)) return remaining < 40 ? 90 : 35;
+  if (remaining === 2) return 120;
+  // With three left, S1 then D1 is the only legal route; never stall on it.
+  if (remaining === 3) return 150;
+  if (PREFERRED_DOUBLES.includes(remaining)) return 0;
+  if (validCheckout(remaining, 1, true)) return remaining === 50 ? 10 : 8;
+  if (remaining < 40) return 45;
+  return validCheckout(remaining, 2, true) ? 12 : 24;
+}
+
 /** Target is a three-dart average, not a fixed score for every visit. */
 export function generateBotTurn(game: Game, random: () => number = Math.random) {
   if (!game.bot) throw new Error('Bot configuration is missing');
@@ -34,12 +49,25 @@ export function generateBotTurn(game: Game, random: () => number = Math.random) 
     const best = checkoutDarts.reduce((a, b) => (error(a) <= error(b) ? a : b));
     return { score: remaining, checkout: true, darts: best };
   }
-  // A missed checkout may score some setup points or zero, but cannot accidentally finish.
+  if (game.doubleOut && validCheckout(remaining, 1, true)) {
+    // Missing outside the double leaves it intact; hitting the single halves it.
+    // Do not deliberately score down to D1 after a failed checkout attempt.
+    const score = random() < 0.3 && remaining > 2 ? remaining / 2 : 0;
+    return { score, checkout: false, darts: 3 as const };
+  }
+  // Balance visit variation against a sensible next finish, not just maximum points.
+  // Average recovery and the randomly sampled match target remain unchanged.
   const maxScore = Math.min(180, remaining - (game.doubleOut ? 2 : 1));
+  const cost = (candidate: number) =>
+    Math.abs(candidate - desired) + (game.doubleOut ? setupPenalty(remaining - candidate) : 0);
   let score = 0;
+  let bestCost = cost(0);
   for (let candidate = 1; candidate <= maxScore; candidate++) {
-    if (validScore(candidate) && Math.abs(candidate - desired) < Math.abs(score - desired)) {
+    if (!validScore(candidate)) continue;
+    const candidateCost = cost(candidate);
+    if (candidateCost < bestCost) {
       score = candidate;
+      bestCost = candidateCost;
     }
   }
   return { score, checkout: false, darts: 3 as const };
