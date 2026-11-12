@@ -114,8 +114,19 @@ export function activePlayer(game: Game): 0 | 1 {
   if (starterIsFirst) return evenTurns ? 0 : 1;
   return evenTurns ? 1 : 0;
 }
-export function average(game: Game, player: 0 | 1): string {
-  const turns = game.turns.filter((t) => t.player === player);
+/** 4 najčastejšie súčty 3 šípok — zoradené podľa početnosti (na rýchle tipy). */
+export function topScores(scores: number[]): number[] {
+  const freq = new Map<number, number>();
+  for (const s of scores) {
+    if (!Number.isInteger(s) || s < 0 || s > 180) continue;
+    freq.set(s, (freq.get(s) ?? 0) + 1);
+  }
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1] || b[0] - a[0])
+    .slice(0, 4)
+    .map(([s]) => s);
+}
+export function average(game: Game, player: 0 | 1): string {  const turns = game.turns.filter((t) => t.player === player);
   if (!turns.length) return '—';
   const points = turns.reduce((sum, t) => sum + (t.bust ? 0 : t.score), 0);
   const darts = turns.reduce((sum, t) => sum + (t.darts ?? 3), 0);
