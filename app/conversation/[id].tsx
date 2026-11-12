@@ -23,6 +23,7 @@ import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
   CALL_PREFIX,
+  incomingCallState,
   isCallMessage,
   loadJoinedCalls,
   loadOpenMatches,
@@ -35,13 +36,20 @@ import {
 } from '@/lib/online';
 
 export default function Conversation() {
-  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const { id = '', autoJoin } = useLocalSearchParams<{ id?: string; autoJoin?: string }>();
   const userId = usePlayers((s) => s.session?.user.id);
-  return <ConversationContent key={`${userId ?? 'guest'}:${id}`} id={id} userId={userId} />;
+  return (
+    <ConversationContent
+      key={`${userId ?? 'guest'}:${id}`}
+      id={id}
+      userId={userId}
+      autoJoin={autoJoin}
+    />
+  );
 }
 
 /** Pozvánka k videohovoru v chate — správa, čo sa vykreslí ako karta s tlačidlom. */
-function ConversationContent({ id, userId }: { id: string; userId: string | undefined }) {
+function ConversationContent({ id, userId, autoJoin }: { id: string; userId: string | undefined; autoJoin?: string }) {
   const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   const key = userId && uuidPattern.test(id) ? `${userId}:${id}` : null;
   const loader = useCallback(async () => {
@@ -134,6 +142,26 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
     rows: DirectMessage[];
     hasMore: boolean;
   } | null>(null);
+  /** Pripojenie k čakajúcej pozvánke (tlačidlo „Pripojiť sa“). */
+  const joinCall = useCallback(() => {
+    void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+    void markCallJoined(id);
+    setJoined((j) => ({ ...j, [id]: Date.now() }));
+    setCallOpen(true);
+  }, [camPrefs.call, camPrefs.callDeviceId, id]);
+  /** Odmietnutie prichádzajúcej pozvánky — karta ostane ako zmeškaná (bez tlačidla). */
+  const declineCall = useCallback(() => {
+    void markCallJoined(id);
+    setJoined((j) => ({ ...j, [id]: Date.now() }));
+    feedback.selection();
+  }, [id]);
+  /** Zavolanie späť: nová pozvánka + rovno otvorím miestnosť. */
+  const callBack = useCallback(() => {
+    void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+    void markCallJoined(id);
+    setJoined((j) => ({ ...j, [id]: Date.now() }));
+    void startCall();
+  }, [camPrefs.call, camPrefs.callDeviceId, id, startCall]);
   const [previousPage, setPreviousPage] = useState(query.data);
   if (query.data !== previousPage) {
     setPreviousPage(query.data);
@@ -161,6 +189,20 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
   }, [query.data, older, key]);
   // Upraviť ide len vlastnú poslednú textovú správu (podržanie prsta).
   const newestMineId = messages.find((m) => m.sender_id === userId && !isCallMessage(m.body))?.id;
+  // Príchod zo zvoniaceho prehľadu (notifikácia): čakajúcu pozvánku prijmem rovno.
+  const autoJoined = useRef(false);
+  useEffect(() => {
+    if (autoJoin !== '1' || autoJoined.current || callOpen || !query.data || !userId) return;
+    const fresh = query.data.messages.some(
+      (m) =>
+        m.sender_id !== userId &&
+        isCallMessage(m.body) &&
+        incomingCallState(m.created_at, joined[id] ?? 0) === 'waiting',
+    );
+    if (!fresh) return;
+    autoJoined.current = true;
+    joinCall();
+  }, [autoJoin, callOpen, joinCall, joined, id, query.data, userId]);
   const startEdit = (item: DirectMessage) => {
     if (pending || item.id !== newestMineId) return;
     setEditingId(item.id);
@@ -385,7 +427,11 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
           renderItem={({ item }) => {
             const mine = item.sender_id === userId;
             if (isCallMessage(item.body)) {
-              const missedCall = !mine && (joined[id] ?? 0) <= new Date(item.created_at).getTime();
+              // Vlastná pozvánka: tlačidlo len kým som v hovore. Prichádzajúca:
+              // čaká → „Pripojiť sa“ + „Odmietnuť“, zmeškaná → „Zavolať späť“, inak nič.
+              const inviteState = mine
+                ? 'outgoing'
+                : incomingCallState(item.created_at, joined[id] ?? 0);
               return (
                 <Animated.View
                   entering={FadeIn.duration(160)}
@@ -397,32 +443,40 @@ function ConversationContent({ id, userId }: { id: string; userId: string | unde
                       <Video size={18} color={palette.ink} strokeWidth={1.8} />
                       <Txt
                         style={
-                          missedCall
+                          inviteState === 'missed'
                             ? { fontFamily: 'Inter_600SemiBold', color: palette.danger }
-                            : { fontFamily: 'Inter_600SemiBold' }
+                            : inviteState === 'waiting'
+                              ? { fontFamily: 'Inter_600SemiBold', color: palette.success }
+                              : { fontFamily: 'Inter_600SemiBold' }
                         }
                       >
                         {mine
                           ? 'Pozval si priateľa k hovoru'
-                          : missedCall
-                            ? '📹 Miss call'
-                            : 'Pozvánka k videohovoru'}
+                          : inviteState === 'waiting'
+                            ? 'Prichádzajúci hovor'
+                            : inviteState === 'missed'
+                              ? '📹 Miss call'
+                              : '📹 Videohovor'}
                       </Txt>
                     </View>
-                    <Button
-                      variant="secondary"
-                      isDisabled={callOpen}
-                      onPress={() => {
-                        void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(
-                          () => undefined,
-                        );
-                        void markCallJoined(id);
-                        setJoined((j) => ({ ...j, [id]: Date.now() }));
-                        setCallOpen(true);
-                      }}
-                    >
-                      <Button.Label>{callOpen ? 'Hovor prebieha' : 'Pripojiť sa'}</Button.Label>
-                    </Button>
+                    {callOpen ? (
+                      <Button variant="secondary" isDisabled>
+                        <Button.Label>Hovor prebieha</Button.Label>
+                      </Button>
+                    ) : inviteState === 'waiting' ? (
+                      <View className="gap-2">
+                        <Button variant="secondary" onPress={joinCall}>
+                          <Button.Label>Pripojiť sa</Button.Label>
+                        </Button>
+                        <Button variant="ghost" onPress={declineCall}>
+                          <Button.Label>Odmietnuť</Button.Label>
+                        </Button>
+                      </View>
+                    ) : inviteState === 'missed' ? (
+                      <Button variant="secondary" onPress={callBack}>
+                        <Button.Label>Zavolať späť</Button.Label>
+                      </Button>
+                    ) : null}
                     <Txt className="text-muted text-right text-[11px]">
                       {new Date(item.created_at).toLocaleDateString('sk-SK')} ·{' '}
                       {timeLabel(item.created_at)}
