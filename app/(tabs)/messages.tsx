@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { usePlayers } from '@/lib/players';
 import {
   hasUnread,
+  incomingCallState,
   isCallMessage,
   loadContacts,
   loadJoinedCalls,
@@ -94,15 +95,23 @@ function OnlineMessages({ userId }: { userId: string }) {
             call &&
             item.last_sender_id !== userId &&
             (joined[item.user_id ?? ''] ?? 0) <= new Date(item.last_message_at ?? 0).getTime();
+          // Čerstvá prichádzajúca pozvánka (volajúci asi čaká) sa zvýrazní zeleno.
+          const waitingCall =
+            call &&
+            item.last_sender_id !== userId &&
+            incomingCallState(
+              item.last_message_at ?? 0,
+              joined[item.user_id ?? ''] ?? 0,
+            ) === 'waiting';
           return (
             <PressableFeedback
-              className="flex-row items-start gap-3 py-3"
+              className="bg-surface mb-2 flex-row items-start gap-3 rounded-2xl p-3"
               onPress={() =>
                 router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
               }
             >
               <View className="flex-1 gap-2">
-                <View className="flex-row gap-3">
+                <View className="flex-row items-center gap-2">
                   <Txt
                     className="flex-1"
                     numberOfLines={1}
@@ -110,34 +119,39 @@ function OnlineMessages({ userId }: { userId: string }) {
                   >
                     @{item.nickname}
                   </Txt>
-                  {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
+                  <Presence
+                    inline
+                    online={!!item.online}
+                    playing={!!item.in_match}
+                    unknown={!!query.error}
+                  />
                   {item.last_message_at && (
                     <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
                   )}
                 </View>
-                <Presence
-                  online={!!item.online}
-                  playing={!!item.in_match}
-                  unknown={!!query.error}
-                />
-                {call ? (
-                  <Txt
-                    numberOfLines={2}
-                    className="text-muted text-[13px] leading-5"
-                    style={
-                      missedCall
-                        ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
-                        : undefined
-                    }
-                  >
-                    {missedCall ? '📹 Miss call' : '📹 Videohovor'}
-                  </Txt>
-                ) : (
-                  <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
-                    {item.last_sender_id === userId ? 'Ty: ' : ''}
-                    {item.last_body}
-                  </Txt>
-                )}
+                <View className="flex-row items-center gap-2">
+                  {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
+                  {call ? (
+                    <Txt
+                      numberOfLines={2}
+                      className="flex-1 text-[13px] leading-5"
+                      style={
+                        waitingCall
+                          ? { color: palette.success, fontFamily: 'Inter_600SemiBold' }
+                          : missedCall
+                            ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
+                            : { color: palette.muted }
+                      }
+                    >
+                      {waitingCall ? '📹 Prichádzajúci hovor' : missedCall ? '📹 Miss call' : '📹 Videohovor'}
+                    </Txt>
+                  ) : (
+                    <Txt className="text-muted flex-1 text-[13px] leading-5" numberOfLines={2}>
+                      {item.last_sender_id === userId ? 'Ty: ' : ''}
+                      {item.last_body}
+                    </Txt>
+                  )}
+                </View>
               </View>
             </PressableFeedback>
           );
