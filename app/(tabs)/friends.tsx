@@ -17,7 +17,7 @@ import {
 import { palette, useDarts, feedback, type Friend } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import { usePlayers } from '@/lib/players';
-import { announceFriendAdd, loadContacts, loadStatistics, useOnlineQuery, type SocialContact } from '@/lib/online';
+import { announceFriendAdd, loadContacts, loadIncomingFriends, loadStatistics, useOnlineQuery, type SocialContact } from '@/lib/online';
 import { OnlineError, Presence } from '@/components/OnlineUI';
 import { PushNotice } from '@/components/PushNotice';
 
@@ -35,6 +35,11 @@ export default function Friends() {
   const social = useOnlineQuery(
     session ? `friends:${session.user.id}` : null,
     useCallback(() => loadContacts(), []),
+  );
+  // Kto si ma pridal, ale ja som si nepridal jeho — vlastná sekcia „Pridali si ťa“.
+  const incoming = useOnlineQuery(
+    session ? `incoming:${session.user.id}` : null,
+    useCallback(() => loadIncomingFriends(), []),
   );
   const stats = useOnlineQuery(
     session ? `stats:${session.user.id}` : null,
@@ -58,10 +63,14 @@ export default function Friends() {
           (c): c is SocialContact & { user_id: string } =>
             !!c.user_id &&
             c.user_id !== session.user.id &&
-            !onlineFriends.some((f) => f.id === c.user_id),
+            !onlineFriends.some((f) => f.id === c.user_id) &&
+            !(incoming.data ?? []).some((i) => i.user_id === c.user_id),
         )
       : [];
   const q = query.trim().toLocaleLowerCase('sk');
+  const shownIncoming = (incoming.data ?? []).filter((c) =>
+    (c.nickname ?? '').toLocaleLowerCase('sk').includes(q),
+  );
   const shownSuggestions = suggestions.filter((c) =>
     (c.nickname ?? '').toLocaleLowerCase('sk').includes(q),
   );
@@ -83,6 +92,7 @@ export default function Friends() {
           void announceFriendAdd(userId, session.user.id, profile.nickname);
         }
         await refresh();
+        void incoming.refresh();
       } finally {
         setAddingId(null);
       }
@@ -299,7 +309,51 @@ export default function Friends() {
           )
         }
         ListFooterComponent={
-          session && !busy && !error && shownSuggestions.length ? (
+          session && !busy && !error ? (
+            <View className="gap-1">
+              {shownIncoming.length > 0 && (
+                <View className="mt-6 gap-1">
+                  <Txt
+                    className="mb-2 text-[13px]"
+                    style={{ fontFamily: 'Inter_600SemiBold', color: palette.success }}
+                  >
+                    Pridali si ťa do priateľov
+                  </Txt>
+                  {shownIncoming.map((c) => {
+                    const person: Friend = {
+                      id: c.user_id,
+                      name: c.nickname ?? '?',
+                      handle: c.nickname ?? '?',
+                      color: 'peach',
+                      demo: false,
+                    };
+                    return (
+                      <View key={c.user_id} className="flex-row items-center gap-3 py-3">
+                        <Avatar friend={person} />
+                        <View className="flex-1">
+                          <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+                            @{c.nickname}
+                          </Txt>
+                          <View className="mt-2">
+                            <Presence online={!!c.online} lastSeen={c.last_seen ?? null} />
+                          </View>
+                        </View>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          isDisabled={addingId === c.user_id}
+                          onPress={() => addSuggested(c.user_id)}
+                        >
+                          <Button.Label>
+                            {addingId === c.user_id ? 'Pridávam…' : 'Pridať späť'}
+                          </Button.Label>
+                        </Button>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              {shownSuggestions.length > 0 && (
             <View className="mt-6 gap-1">
               <Txt className="text-muted mb-2 text-[13px]">
                 Hrávaš s nimi, ale nemáš ich pridaných
@@ -338,6 +392,8 @@ export default function Friends() {
                   </View>
                 );
               })}
+            </View>
+              )}
             </View>
           ) : undefined
         }
