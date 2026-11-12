@@ -94,6 +94,20 @@ export const CALL_PREFIX = '📹call:';
 export function isCallMessage(body: string | null | undefined): boolean {
   return !!body && body.startsWith(CALL_PREFIX);
 }
+/** Ako dlho sa prichádzajúca pozvánka tvári ako „volajúci čaká“ (potom je zmeškaná). */
+export const CALL_WAIT_MS = 3 * 60 * 1000;
+export type IncomingCallState = 'waiting' | 'missed' | 'handled';
+/** Stav prichádzajúcej pozvánky: čaká / zmeškaná / vybavená (pripojená či odmietnutá). */
+export function incomingCallState(
+  createdAt: string | number,
+  joinedAt: number,
+  now: number = Date.now(),
+): IncomingCallState {
+  const t = new Date(createdAt).getTime();
+  if (Number.isNaN(t)) return 'handled';
+  if (joinedAt > t) return 'handled';
+  return now - t <= CALL_WAIT_MS ? 'waiting' : 'missed';
+}
 const READ_CHATS_KEY = 'dartmate:read-chats';
 /** peerId → ISO čas poslednej prečítanej správy (zapíše sa pri otvorení konverzácie). */
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
