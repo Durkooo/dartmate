@@ -17,7 +17,7 @@ import {
 import { palette, useDarts, feedback, type Friend } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import { usePlayers } from '@/lib/players';
-import { loadContacts, loadStatistics, useOnlineQuery, type SocialContact } from '@/lib/online';
+import { announceFriendAdd, loadContacts, loadStatistics, useOnlineQuery, type SocialContact } from '@/lib/online';
 import { OnlineError, Presence } from '@/components/OnlineUI';
 import { PushNotice } from '@/components/PushNotice';
 
@@ -78,6 +78,10 @@ export default function Friends() {
           return;
         }
         feedback.success();
+        // Druhému príde správa + push, aby si ťa mohol pridať späť.
+        if (profile?.nickname) {
+          void announceFriendAdd(userId, session.user.id, profile.nickname);
+        }
         await refresh();
       } finally {
         setAddingId(null);
