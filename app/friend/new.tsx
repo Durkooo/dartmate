@@ -7,6 +7,7 @@ import { UserSearch } from 'lucide-react-native';
 import { Page, Txt, Heading, LoadingRows, Empty } from '@/components/DartsUI';
 import { palette, feedback } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
+import { announceFriendAdd } from '@/lib/online';
 import { usePlayers, playerError } from '@/lib/players';
 
 type FoundPlayer = Pick<Tables<'player_profiles'>, 'user_id' | 'nickname'>;
@@ -86,6 +87,10 @@ export default function NewFriend() {
           'Priateľ je pridaný, ale zoznam sa nepodarilo načítať. Otvor Priateľov a skús načítanie znova.',
         );
         return;
+      }
+      // Druhému príde správa + push, aby si ťa mohol pridať späť.
+      if (profile?.nickname) {
+        void announceFriendAdd(found.user_id, session.user.id, profile.nickname);
       }
       feedback.success();
       router.dismissTo('/friends');
