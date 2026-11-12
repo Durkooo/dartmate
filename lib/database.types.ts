@@ -282,6 +282,15 @@ declare module '@biltme/backend' {
           }
           Returns: boolean
         }
+        list_incoming_friends: {
+          Args: Record<PropertyKey, never>
+          Returns: {
+            user_id: string | null
+            nickname: string | null
+            online: boolean | null
+            last_seen: string | null
+          }[]
+        }
         list_player_friends: {
           Args: Record<PropertyKey, never>
           Returns: {
