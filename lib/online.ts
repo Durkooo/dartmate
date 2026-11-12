@@ -4,6 +4,7 @@ import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import type { Tables, Database } from '@biltme/backend';
 import { bilt } from '@/lib/bilt';
+import { notifyRecipient } from '@/lib/sendPush';
 import { feedback, isMatchExpired } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 
@@ -182,6 +183,31 @@ export async function loadContacts(): Promise<SocialContactRow[]> {
   const raw: unknown = data;
   const rows = Array.isArray(raw) ? raw.filter(isContactRow) : [];
   return rows.filter((c) => !!c.user_id && !!c.nickname);
+}
+/** Po pridaní priateľa mu pošle oznam „X si ťa pridal“ + push notifikáciu.
+ * Vráti true pri úspechu; chyba oznam len preskočí (pridanie už prebehlo). */
+export async function announceFriendAdd(
+  peerId: string,
+  myUserId: string,
+  myNickname: string,
+): Promise<boolean> {
+  try {
+    const { error } = await bilt.rpc('send_direct_message', {
+      peer: peerId,
+      message_body: `👋 @${myNickname} si ťa pridal do priateľov.`,
+      client_request: Crypto.randomUUID(),
+    });
+    if (error) return false;
+    notifyRecipient(
+      peerId,
+      `@${myNickname}`,
+      'Pridal si ťa do priateľov — klepni a pridaj si ho späť',
+      `/conversation/${myUserId}`,
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 /** Jeden riadok z list_social_contacts — presný typ z databázy, žiadne any. */
 type SocialContactRow = Database['public']['Functions']['list_social_contacts']['Returns'][number];
