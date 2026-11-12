@@ -110,24 +110,42 @@ export default function Match() {
     setError('');
     feedback.selection();
   };
-  /** Uloženie ťahu. Pri zatváraní hry (skóre 0) volá hráč s počtom šípok 1/2/3. */
-  const saveWith = (chosenDarts: 1 | 2 | 3) => {
+  /** Uloženie ťahu. Pri zatváraní hry (skóre 0) volá hráč s počtom šípok 1/2/3.
+      S presetom rovno započíta konkrétnu skratku bez potvrdzovania. */
+  const saveWith = (chosenDarts: 1 | 2 | 3, preset?: number) => {
     if (botTurn) return;
-    if (!input || !validScore(score)) {
+    const value = preset ?? score;
+    if ((preset === undefined && !input) || !validScore(value)) {
       setError('Zadaj možné skóre troch šípok od 0 do 180.');
       feedback.error();
       return;
     }
-    if (checkout && !validCheckout(score, chosenDarts, game.doubleOut)) {
+    const closing =
+      preset === undefined
+        ? checkout
+        : value === currentScores[player] && canFinish(value, game.doubleOut);
+    if (closing && !validCheckout(value, chosenDarts, game.doubleOut)) {
       setError('Toto skóre nemožno zatvoriť zvoleným počtom šípok. Skontroluj výber.');
       feedback.error();
       return;
     }
-    submitTurn(score, checkout, checkout ? chosenDarts : 3);
+    submitTurn(value, closing, closing ? chosenDarts : 3);
     setInput('');
     setError('');
     if (useDarts.getState().game?.turns.at(-1)?.bust) feedback.error();
     else feedback.success();
+  };
+  /** Skratka častého čísla: rovno započíta bez potvrdzovania (predvoľba 3 šípky).
+      Ak by zatvorenie chcelo menej šípok, len predvyplní a hráč zvolí počet. */
+  const quickSave = (n: number) => {
+    const isCheckout = n === currentScores[player] && canFinish(n, game.doubleOut);
+    if (isCheckout && !validCheckout(n, 3, game.doubleOut)) {
+      setInput(String(n));
+      setError('');
+      feedback.selection();
+      return;
+    }
+    saveWith(3, n);
   };
   const lastTurn = game.turns.at(-1);
   return (
@@ -314,11 +332,7 @@ export default function Match() {
                         variant="secondary"
                         size="sm"
                         className="flex-1 rounded-lg"
-                        onPress={() => {
-                          setInput(String(n));
-                          setError('');
-                          feedback.selection();
-                        }}
+                        onPress={() => quickSave(n)}
                       >
                         <Button.Label>{n}</Button.Label>
                       </Button>
