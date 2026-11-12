@@ -51,12 +51,10 @@ function DevicePicker({
 
 function FacingPicker({
   label,
-  hint,
   value,
   onChange,
 }: {
   label: string;
-  hint: string;
   value: Facing;
   onChange: (f: Facing) => void;
 }) {
@@ -80,7 +78,6 @@ function FacingPicker({
           </Button>
         ))}
       </View>
-      <Txt className="text-muted text-[12px]">{hint}</Txt>
     </View>
   );
 }
@@ -269,6 +266,9 @@ export default function Account() {
           ) : profile ? (
             <>
               <Txt className="text-muted">Tento nick daj priateľom, aby ťa našli v aplikácii.</Txt>
+              <Button variant="secondary" onPress={() => router.push('/statistics')}>
+                <Button.Label>Moje štatistiky</Button.Label>
+              </Button>
             </>
           ) : !remoteError ? (
             <>
@@ -293,21 +293,13 @@ export default function Account() {
               </Button>
             </>
           ) : null}
-          <Button variant="secondary" onPress={() => router.push('/statistics')}>
-            <Button.Label>Moje štatistiky</Button.Label>
-          </Button>
           {!!session && (
             <View className="mt-7 gap-4">
               <View>
                 <Heading className="text-[20px]">Kamera</Heading>
-                <Txt className="text-muted mt-1 text-[13px]">
-                  Predvolená kamera pre online zápas a videohovor. Prepínať ju vieš aj priamo v
-                  hovore.
-                </Txt>
               </View>
               <FacingPicker
                 label="Online zápas"
-                hint="Zadná kamera mierie na terč, predná na teba."
                 value={camPrefs.match}
                 onChange={(f) => updatePrefs({ ...camPrefs, match: f, matchDeviceId: undefined })}
               />
@@ -324,7 +316,6 @@ export default function Account() {
               />
               <FacingPicker
                 label="Videohovor"
-                hint="Predná kamera ukazuje tvoju tvár."
                 value={camPrefs.call}
                 onChange={(f) => updatePrefs({ ...camPrefs, call: f, callDeviceId: undefined })}
               />

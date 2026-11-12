@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, FlatList } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Accordion, Button, Input, PressableFeedback } from 'heroui-native';
+import { Button, Input, PressableFeedback } from 'heroui-native';
 import { Check, Target, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Page, Heading, Txt, Avatar, LoadingRows, StorageNotice } from '@/components/DartsUI';
 import { feedback, palette, useDarts, type Friend } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
-import { BOTS, type BotId } from '@/lib/bots';
 
 const practice: Friend = {
   id: 'practice',
@@ -39,16 +38,6 @@ export default function NewMatch() {
   const [doubleOut, setDoubleOut] = useState(true);
   const [legsToWin, setLegsToWin] = useState(2);
   const [replace, setReplace] = useState(false);
-  const [botId, setBotId] = useState<BotId>('novice');
-  const [botExpanded, setBotExpanded] = useState(false);
-  const selectedBot = BOTS.find((bot) => bot.id === botId) ?? BOTS[0];
-  const botOpponent: Friend = {
-    id: `bot-${selectedBot.id}`,
-    name: selectedBot.name,
-    handle: selectedBot.id,
-    color: 'lavender',
-    demo: false,
-  };
   const trimmed = tempName.trim();
   // Dočasný súper sa nikam neukladá — po zápase zmizne, zápas ostane v histórii.
   const tempOpponent: Friend = {
@@ -59,13 +48,11 @@ export default function NewMatch() {
     demo: false,
   };
   const opponent =
-    selected === 'bot'
-      ? botOpponent
-      : selected === 'solo'
-        ? soloFriend
-        : trimmed
-          ? tempOpponent
-          : (friends.find((f) => f.id === selected) ?? practice);
+    selected === 'solo'
+      ? soloFriend
+      : trimmed
+        ? tempOpponent
+        : (friends.find((f) => f.id === selected) ?? practice);
   if (!hydrated)
     return (
       <Page>
@@ -74,14 +61,9 @@ export default function NewMatch() {
       </Page>
     );
   return (
-    <KeyboardAvoidingView
-      className="bg-background flex-1"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
+    <View className="bg-background flex-1">
       <Stack.Screen options={{ title: 'Nový zápas' }} />
       <FlatList
-        keyboardShouldPersistTaps="handled"
         data={
           trimmed
             ? [tempOpponent, soloFriend, ...friends, practice]
@@ -99,14 +81,7 @@ export default function NewMatch() {
           <View>
             <StorageNotice />
             <Heading className="mt-2 mb-4">S kým hráš?</Heading>
-            <Txt className="text-muted mb-4 text-[13px]">
-              {selected === 'solo'
-                ? 'Sólo hra · odpočítavaš len svoje skóre'
-                : selected === 'bot'
-                  ? 'Hra s botom · zadávaš len svoje skóre'
-                  : 'Lokálny zápas · skóre zadávaš za oboch hráčov'}
-            </Txt>
-            {selected !== 'solo' && selected !== 'bot' && (
+            {selected !== 'solo' && (
               <>
                 <Input
                   value={tempName}
@@ -124,102 +99,34 @@ export default function NewMatch() {
           </View>
         }
         renderItem={({ item: friend }) => (
-          <View>
-            <PressableFeedback
-              onPress={() => {
-                if (tempName) setTempName('');
-                if (selected !== friend.id) {
-                  setSelected(friend.id);
-                  feedback.selection();
-                }
-              }}
-              className={`mb-2 flex-row items-center gap-3 rounded-xl p-3 ${opponent.id === friend.id ? 'bg-surface' : ''}`}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: opponent.id === friend.id }}
-            >
-              <Avatar friend={friend} size={42} />
-              <View className="flex-1">
-                <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
-                  {friend.id === 'practice'
-                    ? 'Dvaja pri jednom terči'
-                    : friend.id === 'solo'
-                      ? 'Hrám sám'
-                      : friend.name}
-                </Txt>
-                {friend.id === 'solo' && (
-                  <Txt className="text-muted mt-1 text-[12px]">Len pre jedného hráča</Txt>
-                )}
-                {friend.demo && <Txt className="text-muted mt-1 text-[12px]">Ukážkový hráč</Txt>}
-              </View>
-              {opponent.id === friend.id && (
-                <Check size={22} color={palette.ink} strokeWidth={1.8} />
+          <PressableFeedback
+            onPress={() => {
+              if (tempName) setTempName('');
+              if (selected !== friend.id) {
+                setSelected(friend.id);
+                feedback.selection();
+              }
+            }}
+            className={`mb-2 flex-row items-center gap-3 rounded-xl p-3 ${opponent.id === friend.id ? 'bg-surface' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: opponent.id === friend.id }}
+          >
+            <Avatar friend={friend} size={42} />
+            <View className="flex-1">
+              <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
+                {friend.id === 'practice'
+                  ? 'Dvaja pri jednom terči'
+                  : friend.id === 'solo'
+                    ? 'Hrám sám'
+                    : friend.name}
+              </Txt>
+              {friend.id === 'solo' && (
+                <Txt className="text-muted mt-1 text-[12px]">Len pre jedného hráča</Txt>
               )}
-            </PressableFeedback>
-            {friend.id === 'solo' && (
-              <Accordion
-                selectionMode="single"
-                hideSeparator
-                className="mb-2"
-                value={botExpanded ? 'bots' : ''}
-                onValueChange={(value: string | undefined) => {
-                  setBotExpanded(value === 'bots');
-                  feedback.selection();
-                }}
-              >
-                <Accordion.Item value="bots">
-                  <Accordion.Trigger className="gap-3 rounded-xl p-3">
-                    <Avatar friend={{ ...botOpponent, name: 'Bot' }} size={42} />
-                    <View className="flex-1">
-                      <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
-                        Hrám s botom
-                      </Txt>
-                      {selected === 'bot' && (
-                        <Txt className="text-muted mt-1 text-[12px]" numberOfLines={1}>
-                          {selectedBot.name} · {selectedBot.min}–{selectedBot.max}
-                        </Txt>
-                      )}
-                    </View>
-                    <Accordion.Indicator />
-                  </Accordion.Trigger>
-                  <Accordion.Content>
-                    <Txt className="text-muted px-3 pb-2 text-[12px]">
-                      Cieľový priemer na 3 šípky. V jednotlivom zápase môže kolísať.
-                    </Txt>
-                    {BOTS.map((bot) => (
-                      <PressableFeedback
-                        key={bot.id}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: selected === 'bot' && botId === bot.id }}
-                        onPress={() => {
-                          if (selected !== 'bot' || botId !== bot.id) feedback.selection();
-                          setSelected('bot');
-                          setBotId(bot.id);
-                          setTempName('');
-                        }}
-                        className={`mx-3 mb-1 flex-row items-center gap-2 rounded-xl px-3 py-3 ${selected === 'bot' && botId === bot.id ? 'bg-surface' : ''}`}
-                      >
-                        <Txt
-                          className="flex-1 text-[14px]"
-                          numberOfLines={1}
-                          style={{ fontFamily: 'Inter_600SemiBold' }}
-                        >
-                          {bot.name}
-                        </Txt>
-                        <Txt className="text-muted text-[13px]" numberOfLines={1}>
-                          {bot.min}–{bot.max}
-                        </Txt>
-                        <View className="w-5">
-                          {selected === 'bot' && botId === bot.id && (
-                            <Check size={20} color={palette.ink} strokeWidth={1.8} />
-                          )}
-                        </View>
-                      </PressableFeedback>
-                    ))}
-                  </Accordion.Content>
-                </Accordion.Item>
-              </Accordion>
-            )}
-          </View>
+              {friend.demo && <Txt className="text-muted mt-1 text-[12px]">Ukážkový hráč</Txt>}
+            </View>
+            {opponent.id === friend.id && <Check size={22} color={palette.ink} strokeWidth={1.8} />}
+          </PressableFeedback>
         )}
         ListFooterComponent={
           <View>
@@ -263,11 +170,6 @@ export default function NewMatch() {
                 </Button>
               ))}
             </View>
-            <Txt className="text-muted mt-3 mb-7 text-[13px]">
-              {legsToWin === 1
-                ? 'Jeden leg — kto prvý ukončí hru, vyhráva zápas.'
-                : `Zápas končí, keď niekto vyhrá ${legsToWin} ${legsToWin === 5 ? 'legov' : 'legy'}. Jeden leg = jedna hra ${starting}.`}
-            </Txt>
             <Heading className="mt-7 mb-4 text-[20px]">Ukončenie hry</Heading>
             <View className="flex-row gap-3">
               {[true, false].map((d) => (
@@ -318,20 +220,7 @@ export default function NewMatch() {
                 <Button
                   size="lg"
                   onPress={() => {
-                    startGame(
-                      opponent,
-                      starting,
-                      doubleOut,
-                      legsToWin,
-                      selected === 'solo',
-                      selected === 'bot'
-                        ? {
-                            id: selectedBot.id,
-                            target:
-                              selectedBot.min + Math.random() * (selectedBot.max - selectedBot.min),
-                          }
-                        : undefined,
-                    );
+                    startGame(opponent, starting, doubleOut, legsToWin, selected === 'solo');
                     feedback.success();
                     router.replace('/match');
                   }}
@@ -347,6 +236,6 @@ export default function NewMatch() {
           </View>
         }
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
