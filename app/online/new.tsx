@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, PressableFeedback, Switch } from 'heroui-native';
 import { Check } from 'lucide-react-native';
 import { Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
+import { LegPicker } from '@/components/LegPicker';
 import { OnlineGate, OnlineError, Presence } from '@/components/OnlineUI';
 import { feedback, palette } from '@/lib/darts';
 import { notifyRecipient } from '@/lib/sendPush';
@@ -98,24 +99,7 @@ export default function NewOnlineMatch() {
                   Kamera je voliteľná. Zapneš ju až v prijatom zápase.
                 </Txt>
                 <Heading className="mt-8 mb-3 text-[20px]">Na koľko víťazných legov?</Heading>
-                <View className="flex-row gap-3">
-                  {([1, 2, 3, 5] as const).map((n) => (
-                    <Button
-                      key={n}
-                      className="flex-1"
-                      variant={legsToWin === n ? 'primary' : 'secondary'}
-                      isDisabled={pending}
-                      onPress={() => {
-                        if (legsToWin !== n) {
-                          setLegsToWin(n);
-                          feedback.selection();
-                        }
-                      }}
-                    >
-                      <Button.Label>{n}</Button.Label>
-                    </Button>
-                  ))}
-                </View>
+                <LegPicker value={legsToWin} onChange={setLegsToWin} disabled={pending} />
                 <Heading className="mt-8 mb-3 text-[20px]">Koho vyzveš?</Heading>
                 <OnlineError error={query.error} retry={() => void query.refresh()} />
               </View>
