@@ -2,8 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Input } from 'heroui-native';
-import { Send, Video, X } from 'lucide-react-native';
+import { Button } from 'heroui-native';
+import { Video, X } from 'lucide-react-native';
+import type { ImagePickerAsset } from 'expo-image-picker';
+import { MessageComposer } from '@/components/MessageComposer';
+import { MessagePhoto } from '@/components/MessagePhoto';
+import {
+  uploadMessagePhoto,
+  removeDraftMessagePhoto,
+  type MessagePhotoDraft,
+} from '@/lib/messagePhotos';
 import * as Crypto from 'expo-crypto';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Empty, LoadingRows } from '@/components/DartsUI';
@@ -84,9 +92,37 @@ function ConversationContent({
   }, [id, userId]);
   const query = useOnlineQuery(key, loader);
   const [text, setText] = useState('');
+  const [photo, setPhoto] = useState<MessagePhotoDraft | null>(null);
+  const uploadedPhoto = useRef<{ requestId: string; path: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const clearPhoto = () => {
+    const uploaded = uploadedPhoto.current;
+    uploadedPhoto.current = null;
+    setPhoto(null);
+    if (uploaded)
+      void removeDraftMessagePhoto(uploaded.path).catch((failure: unknown) => {
+        setError(failure instanceof Error ? failure.message : 'Prílohu sa nepodarilo odstrániť.');
+        feedback.error();
+      });
+  };
+  const selectPhoto = (asset: ImagePickerAsset) => {
+    clearPhoto();
+    setEditingId(null);
+    setError('');
+    setPhoto({ asset, requestId: Crypto.randomUUID() });
+  };
+  useEffect(
+    () => () => {
+      const uploaded = uploadedPhoto.current;
+      if (uploaded)
+        void removeDraftMessagePhoto(uploaded.path).catch((failure: unknown) => {
+          console.warn('Photo draft cleanup failed', failure);
+        });
+    },
+    [],
+  );
   const cancelEdit = useCallback(() => {
     setEditingId(null);
     setText('');
@@ -199,7 +235,9 @@ function ConversationContent({
     return [...new Map(rows.map((m) => [m.id, m])).values()].sort((a, b) => b.id - a.id);
   }, [query.data, older, key]);
   // Upraviť ide len vlastnú poslednú textovú správu (podržanie prsta).
-  const newestMineId = messages.find((m) => m.sender_id === userId && !isCallMessage(m.body))?.id;
+  const newestMineId = messages.find(
+    (m) => m.sender_id === userId && !m.image_path && !isCallMessage(m.body),
+  )?.id;
   // Príchod zo zvoniaceho prehľadu (notifikácia): čakajúcu pozvánku prijmem rovno.
   const autoJoined = useRef(false);
   useEffect(() => {
@@ -219,7 +257,8 @@ function ConversationContent({
     });
   }, [autoJoin, callOpen, joined, id, query.data, userId, camPrefs.call, camPrefs.callDeviceId]);
   const startEdit = (item: DirectMessage) => {
-    if (pending || item.id !== newestMineId) return;
+    if (pending || item.id !== newestMineId || item.image_path) return;
+    clearPhoto();
     setEditingId(item.id);
     setText(item.body);
     setError('');
@@ -266,7 +305,7 @@ function ConversationContent({
   }, [messages, id]);
   const send = async () => {
     const body = text.trim();
-    if (!body || pending || !key) return;
+    if ((!body && !photo) || pending || !key || !userId) return;
     if (editingId !== null) {
       await saveEdit(body);
       return;
@@ -276,11 +315,29 @@ function ConversationContent({
     if (request.current?.body !== body || request.current.key !== key)
       request.current = { key, body, id: Crypto.randomUUID() };
     try {
-      const { data, error: e } = await bilt.rpc('send_direct_message', {
-        peer: id,
-        message_body: body,
-        client_request: request.current.id,
-      });
+      let imagePath: string | null = null;
+      if (photo) {
+        if (uploadedPhoto.current?.requestId === photo.requestId) {
+          imagePath = uploadedPhoto.current.path;
+        } else {
+          imagePath = await uploadMessagePhoto(photo, userId, id);
+          uploadedPhoto.current = { requestId: photo.requestId, path: imagePath };
+        }
+        if (usePlayers.getState().session?.user.id !== userId) return;
+      }
+      const { data, error: e } =
+        imagePath && photo
+          ? await bilt.rpc('send_image_message', {
+              peer: id,
+              message_body: body,
+              client_request: photo.requestId,
+              photo_path: imagePath,
+            })
+          : await bilt.rpc('send_direct_message', {
+              peer: id,
+              message_body: body,
+              client_request: request.current.id,
+            });
       if (e) throw new Error(e.message);
       if (!data?.[0])
         throw new Error('Správu nemožno odoslať. Skontroluj, či ste stále priatelia.');
@@ -292,10 +349,13 @@ function ConversationContent({
         hasMore: s?.key === key ? s.hasMore : (query.data?.messages.length ?? 0) === 50,
       }));
       setText('');
+      setPhoto(null);
+      uploadedPhoto.current = null;
       request.current = null;
       feedback.success();
       // Backend pošle príjemcovi push notifikáciu (ak má povolené).
-      if (myNickname) notifyRecipient(id, `@${myNickname}`, body, `/conversation/${userId}`);
+      if (myNickname)
+        notifyRecipient(id, `@${myNickname}`, body || 'Fotografia', `/conversation/${userId}`);
       await query.refresh();
     } catch (e) {
       if (usePlayers.getState().session?.user.id === userId) {
@@ -516,7 +576,9 @@ function ConversationContent({
                         ? 'bg-ink rounded-2xl rounded-br-sm px-4 py-3'
                         : 'bg-surface rounded-2xl rounded-bl-sm px-4 py-3'
                     }
+                    style={item.image_path ? { width: 232, maxWidth: '100%' } : undefined}
                   >
+                    {item.image_path && <MessagePhoto path={item.image_path} mine={mine} />}
                     <Txt className={mine ? 'leading-6 text-white' : 'leading-6'}>{item.body}</Txt>
                     <Txt
                       className={
@@ -583,26 +645,21 @@ function ConversationContent({
                   </Button>
                 </View>
               )}
-              <View className="flex-row items-end gap-2">
-                <Input
-                  className="bg-background max-h-28 flex-1"
-                  value={text}
-                  multiline
-                  maxLength={2000}
-                  editable={!pending}
-                  placeholder="Napíš správu…"
-                  accessibilityLabel="Správa"
-                  onChangeText={setText}
-                />
-                <Button
-                  isIconOnly
-                  isDisabled={pending || !text.trim() || !!query.error}
-                  accessibilityLabel={pending ? 'Odosielam správu' : 'Odoslať správu'}
-                  onPress={() => void send()}
-                >
-                  <Send size={21} strokeWidth={1.8} color={palette.ink} />
-                </Button>
-              </View>
+              <MessageComposer
+                text={text}
+                onChangeText={setText}
+                photo={photo}
+                onSelectPhoto={selectPhoto}
+                onRemovePhoto={() => {
+                  clearPhoto();
+                  feedback.selection();
+                }}
+                onError={setError}
+                onSend={() => void send()}
+                pending={pending}
+                disabled={!!query.error}
+                editing={editingId !== null}
+              />
             </>
           )}
           <Button variant="ghost" size="sm" className="mt-1" onPress={() => router.dismissTo('/')}>

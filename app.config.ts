@@ -24,7 +24,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       deploymentTarget: '16.4',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-        NSCameraUsageDescription: 'Kamera slúži na voliteľný videohovor počas šípkového zápasu.',
+        NSCameraUsageDescription:
+          'Kamera umožňuje odfotiť obrázok do správy a pripojiť sa k videohovoru.',
         NSMicrophoneUsageDescription: 'Mikrofón slúži na rozhovor so súperom počas zápasu.',
       },
       supportsTablet: true,
@@ -48,11 +49,21 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       'expo-font',
       'expo-splash-screen',
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'Prístup k fotografiám umožňuje posielať obrázky priateľom v správach.',
+          cameraPermission:
+            'Kamera umožňuje odfotiť obrázok do správy a pripojiť sa k videohovoru.',
+          microphonePermission: false,
+        },
+      ],
       '@livekit/react-native-expo-plugin',
       [
         '@config-plugins/react-native-webrtc',
         {
-          cameraPermission: 'Kamera slúži na voliteľný videohovor počas šípkového zápasu.',
+          cameraPermission:
+            'Kamera umožňuje odfotiť obrázok do správy a pripojiť sa k videohovoru.',
           microphonePermission: 'Mikrofón slúži na rozhovor so súperom počas zápasu.',
         },
       ],

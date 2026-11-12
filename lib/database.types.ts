@@ -15,6 +15,7 @@ declare module '@biltme/backend' {
             recipient_id: string
             body: string
             created_at: string
+            image_path: string | null
           }
           Insert: {
             id?: number
@@ -23,6 +24,7 @@ declare module '@biltme/backend' {
             recipient_id: string
             body: string
             created_at?: string
+            image_path?: string | null
           }
           Update: {
             id?: number
@@ -31,6 +33,7 @@ declare module '@biltme/backend' {
             recipient_id?: string
             body?: string
             created_at?: string
+            image_path?: string | null
           }
           Relationships: []
         }
@@ -239,6 +242,18 @@ declare module '@biltme/backend' {
           }
           Returns: boolean
         }
+        can_read_message_photo: {
+          Args: {
+            photo_path: string
+          }
+          Returns: boolean
+        }
+        can_remove_message_photo: {
+          Args: {
+            photo_path: string
+          }
+          Returns: boolean
+        }
         edit_direct_message: {
           Args: {
             message_id: number
@@ -358,6 +373,21 @@ declare module '@biltme/backend' {
             peer: string
             message_body: string
             client_request: string
+          }
+          Returns: Database['public']['Tables']['direct_messages']['Row'][]
+          SetofOptions: {
+            from: '*'
+            to: 'direct_messages'
+            isOneToOne: false
+            isSetofReturn: true
+          }
+        }
+        send_image_message: {
+          Args: {
+            peer: string
+            message_body: string
+            client_request: string
+            photo_path: string
           }
           Returns: Database['public']['Tables']['direct_messages']['Row'][]
           SetofOptions: {
