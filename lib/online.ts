@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';

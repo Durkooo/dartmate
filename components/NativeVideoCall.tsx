@@ -28,6 +28,7 @@ import {
   trackOptions,
   ensureCameraPermissions,
   singleShotFocus,
+  VIDEO_PRESETS,
 } from '@/lib/video';
 import { feedback, palette } from '@/lib/darts';
 import type { VideoCallProps } from '@/components/VideoCall';
@@ -132,7 +133,7 @@ function RoomContent({
   const videoTier = useRef(1);
   const [pubTier, setPubTier] = useState(1);
   useEffect(() => {
-    const presets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
+    const presets = VIDEO_PRESETS;
     let cooling = false;
     const apply = (quality: ConnectionQuality) => {
       const tier =
@@ -302,9 +303,7 @@ function RoomContent({
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
-            const res = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080][
-              videoTier.current
-            ].resolution;
+            const res = VIDEO_PRESETS[videoTier.current].resolution;
             await track.restartTrack({
               facingMode: next,
               resolution: { width: res.width, height: res.height, frameRate: 30 },
@@ -351,6 +350,7 @@ export default function NativeVideoCall({
         videoCaptureDefaults: { resolution: VideoPresets.h720 },
       }),
   );
+  const roomRef = useRef(room);
   const [previousSession, setPreviousSession] = useState(request);
   if (request.matchId !== matchId) setRequest({ matchId });
   if (previousSession !== request) {
@@ -359,6 +359,7 @@ export default function NativeVideoCall({
     setCredentials(null);
   }
   useEffect(() => {
+    const sessionRoom = roomRef.current;
     let mounted = true;
     let ownsAudio = false;
     void (async () => {
@@ -390,7 +391,7 @@ export default function NativeVideoCall({
       mounted = false;
       void serializeAudio(async () => {
         try {
-          await room.disconnect();
+          await sessionRoom.disconnect();
         } finally {
           if (ownsAudio) {
             ownsAudio = false;
@@ -399,9 +400,7 @@ export default function NativeVideoCall({
         }
       }).catch(() => undefined);
     };
-    // room vzniká raz (useState inicializátor) a nikdy sa nemení — v závislostiach
-    // je kvôli cleanupu (odpojenie), ale re-rendery navyše nespôsobuje.
-  }, [request.matchId, room, getCredentials]);
+  }, [request, getCredentials]);
   if (!credentials)
     return (
       <VideoNotice

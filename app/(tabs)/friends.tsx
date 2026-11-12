@@ -342,7 +342,7 @@ export default function Friends() {
                             @{c.nickname}
                           </Txt>
                           <View className="mt-2">
-                            <Presence online={!!c.online} lastSeen={c.last_seen ?? null} />
+                            <Presence online={c.online} lastSeen={c.last_seen ?? null} />
                           </View>
                         </View>
                         <Button

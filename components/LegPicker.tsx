@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, View, useWindowDimensions } from 'react-native';
+import { ScrollView, Modal, Pressable, View, useWindowDimensions } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { Check, ChevronDown } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
@@ -16,15 +16,18 @@ export function LegPicker({
   value,
   onChange,
   disabled = false,
+  maxLegs = 15,
 }: {
   value: number;
   onChange: (n: number) => void;
   disabled?: boolean;
+  maxLegs?: number;
 }) {
   const [open, setOpen] = useState(false);
   const { height } = useWindowDimensions();
+  const options = OPTIONS.filter((n) => n <= maxLegs);
   // Reserve the modal's 48px outer padding and 16px panel padding.
-  const listHeight = Math.max(0, Math.min(OPTIONS.length * 56, height * 0.7, height - 64));
+  const listHeight = Math.max(0, Math.min(options.length * 56, height * 0.7, height - 64));
   return (
     <>
       <Button
@@ -49,16 +52,18 @@ export function LegPicker({
           />
           <View
             className="bg-surface w-full max-w-[340px] rounded-2xl p-2"
-            style={{ height: listHeight + 16 }}
+            style={{ height: listHeight + 16, overflow: 'hidden' }}
           >
-            <FlatList
-              style={{ flex: 1 }}
-              data={OPTIONS}
-              keyExtractor={(n) => String(n)}
-              renderItem={({ item: n }) => {
+            <ScrollView
+              style={{ height: listHeight, minHeight: 0, flexGrow: 0, flexShrink: 1 }}
+              contentContainerStyle={{ flexGrow: 0, flexShrink: 0 }}
+              nestedScrollEnabled
+            >
+              {options.map((n) => {
                 const active = n === value;
                 return (
                   <PressableFeedback
+                    key={n}
                     className="flex-row items-center justify-between rounded-xl px-4 py-3"
                     accessibilityLabel={legsLabel(n)}
                     onPress={() => {
@@ -78,8 +83,8 @@ export function LegPicker({
                     {active ? <Check size={20} color={palette.ink} strokeWidth={2.4} /> : null}
                   </PressableFeedback>
                 );
-              }}
-            />
+              })}
+            </ScrollView>
           </View>
         </View>
       </Modal>

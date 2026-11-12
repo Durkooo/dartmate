@@ -451,11 +451,7 @@ export default function OnlineGame() {
                   <Button.Label>📹 Kamera súpera</Button.Label>
                 </Button>
               )}
-              <Modal
-                visible={popupOpen}
-                animationType="slide"
-                onRequestClose={closeCamPopup}
-              >
+              <Modal visible={popupOpen} animationType="slide" onRequestClose={closeCamPopup}>
                 <View className="bg-background flex-1">
                   <ScrollView
                     contentContainerStyle={{

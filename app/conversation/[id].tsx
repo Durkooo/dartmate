@@ -212,8 +212,12 @@ function ConversationContent({
     );
     if (!fresh) return;
     autoJoined.current = true;
-    joinCall();
-  }, [autoJoin, callOpen, joinCall, joined, id, query.data, userId]);
+    void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+    void markCallJoined(id).then(() => {
+      setJoined((j) => ({ ...j, [id]: Date.now() }));
+      setCallOpen(true);
+    });
+  }, [autoJoin, callOpen, joined, id, query.data, userId, camPrefs.call, camPrefs.callDeviceId]);
   const startEdit = (item: DirectMessage) => {
     if (pending || item.id !== newestMineId) return;
     setEditingId(item.id);

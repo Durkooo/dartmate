@@ -115,9 +115,9 @@ export function activePlayer(game: Game): 0 | 1 {
   return evenTurns ? 1 : 0;
 }
 /** 4 najčastejšie súčty 3 šípok — vyberá podľa početnosti, vracia od najmenšieho. */
-export function topScores(scores: number[]): number[] {
+export function topScores(turnScores: number[]): number[] {
   const freq = new Map<number, number>();
-  for (const s of scores) {
+  for (const s of turnScores) {
     if (!Number.isInteger(s) || s < 0 || s > 180) continue;
     freq.set(s, (freq.get(s) ?? 0) + 1);
   }
@@ -221,7 +221,7 @@ function fixGame(g: unknown): Record<string, unknown> {
     typeof game.legsToWin === 'number' &&
     Number.isFinite(game.legsToWin) &&
     game.legsToWin >= 1 &&
-    game.legsToWin <= 9
+    game.legsToWin <= 15
       ? Math.floor(game.legsToWin)
       : 1;
   return {
@@ -277,7 +277,7 @@ export const useDarts = create<DartsState>()(
             bot,
             starting,
             doubleOut,
-            legsToWin: Math.min(9, Math.max(1, Math.floor(legsToWin))),
+            legsToWin: Math.min(15, Math.max(1, Math.floor(legsToWin))),
             legs: [0, 0],
             betweenLegs: false,
             turns: [],

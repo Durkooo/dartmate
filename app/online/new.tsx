@@ -99,7 +99,7 @@ export default function NewOnlineMatch() {
                   Kamera je voliteľná. Zapneš ju až v prijatom zápase.
                 </Txt>
                 <Heading className="mt-8 mb-3 text-[20px]">Na koľko víťazných legov?</Heading>
-                <LegPicker value={legsToWin} onChange={setLegsToWin} disabled={pending} />
+                <LegPicker value={legsToWin} onChange={setLegsToWin} disabled={pending} maxLegs={9} />
                 <Heading className="mt-8 mb-3 text-[20px]">Koho vyzveš?</Heading>
                 <OnlineError error={query.error} retry={() => void query.refresh()} />
               </View>
