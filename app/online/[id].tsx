@@ -9,7 +9,7 @@ import VideoCall from '@/components/VideoCall';
 import { NumberPad } from '@/components/NumberPad';
 import { MatchChat } from '@/components/MatchChat';
 import { bilt } from '@/lib/bilt';
-import { feedback, palette, validScore, canFinish, validCheckout } from '@/lib/darts';
+import { feedback, palette, validScore, canFinish, validCheckout, topScores } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 import { loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import {
@@ -201,6 +201,10 @@ export default function OnlineGame() {
   const contactOnline = !!contact?.online && !query.error;
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
+  // Najčastejšie súčty mojich hodov v tomto zápase (bez prehodených) — rýchle tipy nad klávesnicu.
+  const frequent = topScores(
+    turns.filter((t) => t.player_id === userId && !t.bust).map((t) => t.score),
+  );
   // Čakám na súpera → jeho video veľké; inak (hádžem) kompaktné počítadlo
   // + malé video pod číselníkom. Poradie vždy: skóre → číselník → video → chat.
   const waiting = !!m && m.status === 'active' && !mine;
@@ -248,7 +252,7 @@ export default function OnlineGame() {
         {/* 1) SKÓRE – vždy na vrchu */}
         <View className="bg-ink overflow-hidden rounded-[22px]">
           {legsToWin > 1 && (
-            <View className="flex-row items-center justify-center gap-2 px-4 pt-2">
+            <View className="flex-row items-center justify-center gap-2 px-4 pt-1">
               <Trophy size={14} strokeWidth={1.8} color={palette.ink} />
               <Txt className="text-on-ink text-[12px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {m?.status === 'finished'
@@ -257,7 +261,7 @@ export default function OnlineGame() {
               </Txt>
             </View>
           )}
-          <View className="flex-row px-4 py-2">
+          <View className="flex-row px-4 py-1">
             {[
               { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
               {
@@ -316,6 +320,25 @@ export default function OnlineGame() {
             (Klávesnica mimo ťahu je aj tak neaktívna, len by zavadzala.) */}
         {m.status === 'active' && mine && (
           <View className="gap-4">
+            {frequent.length > 0 && (
+              <View className="flex-row gap-2">
+                {frequent.map((n) => (
+                  <Button
+                    key={n}
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 rounded-lg"
+                    onPress={() => {
+                      setInput(String(n));
+                      setError('');
+                      feedback.selection();
+                    }}
+                  >
+                    <Button.Label>{n}</Button.Label>
+                  </Button>
+                ))}
+              </View>
+            )}
             <NumberPad
               value={input}
               onChange={(v) => {
