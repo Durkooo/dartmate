@@ -99,10 +99,8 @@ function OnlineMessages({ userId }: { userId: string }) {
           const waitingCall =
             call &&
             item.last_sender_id !== userId &&
-            incomingCallState(
-              item.last_message_at ?? 0,
-              joined[item.user_id ?? ''] ?? 0,
-            ) === 'waiting';
+            incomingCallState(item.last_message_at ?? 0, joined[item.user_id ?? ''] ?? 0) ===
+              'waiting';
           return (
             <PressableFeedback
               className="bg-surface mb-2 flex-row items-start gap-3 rounded-2xl p-3"
@@ -143,7 +141,11 @@ function OnlineMessages({ userId }: { userId: string }) {
                             : { color: palette.muted }
                       }
                     >
-                      {waitingCall ? '📹 Prichádzajúci hovor' : missedCall ? '📹 Miss call' : '📹 Videohovor'}
+                      {waitingCall
+                        ? '📹 Prichádzajúci hovor'
+                        : missedCall
+                          ? '📹 Miss call'
+                          : '📹 Videohovor'}
                     </Txt>
                   ) : (
                     <Txt className="text-muted flex-1 text-[13px] leading-5" numberOfLines={2}>

@@ -329,9 +329,7 @@ export default function Friends() {
                       isDisabled={addingId === c.user_id}
                       onPress={() => addSuggested(c.user_id)}
                     >
-                      <Button.Label>
-                        {addingId === c.user_id ? 'Pridávam…' : 'Pridať'}
-                      </Button.Label>
+                      <Button.Label>{addingId === c.user_id ? 'Pridávam…' : 'Pridať'}</Button.Label>
                     </Button>
                   </View>
                 );

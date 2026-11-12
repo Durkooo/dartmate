@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import * as Haptics from 'expo-haptics';
+import type { BotConfig } from '@/lib/bots';
 
 export const palette = {
   ink: '#192438',
@@ -52,6 +53,7 @@ export type Game = {
   opponentName: string;
   /** Sólo hra pre jedného hráča — ťahá vždy len on. */
   solo?: boolean;
+  bot?: BotConfig;
   starting: 301 | 501;
   doubleOut: boolean;
   /** Na koľko víťazných legov sa hrá (1 = jeden leg ako doteraz). */
@@ -89,7 +91,8 @@ const sampleMessages: Message[] = [
 export function scores(game: Game): [number, number] {
   const result: [number, number] = [game.starting, game.starting];
   for (const turn of game.turns) {
-    if (turn.leg === currentLeg(game)) result[turn.player] = turn.remaining;
+    const visibleLeg = currentLeg(game) - (game.betweenLegs || game.winner !== null ? 1 : 0);
+    if (turn.leg === visibleLeg) result[turn.player] = turn.remaining;
   }
   return result;
 }
@@ -175,6 +178,7 @@ interface DartsState {
     doubleOut: boolean,
     legsToWin?: number,
     solo?: boolean,
+    bot?: BotConfig,
   ) => void;
   submitTurn: (score: number, finishedDouble: boolean, darts?: 1 | 2 | 3) => void;
   undo: () => void;
@@ -250,13 +254,14 @@ export const useDarts = create<DartsState>()(
             },
           ],
         })),
-      startGame: (friend, starting, doubleOut, legsToWin = 1, solo = false) =>
+      startGame: (friend, starting, doubleOut, legsToWin = 1, solo = false, bot) =>
         set({
           game: {
             id: id(),
             opponentId: friend.id,
             opponentName: friend.name,
-            solo,
+            solo: bot ? false : solo,
+            bot,
             starting,
             doubleOut,
             legsToWin: Math.min(9, Math.max(1, Math.floor(legsToWin))),
@@ -307,11 +312,16 @@ export const useDarts = create<DartsState>()(
         set((s) => {
           if (!s.game) return {};
           const last = s.game.turns.at(-1);
+          const previous = s.game.turns.at(-2);
+          const removeCount =
+            s.game.bot && last?.player === 1 && previous?.player === 0 && previous.leg === last.leg
+              ? 2
+              : 1;
           const legWon = !!last && !last.bust && last.remaining === 0;
           return {
             game: {
               ...s.game,
-              turns: s.game.turns.slice(0, -1),
+              turns: s.game.turns.slice(0, -removeCount),
               legs:
                 legWon && last
                   ? ([

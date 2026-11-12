@@ -50,7 +50,7 @@ export function IncomingCallWatcher() {
       if (!fresh) return;
       seen.current = new Date(fresh.created_at).getTime();
       // Už vybavené z konverzácie (pripojené či odmietnuté)? Nezvoň.
-      const joined = await loadJoinedCalls().catch(() => ({} as Record<string, number>));
+      const joined = await loadJoinedCalls().catch(() => ({}) as Record<string, number>);
       if ((joined[fresh.sender_id] ?? 0) > seen.current) return;
       const contacts = await loadContacts().catch(() => []);
       const contact = contacts.find((c) => c.user_id === fresh.sender_id);

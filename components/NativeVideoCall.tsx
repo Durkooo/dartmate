@@ -23,7 +23,12 @@ import {
 } from '@livekit/react-native';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
-import { getVideoCredentials, trackOptions, ensureCameraPermissions, singleShotFocus } from '@/lib/video';
+import {
+  getVideoCredentials,
+  trackOptions,
+  ensureCameraPermissions,
+  singleShotFocus,
+} from '@/lib/video';
 import { feedback, palette } from '@/lib/darts';
 import type { VideoCallProps } from '@/components/VideoCall';
 
@@ -98,24 +103,23 @@ function RoomContent({
         return;
       }
       const facingMode = initialFacing ?? 'user';
-    // Najprv konkrétne zariadenie, pri neúspechu strana (staré/blokované id).
-    const enable = (deviceId?: string) =>
-      room.localParticipant.setCameraEnabled(true, {
-        resolution: VideoPresets.h720,
-        ...trackOptions(facingMode, deviceId),
-      });
-    void enable(initialDeviceId)
-      .catch(() => (initialDeviceId ? enable(undefined) : Promise.reject(new Error('blocked'))))
-      .catch((e) => {
-        const blocked =
-          e instanceof Error &&
-          /notallowed|denied|permission/i.test(e.message || e.name);
-        setCamError(
-          blocked
-            ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
-            : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
-        );
-      });
+      // Najprv konkrétne zariadenie, pri neúspechu strana (staré/blokované id).
+      const enable = (deviceId?: string) =>
+        room.localParticipant.setCameraEnabled(true, {
+          resolution: VideoPresets.h720,
+          ...trackOptions(facingMode, deviceId),
+        });
+      void enable(initialDeviceId)
+        .catch(() => (initialDeviceId ? enable(undefined) : Promise.reject(new Error('blocked'))))
+        .catch((e) => {
+          const blocked =
+            e instanceof Error && /notallowed|denied|permission/i.test(e.message || e.name);
+          setCamError(
+            blocked
+              ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
+              : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
+          );
+        });
     })();
   }, [state, room, initialFacing, initialDeviceId]);
   const [pending, setPending] = useState(false);
@@ -226,46 +230,48 @@ function RoomContent({
         const showing = isTrackReference(track) && !track.publication.isMuted;
         const badge = !showing ? '' : isLocalTrack ? ['480p', '720p', '1080p'][pubTier] : rxSize;
         return (
-        <View key={track.participant.identity} className="mb-2">
-          <Txt className="mb-1 text-[12px]" numberOfLines={1}>
-            {track.participant.isLocal
-              ? 'Tvoja kamera'
-              : peerName
-                ? `@${peerName}`
-                : `@${track.participant.name || track.participant.identity}`}
-          </Txt>
-          {showing && isTrackReference(track) ? (
-            <View style={{ position: 'relative', height: h }}>
-              <VideoTrack
-                trackRef={track}
-                objectFit={large ? 'contain' : 'cover'}
-                style={{ height: h, width: '100%', backgroundColor: palette.ink, borderRadius: 10 }}
-              />
-              {!!badge && (
-                <View
+          <View key={track.participant.identity} className="mb-2">
+            <Txt className="mb-1 text-[12px]" numberOfLines={1}>
+              {track.participant.isLocal
+                ? 'Tvoja kamera'
+                : peerName
+                  ? `@${peerName}`
+                  : `@${track.participant.name || track.participant.identity}`}
+            </Txt>
+            {showing && isTrackReference(track) ? (
+              <View style={{ position: 'relative', height: h }}>
+                <VideoTrack
+                  trackRef={track}
+                  objectFit={large ? 'contain' : 'cover'}
                   style={{
-                    position: 'absolute',
-                    right: 8,
-                    bottom: 8,
-                    backgroundColor: 'rgba(0,0,0,0.55)',
-                    borderRadius: 6,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
+                    height: h,
+                    width: '100%',
+                    backgroundColor: palette.ink,
+                    borderRadius: 10,
                   }}
-                >
-                  <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View
-              style={{ height: h }}
-              className="bg-ink items-center justify-center rounded-xl"
-            >
-              <Txt className="text-on-ink">Kamera je vypnutá</Txt>
-            </View>
-          )}
-        </View>
+                />
+                {!!badge && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      bottom: 8,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      borderRadius: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                    }}
+                  >
+                    <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ height: h }} className="bg-ink items-center justify-center rounded-xl">
+                <Txt className="text-on-ink">Kamera je vypnutá</Txt>
+              </View>
+            )}
+          </View>
         );
       })}
       {large && participants.length < 2 && (
@@ -368,7 +374,9 @@ export default function NativeVideoCall({
     let ownsAudio = false;
     void (async () => {
       try {
-        const data = await (getCredentials ? getCredentials() : getVideoCredentials(request.matchId));
+        const data = await (getCredentials
+          ? getCredentials()
+          : getVideoCredentials(request.matchId));
         if (!mounted) return;
         await serializeAudio(async () => {
           if (!mounted) return;
@@ -402,8 +410,8 @@ export default function NativeVideoCall({
         }
       }).catch(() => undefined);
     };
-  // room vzniká raz (useState inicializátor) a nikdy sa nemení — v závislostiach
-  // je kvôli cleanupu (odpojenie), ale re-rendery navyše nespôsobuje.
+    // room vzniká raz (useState inicializátor) a nikdy sa nemení — v závislostiach
+    // je kvôli cleanupu (odpojenie), ale re-rendery navyše nespôsobuje.
   }, [request.matchId, room, getCredentials]);
   if (!credentials)
     return (

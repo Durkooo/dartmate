@@ -49,7 +49,15 @@ export default function Conversation() {
 }
 
 /** Pozvánka k videohovoru v chate — správa, čo sa vykreslí ako karta s tlačidlom. */
-function ConversationContent({ id, userId, autoJoin }: { id: string; userId: string | undefined; autoJoin?: string }) {
+function ConversationContent({
+  id,
+  userId,
+  autoJoin,
+}: {
+  id: string;
+  userId: string | undefined;
+  autoJoin?: string;
+}) {
   const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   const key = userId && uuidPattern.test(id) ? `${userId}:${id}` : null;
   const loader = useCallback(async () => {

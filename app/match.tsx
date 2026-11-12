@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, FlatList } from 'react-native';
-import { Stack, router } from 'expo-router';
-import { Button } from 'heroui-native';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import { Button, Spinner } from 'heroui-native';
 import { Delete, Undo2, Check, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
+import { generateBotTurn } from '@/lib/bots';
 import {
   palette,
   feedback,
@@ -30,6 +31,28 @@ export default function Match() {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [discard, setDiscard] = useState(false);
+  const botTurn =
+    !!game?.bot && game.winner === null && !game.betweenLegs && activePlayer(game) === 1;
+  useFocusEffect(
+    useCallback(() => {
+      if (!hydrated || !game || !botTurn || discard) return undefined;
+      const timer = setTimeout(() => {
+        const current = useDarts.getState().game;
+        if (
+          !current ||
+          current !== game ||
+          current.winner !== null ||
+          current.betweenLegs ||
+          activePlayer(current) !== 1
+        )
+          return;
+        const turn = generateBotTurn(current);
+        submitTurn(turn.score, turn.checkout, turn.darts);
+        feedback.success();
+      }, 1100);
+      return () => clearTimeout(timer);
+    }, [hydrated, game, botTurn, discard, submitTurn]),
+  );
   if (!hydrated)
     return (
       <View className="bg-background flex-1 p-5">
@@ -52,7 +75,7 @@ export default function Match() {
     );
   const currentScores = scores(game);
   const player = activePlayer(game);
-  const opponentFirst = game.opponentName.split(' ')[0];
+  const opponentFirst = game.bot ? game.opponentName : game.opponentName.split(' ')[0];
   const practice = game.opponentId === 'practice';
   const name = player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
   const score = Number(input);
@@ -78,6 +101,7 @@ export default function Match() {
   };
   /** Uloženie ťahu. Pri zatváraní hry (skóre 0) volá hráč s počtom šípok 1/2/3. */
   const saveWith = (chosenDarts: 1 | 2 | 3) => {
+    if (botTurn) return;
     if (!input || !validScore(score)) {
       setError('Zadaj možné skóre troch šípok od 0 do 180.');
       feedback.error();
@@ -233,6 +257,24 @@ export default function Match() {
                   }}
                 >
                   <Undo2 size={18} color={palette.ink} />
+                  <Button.Label>Opraviť posledný ťah</Button.Label>
+                </Button>
+              </View>
+            ) : botTurn ? (
+              <View className="items-center gap-3 py-8" accessibilityLiveRegion="polite">
+                <Spinner />
+                <Txt>{game.opponentName} hádže…</Txt>
+                <Button
+                  variant="ghost"
+                  isDisabled={!game.turns.length}
+                  onPress={() => {
+                    undo();
+                    setInput('');
+                    setError('');
+                    feedback.success();
+                  }}
+                >
+                  <Undo2 size={18} color={palette.ink} strokeWidth={1.8} />
                   <Button.Label>Opraviť posledný ťah</Button.Label>
                 </Button>
               </View>
