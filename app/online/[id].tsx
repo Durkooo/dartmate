@@ -142,15 +142,18 @@ export default function OnlineGame() {
     }
   };
 
-  /** Odoslanie ťahu. Pri zatváraní legu (skóre 0) volá hráč s počtom šípok 1/2/3. */
-  const submitWith = async (chosenDarts: 1 | 2 | 3) => {
+  /** Odoslanie ťahu. Pri zatváraní legu (skóre 0) volá hráč s počtom šípok 1/2/3.
+      S presetom rovno započíta konkrétnu skratku bez potvrdzovania. */
+  const submitWith = async (chosenDarts: 1 | 2 | 3, preset?: number) => {
     if (!m || pending) return;
-    const score = Number(input);
-    if (!input || !/^\d{1,3}$/.test(input) || !validScore(score)) {
+    const score = preset ?? Number(input);
+    if ((preset === undefined && (!input || !/^\d{1,3}$/.test(input))) || !validScore(score)) {
       setError('Zadaj možné skóre od 0 do 180.');
       feedback.error();
       return;
     }
+    const closing =
+      preset === undefined ? checkout : score === myRemaining && canFinish(score, m.double_out);
     setPending(true);
     setError('');
     try {
@@ -158,7 +161,7 @@ export default function OnlineGame() {
         mid: id,
         expected_turn: m.turn_count,
         turn_score: score,
-        finished_double: checkout,
+        finished_double: closing,
         darts_thrown: chosenDarts,
       });
       if (e) throw new Error(e.message);
@@ -176,6 +179,20 @@ export default function OnlineGame() {
     } finally {
       setPending(false);
     }
+  };
+
+  /** Skratka častého čísla: rovno započíta bez potvrdzovania (predvoľba 3 šípky).
+      Ak by zatvorenie chcelo menej šípok, len predvyplní a hráč zvolí počet. */
+  const quickSubmit = (n: number) => {
+    if (!m || pending || !mine) return;
+    const isCheckout = n === myRemaining && canFinish(n, m.double_out);
+    if (isCheckout && !validCheckout(n, 3, m.double_out)) {
+      setInput(String(n));
+      setError('');
+      feedback.selection();
+      return;
+    }
+    void submitWith(3, n);
   };
 
   if (!userId)
@@ -342,11 +359,7 @@ export default function OnlineGame() {
                     variant="secondary"
                     size="sm"
                     className="flex-1 rounded-lg"
-                    onPress={() => {
-                      setInput(String(n));
-                      setError('');
-                      feedback.selection();
-                    }}
+                    onPress={() => quickSubmit(n)}
                   >
                     <Button.Label>{n}</Button.Label>
                   </Button>
