@@ -121,7 +121,8 @@ function ConversationContent({ id, userId, autoJoin }: { id: string; userId: str
           id,
           `@${invitingNick}`,
           '📹 Videohovor — klepni pre pripojenie',
-          `/conversation/${userId}`,
+          // Ťuknutie na notifikáciu (aj zo zatvorenej appky) rovno pripojí, ak pozvánka ešte platí.
+          `/conversation/${userId}?autoJoin=1`,
         );
       await query.refresh();
     } catch (e) {
