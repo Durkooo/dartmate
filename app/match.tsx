@@ -18,6 +18,7 @@ import {
   validCheckout,
   currentLeg,
   legTurns,
+  topScores,
 } from '@/lib/darts';
 
 export default function Match() {
@@ -28,6 +29,7 @@ export default function Match() {
   const startNextLeg = useDarts((s) => s.startNextLeg);
   const archiveGame = useDarts((s) => s.archiveGame);
   const discardGame = useDarts((s) => s.discardGame);
+  const history = useDarts((s) => s.history);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [discard, setDiscard] = useState(false);
@@ -78,6 +80,15 @@ export default function Match() {
   const opponentFirst = game.bot ? game.opponentName : game.opponentName.split(' ')[0];
   const practice = game.opponentId === 'practice';
   const name = player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
+  // Najčastejšie súčty hádžuceho hráča (história + tento zápas, bez prehodených).
+  const frequent = topScores([
+    ...history.flatMap((g) =>
+      g.solo && player !== 0
+        ? []
+        : (g.turns ?? []).filter((t) => t.player === player && !t.bust).map((t) => t.score),
+    ),
+    ...game.turns.filter((t) => t.player === player && !t.bust).map((t) => t.score),
+  ]);
   const score = Number(input);
   const checkout =
     !!input &&
@@ -137,7 +148,7 @@ export default function Match() {
           <View>
             <StorageNotice />
             <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
-              <View className="flex-row items-center justify-center gap-2 pt-3">
+              <View className="flex-row items-center justify-center gap-2 pt-1">
                 <View className="bg-accent h-1.5 w-1.5 rounded-full" />
                 <Txt className="text-on-ink text-[12px]">
                   {finished
@@ -145,7 +156,7 @@ export default function Match() {
                     : `Kolo ${Math.floor(legTurns(game).length / 2) + 1}${game.legsToWin > 1 ? ` · leg ${legNo}` : ''}`}
                 </Txt>
               </View>
-              <View className="flex-row px-4 py-2">
+              <View className="flex-row px-3 py-1">
                 {(game.solo ? ([0] as const) : ([0, 1] as const)).map((p) => (
                   <View
                     key={p}
@@ -172,7 +183,7 @@ export default function Match() {
                   </View>
                 ))}
               </View>
-              <View className="bg-accent px-4 py-2">
+              <View className="bg-accent px-3 py-1">
                 <Txt
                   className="text-center text-[13px]"
                   style={{ fontFamily: 'Inter_600SemiBold' }}
@@ -295,6 +306,25 @@ export default function Match() {
                     {input || '—'}
                   </Txt>
                 </View>
+                {frequent.length > 0 && (
+                  <View className="mb-2 flex-row gap-2">
+                    {frequent.map((n) => (
+                      <Button
+                        key={n}
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1 rounded-lg"
+                        onPress={() => {
+                          setInput(String(n));
+                          setError('');
+                          feedback.selection();
+                        }}
+                      >
+                        <Button.Label>{n}</Button.Label>
+                      </Button>
+                    ))}
+                  </View>
+                )}
                 {[
                   [1, 2, 3],
                   [4, 5, 6],
