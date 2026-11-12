@@ -75,8 +75,9 @@ function ConversationContent({
       loadOpenMatches(),
     ]);
     if (result.error) throw new Error(result.error.message);
+    const messages: DirectMessage[] = result.data ?? [];
     return {
-      messages: result.data ?? [],
+      messages,
       contact: contacts.find((c: any) => c.user_id === id),
       matches: matches.filter((m: any) => m.host_id === id || m.guest_id === id),
     };
@@ -105,9 +106,10 @@ function ConversationContent({
   const [micWanted, setMicWanted] = useState(true);
   // Credentials pre súkromnú miestnosť dvojice (stabilné počas konverzácie).
   const loadCallCredentials = useCallback(() => getCallCredentials(id), [id]);
+  const { error: callQueryError, refresh: refreshCallQuery } = query;
   /** Tlačidlo kamery v chate: pošle pozvánku k hovoru a rovno otvorí miestnosť. */
-  const startCall = async () => {
-    if (!userId || pending || !key || query.error) return;
+  const startCall = useCallback(async () => {
+    if (!userId || pending || !key || callQueryError) return;
     setPending(true);
     setError('');
     try {
@@ -132,7 +134,7 @@ function ConversationContent({
           // Ťuknutie na notifikáciu (aj zo zatvorenej appky) rovno pripojí, ak pozvánka ešte platí.
           `/conversation/${userId}?autoJoin=1`,
         );
-      await query.refresh();
+      await refreshCallQuery();
     } catch (e) {
       if (usePlayers.getState().session?.user.id === userId) {
         setError(
@@ -145,7 +147,7 @@ function ConversationContent({
     } finally {
       setPending(false);
     }
-  };
+  }, [userId, pending, key, callQueryError, refreshCallQuery, id]);
   const [older, setOlder] = useState<{
     key: string;
     rows: DirectMessage[];

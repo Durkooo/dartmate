@@ -93,6 +93,7 @@ function RoomContent({
   // Kamera sa zapne sama hneď po pripojení (aj u priateľa) —
   // doteraz ostávala vypnutá, kým ju niekto ručne nezapol.
   const autoCam = useRef(false);
+  const [camError, setCamError] = useState('');
   useEffect(() => {
     if (state !== ConnectionState.Connected || autoCam.current) return;
     autoCam.current = true;
@@ -124,12 +125,12 @@ function RoomContent({
   }, [state, room, initialFacing, initialDeviceId]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const [camError, setCamError] = useState('');
   const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
   const [deviceId, setDeviceId] = useState<string | undefined>(initialDeviceId);
   // Automatická kvalita videa podľa internetu: 480p ↔ 720p ↔ 1080p.
   // Štart je 720p; prepína sa len pri zmene pásma + max raz za 8 s (nekmitá).
   const videoTier = useRef(1);
+  const [pubTier, setPubTier] = useState(1);
   useEffect(() => {
     const presets = [VideoPresets.h480, VideoPresets.h720, VideoPresets.h1080];
     let cooling = false;
@@ -164,8 +165,6 @@ function RoomContent({
       room.off(RoomEvent.ConnectionQualityChanged, handler);
     };
   }, [room, facing, deviceId]);
-  // Štart je 720p; prepína sa len pri zmene pásma + max raz za 8 s (nekmitá).
-  const [pubTier, setPubTier] = useState(1);
   // Skutočné prijaté rozlíšenie súperovho obrazu (obnovuje sa každé 3 s).
   const [rxSize, setRxSize] = useState('');
   useEffect(() => {
@@ -174,19 +173,9 @@ function RoomContent({
         const remote = tracks.find(
           (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
         );
-        const pub = (remote?.publication ?? null) as unknown as {
-          track?: unknown;
-        } | null;
-        const rt = (pub?.track ?? null) as unknown as {
-          mediaStreamTrack?: unknown;
-        } | null;
-        const ms = (rt?.mediaStreamTrack ?? null) as unknown as {
-          getSettings?: () => unknown;
-        } | null;
-        const s = (typeof ms?.getSettings === 'function' ? ms.getSettings() : {}) as {
-          width?: unknown;
-          height?: unknown;
-        };
+        const rt = remote && isTrackReference(remote) ? remote.publication.track : undefined;
+        const ms = rt?.mediaStreamTrack;
+        const s = typeof ms?.getSettings === 'function' ? ms.getSettings() : {};
         const label =
           typeof s.width === 'number' && typeof s.height === 'number'
             ? `${s.width}×${s.height}`

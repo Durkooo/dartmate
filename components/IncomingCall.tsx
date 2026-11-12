@@ -34,7 +34,13 @@ export function IncomingCallWatcher() {
   const check = useCallback(async () => {
     if (!userId || AppState.currentState !== 'active' || ringing) return;
     try {
-      const { data, error } = await bilt
+      const {
+        data,
+        error,
+      }: {
+        data: { id: number; sender_id: string; created_at: string }[] | null;
+        error: { message: string } | null;
+      } = await bilt
         .from('direct_messages')
         .select('id,sender_id,created_at')
         .eq('recipient_id', userId)
@@ -43,14 +49,14 @@ export function IncomingCallWatcher() {
         .limit(5);
       if (error || !Array.isArray(data)) return;
       const now = Date.now();
-      const fresh = (data as { sender_id: string; created_at: string }[]).find((m) => {
+      const fresh = data.find((m) => {
         const t = new Date(m.created_at).getTime();
         return !Number.isNaN(t) && now - t <= CALL_WAIT_MS && t > seen.current;
       });
       if (!fresh) return;
       seen.current = new Date(fresh.created_at).getTime();
       // Už vybavené z konverzácie (pripojené či odmietnuté)? Nezvoň.
-      const joined = await loadJoinedCalls().catch(() => ({}) as Record<string, number>);
+      const joined = await loadJoinedCalls().catch((): Record<string, number> => ({}));
       if ((joined[fresh.sender_id] ?? 0) > seen.current) return;
       const contacts = await loadContacts().catch(() => []);
       const contact = contacts.find((c) => c.user_id === fresh.sender_id);

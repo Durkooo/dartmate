@@ -213,6 +213,7 @@ export function MatchRow({
         </Txt>
         <Txt className="text-muted text-[13px]">
           {label} · {match.starting}
+          {stats ? ` · ${new Date(match.created_at).toLocaleDateString('sk-SK')} · Online` : ''}
         </Txt>
       </View>
       <ChevronRight size={20} color={palette.ink} strokeWidth={1.8} />

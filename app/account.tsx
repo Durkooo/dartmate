@@ -269,9 +269,6 @@ export default function Account() {
           ) : profile ? (
             <>
               <Txt className="text-muted">Tento nick daj priateľom, aby ťa našli v aplikácii.</Txt>
-              <Button variant="secondary" onPress={() => router.push('/statistics')}>
-                <Button.Label>Moje štatistiky</Button.Label>
-              </Button>
             </>
           ) : !remoteError ? (
             <>
@@ -296,6 +293,9 @@ export default function Account() {
               </Button>
             </>
           ) : null}
+          <Button variant="secondary" onPress={() => router.push('/statistics')}>
+            <Button.Label>Moje štatistiky</Button.Label>
+          </Button>
           {!!session && (
             <View className="mt-7 gap-4">
               <View>

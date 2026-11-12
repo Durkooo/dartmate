@@ -1,7 +1,7 @@
 import { View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Button, PressableFeedback } from 'heroui-native';
-import { Target, ChevronRight, Trophy } from 'lucide-react-native';
+import { Target, ChevronRight } from 'lucide-react-native';
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
@@ -49,7 +49,6 @@ export default function Home() {
   const titleFont = titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
   const friends = useDarts((s) => s.friends);
   const game = useDarts((s) => s.game);
-  const history = useDarts((s) => s.history);
   const hydrated = useDarts((s) => s.hydrated);
   const session = usePlayers((s) => s.session);
   const social = useOnlineQuery(
@@ -224,27 +223,6 @@ export default function Home() {
         <Button className="mt-5" variant="secondary" onPress={() => router.push('/match')}>
           <Button.Label>Pokračovať v lokálnom zápase</Button.Label>
         </Button>
-      )}
-      {history.length > 0 && (
-        <View className="mt-7">
-          <Heading className="mb-3 text-[20px]">Lokálne výsledky</Heading>
-          {history.slice(0, 3).map((g) => (
-            <View key={g.id} className="border-border flex-row items-center gap-3 border-b py-3">
-              <Trophy size={22} color={palette.ink} strokeWidth={1.8} />
-              <View className="flex-1">
-                <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
-                  {g.solo
-                    ? `Sólo hra · ${g.starting}`
-                    : `${g.winner === 0 ? 'Výhra' : 'Prehra'} proti ${g.opponentName}`}
-                </Txt>
-                <Txt className="text-muted mt-1 text-[12px]">
-                  {g.starting} · {g.doubleOut ? 'Double out' : 'Straight out'} ·{' '}
-                  {new Date(g.date).toLocaleDateString('sk-SK')}
-                </Txt>
-              </View>
-            </View>
-          ))}
-        </View>
       )}
     </Page>
   );

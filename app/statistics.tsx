@@ -1,112 +1,71 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { View, FlatList } from 'react-native';
 import { Button } from 'heroui-native';
-import { router, useFocusEffect } from 'expo-router';
-import { Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
-import { OnlineGate, OnlineError, MatchRow } from '@/components/OnlineUI';
-import { bilt } from '@/lib/bilt';
-import { feedback } from '@/lib/darts';
-import { playerError, usePlayers } from '@/lib/players';
-import { loadStatistics, useOnlineQuery, type OnlineMatch } from '@/lib/online';
+import { router } from 'expo-router';
+import { Trophy } from 'lucide-react-native';
+import { Heading, Txt, Empty, LoadingRows, StorageNotice } from '@/components/DartsUI';
+import { OnlineError, MatchRow } from '@/components/OnlineUI';
+import { palette, useDarts, type Game } from '@/lib/darts';
+import { usePlayers } from '@/lib/players';
+import { useOnlineQuery } from '@/lib/online';
+import {
+  combinedStatistics,
+  loadAccountStatistics,
+  matchHistory,
+  scoringTotals,
+} from '@/lib/statistics';
+
+function OfflineMatchRow({ game }: { game: Game }) {
+  return (
+    <View className="border-border flex-row items-center gap-3 border-b py-4">
+      <Trophy size={22} color={palette.ink} strokeWidth={1.8} />
+      <View className="flex-1 gap-1">
+        <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>
+          {game.solo
+            ? 'Sólo hra'
+            : `${game.winner === 0 ? 'Výhra' : 'Prehra'} proti ${game.opponentName}`}
+        </Txt>
+        <Txt className="text-muted text-[13px]">
+          {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'} ·{' '}
+          {new Date(game.date).toLocaleDateString('sk-SK')} · Offline
+        </Txt>
+      </View>
+    </View>
+  );
+}
 
 export default function Statistics() {
   const userId = usePlayers((s) => s.session?.user.id);
+  const ready = usePlayers((s) => s.ready);
+  const localHistory = useDarts((s) => s.history);
+  const hydrated = useDarts((s) => s.hydrated);
   const query = useOnlineQuery(
-    userId ? `stats:${userId}` : null,
-    useCallback(() => loadStatistics(), []),
-    10000,
+    userId ? `account-stats:${userId}` : null,
+    useCallback(async () => (userId ? loadAccountStatistics(userId) : null), [userId]),
+    60000,
   );
-  const [history, setHistory] = useState<{
-    userId: string;
-    rows: OnlineMatch[];
-    hasMore: boolean;
-  } | null>(null);
-  const [error, setError] = useState('');
-  const [pending, setPending] = useState(false);
-  const load = useCallback(
-    async (reset = false) => {
-      if (!userId) return;
-      setPending(true);
-      setError('');
-      try {
-        const last = !reset && history?.userId === userId ? history.rows.at(-1) : undefined;
-        let request = bilt
-          .from('online_matches')
-          .select('*')
-          .eq('status', 'finished')
-          .order('created_at', { ascending: false })
-          .order('id', { ascending: false })
-          .limit(30);
-        if (last)
-          request = request.or(
-            `created_at.lt.${last.created_at},and(created_at.eq.${last.created_at},id.lt.${last.id})`,
-          );
-        const { data, error: e } = await request;
-        if (e) throw new Error(e.message);
-        if (usePlayers.getState().session?.user.id !== userId) return;
-        setHistory((s) => ({
-          userId,
-          rows: reset || s?.userId !== userId ? (data ?? []) : [...s.rows, ...(data ?? [])],
-          hasMore: (data?.length ?? 0) === 30,
-        }));
-      } catch (e) {
-        setError(
-          playerError({
-            message: e instanceof Error ? e.message : 'Históriu sa nepodarilo načítať.',
-          }),
-        );
-        feedback.error();
-      } finally {
-        setPending(false);
-      }
-    },
-    [userId, history],
+  const online = query.data;
+  const totals = useMemo(
+    () =>
+      combinedStatistics(
+        localHistory,
+        online?.matches ?? [],
+        online?.scoring ?? scoringTotals([]),
+        userId ?? '',
+      ),
+    [localHistory, online, userId],
   );
-  useFocusEffect(
-    useCallback(() => {
-      if (!userId) return undefined;
-      let active = true;
-      setPending(true);
-      setError('');
-      void Promise.resolve(
-        bilt
-          .from('online_matches')
-          .select('*')
-          .eq('status', 'finished')
-          .order('created_at', { ascending: false })
-          .order('id', { ascending: false })
-          .limit(30),
-      )
-        .then(({ data, error: e }) => {
-          if (!active || usePlayers.getState().session?.user.id !== userId) return;
-          if (e) {
-            setError(playerError(e));
-            feedback.error();
-          } else setHistory({ userId, rows: data ?? [], hasMore: (data?.length ?? 0) === 30 });
-          setPending(false);
-        })
-        .catch((e: unknown) => {
-          if (!active || usePlayers.getState().session?.user.id !== userId) return;
-          setError(
-            playerError({
-              message: e instanceof Error ? e.message : 'Históriu sa nepodarilo načítať.',
-            }),
-          );
-          feedback.error();
-          setPending(false);
-        });
-      return () => {
-        active = false;
-      };
-    }, [userId]),
+  const rows = useMemo(
+    () => matchHistory(localHistory, online?.matches ?? []),
+    [localHistory, online],
   );
-  const stats = query.data;
-  const rows = history && history.userId === userId ? history.rows : [];
+  const loading = !ready || !hydrated || query.loading;
+  const unavailable = !!userId && !online && !!query.error;
   return (
     <View className="bg-background flex-1">
       <FlatList
-        data={rows}
-        keyExtractor={(m) => m.id}
+        data={hydrated ? rows : []}
+        keyExtractor={(entry) => entry.id}
         contentContainerStyle={{
           padding: 20,
           paddingBottom: 32,
@@ -116,68 +75,74 @@ export default function Statistics() {
           flexGrow: 1,
         }}
         ListHeaderComponent={
-          <OnlineGate>
+          <>
             <Heading>Moje štatistiky</Heading>
+            <StorageNotice />
             <OnlineError error={query.error} retry={() => void query.refresh()} />
-            {query.loading ? (
+            {loading ? (
               <LoadingRows />
+            ) : unavailable ? (
+              <Txt className="text-muted my-5">
+                Online štatistiky nie sú dostupné. V histórii sú zatiaľ iba offline zápasy.
+              </Txt>
             ) : (
-              stats && (
-                <View className="mt-5 mb-8">
-                  {[
-                    ['Zápasy', stats.matches ?? 0],
-                    ['Výhry', stats.wins ?? 0],
-                    ['Prehry', stats.losses ?? 0],
-                    ['Priemer na 3 šípky', (stats.three_dart_average ?? 0).toFixed(1)],
-                    ['Najvyšší náhod', stats.highest_score ?? 0],
-                    ['Náhody 180', stats.scores_180 ?? 0],
-                  ].map(([label, value]) => (
-                    <View
-                      key={label}
-                      className="border-border flex-row justify-between gap-4 border-b py-3"
-                    >
-                      <Txt className="flex-1">{label}</Txt>
-                      <Txt
-                        style={{ fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] }}
-                      >
-                        {value}
-                      </Txt>
-                    </View>
-                  ))}
-                  <Txt className="text-muted mt-4 text-[12px] leading-5">
-                    Počítajú sa dokončené online zápasy. Prehodený ťah má 0 bodov; pri ukončení sa
-                    zohľadní počet šípok.
-                  </Txt>
-                </View>
-              )
+              <View className="mt-5 mb-8">
+                {[
+                  ['Zápasy', totals.matches],
+                  ['Výhry', totals.wins],
+                  ['Prehry', totals.losses],
+                  ...(totals.solo ? [['Sólo hry', totals.solo]] : []),
+                  [
+                    'Priemer na 3 šípky',
+                    (totals.darts ? (totals.points * 3) / totals.darts : 0).toFixed(1),
+                  ],
+                  ['Najvyšší náhod', totals.highest],
+                  ['Náhody 180', totals.scores180],
+                ].map(([label, value]) => (
+                  <View
+                    key={label}
+                    className="border-border flex-row justify-between gap-4 border-b py-3"
+                  >
+                    <Txt className="flex-1">{label}</Txt>
+                    <Txt style={{ fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] }}>
+                      {value}
+                    </Txt>
+                  </View>
+                ))}
+                <Txt className="text-muted mt-4 text-[12px] leading-5">
+                  Dokončené online a uložené offline zápasy. Offline výsledky zostávajú na tomto
+                  zariadení.
+                  {totals.solo > 0
+                    ? ' Sólo hry sa rátajú do zápasov a priemeru, nie do výhier a prehier.'
+                    : ''}
+                </Txt>
+              </View>
             )}
             <Heading className="text-[20px]">História zápasov</Heading>
-            <OnlineError error={error} retry={() => void load(!rows.length)} />
-          </OnlineGate>
+          </>
         }
-        renderItem={({ item }) => <MatchRow match={item} userId={userId ?? ''} stats />}
+        renderItem={({ item }) =>
+          item.kind === 'online' ? (
+            <MatchRow match={item.match} userId={userId ?? ''} stats />
+          ) : (
+            <OfflineMatchRow game={item.game} />
+          )
+        }
         ListEmptyComponent={
-          userId ? (
-            pending || (!history && !error) ? (
-              <LoadingRows />
-            ) : !error && !query.error ? (
-              <Empty
-                text="Dokončené online zápasy sa zobrazia tu."
-                action="Pozvať priateľa"
-                onPress={() => router.push('/online/new')}
-              />
-            ) : undefined
+          loading ? (
+            <LoadingRows />
+          ) : !query.error ? (
+            <Empty
+              text="Dokončené zápasy sa zobrazia tu."
+              action="Hrať offline"
+              onPress={() => router.push('/new-match')}
+            />
           ) : undefined
         }
         ListFooterComponent={
           <View className="mt-5 gap-3">
-            {history && history.userId === userId && history.hasMore && (
-              <Button variant="secondary" isDisabled={pending} onPress={() => void load()}>
-                <Button.Label>{pending ? 'Načítavam…' : 'Staršie zápasy'}</Button.Label>
-              </Button>
-            )}
-            <Button variant="ghost" onPress={() => router.dismissTo('/')}>
-              <Button.Label>Späť domov</Button.Label>
+            <Button variant="ghost" onPress={() => router.dismissTo('/account')}>
+              <Button.Label>Späť na môj účet</Button.Label>
             </Button>
           </View>
         }
