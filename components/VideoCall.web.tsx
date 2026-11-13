@@ -48,9 +48,10 @@ function pubInfo(p: TrackPublication | undefined): string {
   if (p.isMuted) out += ',mute';
   if (p instanceof RemoteTrackPublication) out += p.isSubscribed ? ',sub' : ',nesub';
   if (p.track?.mediaStreamTrack) out += `,${p.track.mediaStreamTrack.readyState}`;
+  if (p.mimeType) out += `,${p.mimeType.replace(/^video\/|^audio\//, '')}`;
   return out;
 }
-function diagnostics(room: Room, camErrors: string[]): string {
+function diagnostics(room: Room, camErrors: string[], sender: string): string {
   const me = room.localParticipant;
   const parts = [
     `ja cam:${pubInfo(me.getTrackPublication(Track.Source.Camera))} mic:${pubInfo(me.getTrackPublication(Track.Source.Microphone))}`,
@@ -61,6 +62,7 @@ function diagnostics(room: Room, camErrors: string[]): string {
     parts.push(
       `${p.identity.slice(0, 6)} cam:${pubInfo(p.getTrackPublication(Track.Source.Camera))} mic:${pubInfo(p.getTrackPublication(Track.Source.Microphone))} stôp:${p.trackPublications.size}`,
     );
+  if (sender) parts.push(sender);
   if (camErrors.length) parts.push(`chyba:${camErrors.at(-1)}`);
   return parts.join(' | ');
 }
@@ -104,6 +106,7 @@ export default function VideoCall({
   const [peerInfo, setPeerInfo] = useState<string | null>(null);
   const [diag, setDiag] = useState('');
   const camErrors = useRef<string[]>([]);
+  const senderInfo = useRef('');
   const [pending, setPending] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const micRef = useRef(micWanted);
@@ -118,6 +121,11 @@ export default function VideoCall({
   const [camera, setCamera] = useState(false);
   const [microphone, setMicrophone] = useState(micWanted);
   const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
+  // Aktuálna kamera pre poistku v efekte miestnosti (bez jeho reštartu).
+  const cameraChoice = useRef({ facing, deviceId });
+  useEffect(() => {
+    cameraChoice.current = { facing, deviceId };
+  }, [facing, deviceId]);
   const currentRoom = useRef<Room | null>(null);
   const localHost = useRef<HTMLDivElement>(null);
   const remoteHost = useRef<HTMLDivElement>(null);
@@ -161,7 +169,7 @@ export default function VideoCall({
         // Text stavu súpera počítame tu (mení sa aj bez zmeny stôp — napr. zverejnená,
         // ale ešte neodobratá kamera); rovnaký reťazec React neprekreslí.
         setPeerInfo(peerStatus(session, next));
-        setDiag(diagnostics(session, camErrors.current));
+        setDiag(diagnostics(session, camErrors.current, senderInfo.current));
         // Rovnaké stopy v rovnakom stave → bez prekreslenia (pravidelná obnova).
         setTracks((prev) =>
           prev.length === next.length &&
@@ -210,7 +218,59 @@ export default function VideoCall({
       .on(RoomEvent.TrackSubscriptionFailed, update)
       .on(RoomEvent.TrackSubscriptionStatusChanged, update);
     // Poistka: stav miestnosti obnovíme aj pravidelne (keby nejaká udalosť nedorazila).
-    const refresh = setInterval(update, 2000);
+    // Poistka pre Android: kamera je zverejnená, ale kodér neodoslal ani jednu snímku
+    // (server ju potom ostatným vôbec neukáže — iPhone hlási „kameru nevysiela“).
+    // Po 8 s bez snímok kameru znova zverejníme v jednej kvalite (bez simulcastu),
+    // ktorú zvládnu aj slabšie kodéry v telefónoch. Funkčné kamery sa to netýka.
+    let zeroSince: number | undefined;
+    let fallbackDone = false;
+    let checking = false;
+    const checkSender = async () => {
+      if (checking || !active) return;
+      checking = true;
+      try {
+        const pub = session.localParticipant.getTrackPublication(Track.Source.Camera);
+        const track = pub?.track;
+        if (!(track instanceof LocalVideoTrack) || !pub?.trackSid || pub.isMuted) {
+          zeroSince = undefined;
+          senderInfo.current = '';
+          return;
+        }
+        const stats = await track.getSenderStats().catch(() => []);
+        const frames = stats.reduce((sum, st) => sum + (st.framesSent ?? 0), 0);
+        const kb = Math.round(stats.reduce((sum, st) => sum + (st.bytesSent ?? 0), 0) / 1024);
+        const limit = stats.find((st) => st.qualityLimitationReason)?.qualityLimitationReason;
+        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${limit ? ` obmedz:${limit}` : ''}${fallbackDone ? ' (1 kvalita)' : ''}`;
+        if (frames > 0) {
+          zeroSince = undefined;
+          return;
+        }
+        zeroSince ??= Date.now();
+        if (fallbackDone || Date.now() - zeroSince < 8000) return;
+        fallbackDone = true;
+        camErrors.current.push('0 snímok → kamera znova v 1 kvalite');
+        const { facing: f, deviceId: d } = cameraChoice.current;
+        await session.localParticipant.unpublishTrack(track, true);
+        if (!active) return;
+        await withCameraRetry(() =>
+          session.localParticipant.setCameraEnabled(
+            true,
+            { resolution: VIDEO_PRESETS[videoTier.current].resolution, ...trackOptions(f, d) },
+            { simulcast: false },
+          ),
+        );
+      } catch (e) {
+        camErrors.current.push(
+          e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 80) : String(e),
+        );
+      } finally {
+        checking = false;
+      }
+    };
+    const refresh = setInterval(() => {
+      void checkSender();
+      update();
+    }, 2000);
     // Chat-hovor: keď priateľ hovor položí (odíde z miestnosti), ukončíme ho aj tu.
     // Krátka pauza, aby krátky výpadok siete hovor hneď neukončil.
     let peerSeen = false;
