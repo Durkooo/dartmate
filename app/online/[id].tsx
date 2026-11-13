@@ -328,16 +328,16 @@ export default function OnlineGame() {
         {/* 1) SKÓRE – vždy na vrchu */}
         <View className="bg-ink overflow-hidden rounded-[22px]">
           {legsToWin > 1 && (
-            <View className="flex-row items-center justify-center gap-2 px-4 pt-1">
-              <Trophy size={14} strokeWidth={1.8} color={palette.yellow} />
-              <Txt className="text-on-ink text-[12px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+            <View className="flex-row items-center justify-center gap-2 px-4 pt-2">
+              <Trophy size={16} strokeWidth={1.8} color={palette.yellow} />
+              <Txt className="text-on-ink text-[14px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {m?.status === 'finished'
                   ? 'Zápas dohraný'
                   : `Leg ${legNo} · začína @${legStarterName}`}
               </Txt>
             </View>
           )}
-          <View className="flex-row px-4 py-1">
+          <View className="flex-row px-4 py-1.5">
             {[
               { key: 'me', name: `@${myName}`, score: myRemaining, active: mine },
               {
@@ -362,15 +362,15 @@ export default function OnlineGame() {
                       borderRadius: 3.5,
                     }}
                   />
-                  <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
+                  <Txt className="text-on-ink text-[16px]" numberOfLines={1}>
                     {p.name}
                   </Txt>
                 </View>
                 <Txt
                   className={
                     p.active
-                      ? 'text-accent text-[33px] leading-[42px]'
-                      : 'text-[33px] leading-[42px] text-white'
+                      ? 'text-accent text-[38px] leading-[48px]'
+                      : 'text-[38px] leading-[48px] text-white'
                   }
                   adjustsFontSizeToFit
                   numberOfLines={1}

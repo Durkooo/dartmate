@@ -194,25 +194,25 @@ export default function Match() {
           <View>
             <StorageNotice />
             <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
-              <View className="flex-row items-center justify-center gap-2 pt-1.5">
+              <View className="flex-row items-center justify-center gap-2 pt-2">
                 <View className="bg-accent h-1.5 w-1.5 rounded-full" />
-                <Txt className="text-on-ink text-[13px]">
+                <Txt className="text-on-ink text-[15px]">
                   {finished
                     ? 'Zápas dohraný'
                     : `Kolo ${Math.floor(legTurns(game).length / 2) + 1}${game.legsToWin > 1 ? ` · leg ${legNo}` : ''}`}
                 </Txt>
               </View>
-              <View className="flex-row px-3 py-1">
+              <View className="flex-row px-3 py-1.5">
                 {(game.solo ? ([0] as const) : ([0, 1] as const)).map((p) => (
                   <View
                     key={p}
                     className={`flex-1 items-center px-2 ${p === 0 && !game.solo ? 'border-on-ink/20 border-r' : ''}`}
                   >
-                    <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
+                    <Txt className="text-on-ink text-[16px]" numberOfLines={1}>
                       {p === 0 ? me : practice ? 'Hráč 2' : opponentFirst}
                     </Txt>
                     <Txt
-                      className={`text-[57px] leading-[68px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
+                      className={`text-[66px] leading-[78px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                       minimumFontScale={0.8}
@@ -225,7 +225,7 @@ export default function Match() {
                     >
                       {currentScores[p]}
                     </Txt>
-                    <Txt className="text-on-ink text-[12px]">Priemer {average(game, p)}</Txt>
+                    <Txt className="text-on-ink text-[14px]">Priemer {average(game, p)}</Txt>
                   </View>
                 ))}
               </View>

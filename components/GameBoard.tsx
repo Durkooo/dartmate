@@ -28,21 +28,21 @@ export function ScoreBoard({
 }) {
   return (
     <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
-      <View className="flex-row items-center justify-center gap-2 pt-1.5">
+      <View className="flex-row items-center justify-center gap-2 pt-2">
         <View className="bg-accent h-1.5 w-1.5 rounded-full" />
-        <Txt className="text-on-ink text-[13px]">{top}</Txt>
+        <Txt className="text-on-ink text-[15px]">{top}</Txt>
       </View>
-      <View className="flex-row px-3 py-1">
+      <View className="flex-row px-3 py-1.5">
         {players.map((p, i) => (
           <View
             key={`${p.name}-${String(i)}`}
             className={`flex-1 items-center px-2 ${i < players.length - 1 ? 'border-on-ink/20 border-r' : ''}`}
           >
-            <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
+            <Txt className="text-on-ink text-[16px]" numberOfLines={1}>
               {p.name}
             </Txt>
             <Txt
-              className={`text-[57px] leading-[68px] ${active === i ? 'text-accent' : 'text-white'}`}
+              className={`text-[66px] leading-[78px] ${active === i ? 'text-accent' : 'text-white'}`}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.8}
@@ -55,7 +55,7 @@ export function ScoreBoard({
             >
               {p.value}
             </Txt>
-            {!!p.sub && <Txt className="text-on-ink text-[12px]">{p.sub}</Txt>}
+            {!!p.sub && <Txt className="text-on-ink text-[14px]">{p.sub}</Txt>}
           </View>
         ))}
       </View>
@@ -74,23 +74,23 @@ export function ScoreStrip({
   center: string;
   right?: string;
 }) {
-  const side = { fontFamily: 'Inter_700Bold', color: palette.navy, minWidth: 64 } as const;
+  const side = { fontFamily: 'Inter_700Bold', color: palette.navy, minWidth: 74 } as const;
   return (
-    <View className="bg-accent flex-row items-center px-4 py-1.5">
+    <View className="bg-accent flex-row items-center px-4 py-2">
       {left !== undefined || right !== undefined ? (
-        <Txt className="text-[14px]" style={side} numberOfLines={1}>
+        <Txt className="text-[16px]" style={side} numberOfLines={1}>
           {left ?? ''}
         </Txt>
       ) : null}
       <Txt
-        className="flex-1 text-center text-[14px]"
+        className="flex-1 text-center text-[16px]"
         style={{ fontFamily: 'Inter_600SemiBold', color: palette.navy }}
         numberOfLines={1}
       >
         {center}
       </Txt>
       {left !== undefined || right !== undefined ? (
-        <Txt className="text-right text-[14px]" style={side} numberOfLines={1}>
+        <Txt className="text-right text-[16px]" style={side} numberOfLines={1}>
           {right ?? ''}
         </Txt>
       ) : null}
