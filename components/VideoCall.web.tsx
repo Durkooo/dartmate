@@ -66,6 +66,55 @@ function diagnostics(room: Room, camErrors: string[], sender: string): string {
   if (camErrors.length) parts.push(`chyba:${camErrors.at(-1)}`);
   return parts.join(' | ');
 }
+/** Náhradné vysielanie kamery cez plátno: niektoré Androidy ukážu obraz kamery
+ *  v náhľade, ale do odosielania nepustia ani snímku (kam:0). Obraz sa preto
+ *  prekresľuje z (neviditeľného) videa do plátna a do hovoru ide stopa z plátna. */
+function createCanvasRelay(source: MediaStreamTrack) {
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.autoplay = true;
+  video.srcObject = new MediaStream([source]);
+  // Musí byť v stránke, inak ho niektoré prehliadače neprehrávajú.
+  Object.assign(video.style, {
+    position: 'fixed',
+    left: '0',
+    top: '0',
+    width: '2px',
+    height: '2px',
+    opacity: '0',
+    pointerEvents: 'none',
+  });
+  document.body.appendChild(video);
+  void video.play().catch(() => undefined);
+  const canvas = document.createElement('canvas');
+  const settings = source.getSettings();
+  canvas.width = settings.width || 1280;
+  canvas.height = settings.height || 720;
+  const ctx = canvas.getContext('2d');
+  const timer = setInterval(() => {
+    if (!ctx || video.readyState < 2) return;
+    if (
+      video.videoWidth &&
+      (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)
+    ) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  }, 33);
+  const track = canvas.captureStream(30).getVideoTracks()[0];
+  return {
+    track,
+    stop: () => {
+      clearInterval(timer);
+      track.stop();
+      source.stop();
+      video.srcObject = null;
+      video.remove();
+    },
+  };
+}
 function snapshotTracks(room: Room): MediaTrack[] {
   const tracks: MediaTrack[] = [
     { track: room.localParticipant.getTrackPublication(Track.Source.Camera)?.track, local: true },
@@ -108,6 +157,8 @@ export default function VideoCall({
   const [diag, setDiag] = useState('');
   const camErrors = useRef<string[]>([]);
   const senderInfo = useRef('');
+  /** Kamera ide cez plátno — reštart kamery (kvalita, otočenie) by ho zrušil. */
+  const relayActive = useRef(false);
   const [pending, setPending] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const micRef = useRef(micWanted);
@@ -232,6 +283,8 @@ export default function VideoCall({
     // Poistky pri 0 snímkach: 1 = znova v 1 kvalite (VP8), 2 = kodek H.264,
     // 3 = kodek VP9. Každá po 8 s bez snímok; funkčné kamery sa to netýka.
     let fallbackStage = 0;
+    // Náhradné vysielanie cez plátno (pri kam:0), zastaví sa s hovorom.
+    let relay: ReturnType<typeof createCanvasRelay> | null = null;
     const FALLBACKS = [
       { label: '1 kvalita VP8', codec: 'vp8' },
       { label: 'kodek H.264', codec: 'h264' },
@@ -264,6 +317,7 @@ export default function VideoCall({
         // Surové údaje prehliadača: snímky z kamery do kodéra, zakódované snímky,
         // kodér a kodek — ukážu, kde presne sa video zastaví.
         let raw = '';
+        let sourceFrames = -1;
         try {
           const report = await track.sender?.getStats();
           let source = 0;
@@ -283,17 +337,39 @@ export default function VideoCall({
               }
             }
           });
+          sourceFrames = source;
           raw = ` kam:${source} kód:${encoded}${impl ? ` ${impl}` : ''}${codec ? ` ${codec}` : ''}`;
         } catch {
           raw = '';
         }
-        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${layersOn ? ` zap:${layersOn}` : ''}${limit ? ` obmedz:${limit}` : ''}${raw}${fallbackStage ? ` (${FALLBACKS[fallbackStage - 1].label})` : ''}`;
+        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${layersOn ? ` zap:${layersOn}` : ''}${limit ? ` obmedz:${limit}` : ''}${raw}${relay ? ' (cez plátno)' : fallbackStage ? ` (${FALLBACKS[fallbackStage - 1].label})` : ''}`;
         if (frames > 0) {
           zeroSince = undefined;
           return;
         }
         zeroSince ??= Date.now();
-        if (fallbackStage >= FALLBACKS.length || Date.now() - zeroSince < 8000) return;
+        if (Date.now() - zeroSince < 8000) return;
+        // Z kamery nepríde do odosielania ani snímka → iný kodek nepomôže,
+        // pošleme obraz cez plátno (z náhľadu, ktorý funguje).
+        if (sourceFrames === 0 && !relay) {
+          zeroSince = undefined;
+          camErrors.current.push('kam:0 → kamera cez plátno');
+          const source = track.mediaStreamTrack;
+          await session.localParticipant.unpublishTrack(track, false);
+          if (!active) {
+            source.stop();
+            return;
+          }
+          relay = createCanvasRelay(source);
+          relayActive.current = true;
+          await session.localParticipant.publishTrack(relay.track, {
+            source: Track.Source.Camera,
+            simulcast: false,
+            videoCodec: 'vp8',
+          });
+          return;
+        }
+        if (relay || fallbackStage >= FALLBACKS.length) return;
         const next = FALLBACKS[fallbackStage];
         fallbackStage += 1;
         zeroSince = undefined;
@@ -434,6 +510,9 @@ export default function VideoCall({
       active = false;
       currentRoom.current = null;
       clearInterval(refresh);
+      relay?.stop();
+      relay = null;
+      relayActive.current = false;
       clearTimeout(leaveTimer);
       session.removeAllListeners();
       void session.disconnect();
@@ -456,6 +535,7 @@ export default function VideoCall({
       if (
         tier === videoTier.current ||
         cooling ||
+        relayActive.current ||
         !(track instanceof LocalVideoTrack) ||
         !room.localParticipant.isCameraEnabled
       )
@@ -870,6 +950,8 @@ export default function VideoCall({
         onFlip={() =>
           void control(async () => {
             const next = facing === 'user' ? 'environment' : 'user';
+            if (relayActive.current)
+              throw new Error('Pri náhradnom vysielaní kamery sa kamera nedá otočiť.');
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
