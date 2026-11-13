@@ -4,7 +4,7 @@ import { bilt } from '@/lib/bilt';
  * kým backend nemá potrebné funkcie (exports/chat-and-leaderboard.sql), vracia
  * prázdne hodnoty a appka sa správa ako doteraz. */
 
-export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🎯', '🔥'] as const;
+export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🎯', '🔥', '🖕'] as const;
 export type Reaction = { messageId: number; userId: string; emoji: string };
 export type ChatState = { peerLastReadId: number; peerTyping: boolean };
 
@@ -81,7 +81,9 @@ export async function react(messageId: number, emoji: string | null): Promise<vo
   const { error } = await bilt.rpc('react_to_message', { target: messageId, reaction: emoji });
   if (error) {
     throw new Error(
-      missing(error.message) ? 'Reakcie sa ešte pripravujú na serveri.' : error.message,
+      missing(error.message) || /check constraint|violates/i.test(error.message)
+        ? 'Táto reakcia sa ešte pripravuje na serveri.'
+        : error.message,
     );
   }
 }

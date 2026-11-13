@@ -1005,15 +1005,15 @@ function ConversationContent({
                         });
                     }}
                     style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 21,
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
                       alignItems: 'center',
                       justifyContent: 'center',
                       backgroundColor: current === emoji ? palette.yellow : palette.paper,
                     }}
                   >
-                    <Txt className="text-[22px]">{emoji}</Txt>
+                    <Txt className="text-[20px]">{emoji}</Txt>
                   </Pressable>
                 );
               })}
