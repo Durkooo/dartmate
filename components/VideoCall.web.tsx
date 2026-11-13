@@ -154,8 +154,11 @@ export default function VideoCall({
   useEffect(() => {
     let active = true;
     const session = new Room({
-      adaptiveStream: true,
-      dynacast: true,
+      // Hovor dvoch ľudí: bez šetrenia dát. S adaptiveStream iPhone (Safari)
+      // hlásil, že video nie je viditeľné, a s dynacast server potom Androidu
+      // vypol vysielanie kamery — odoslané 0 snímok, u priateľa čierne okno.
+      adaptiveStream: false,
+      dynacast: false,
       videoCaptureDefaults: { resolution: VideoPresets.h720 },
     });
     const fail = (e: unknown) => {
@@ -243,7 +246,15 @@ export default function VideoCall({
         const frames = stats.reduce((sum, st) => sum + (st.framesSent ?? 0), 0);
         const kb = Math.round(stats.reduce((sum, st) => sum + (st.bytesSent ?? 0), 0) / 1024);
         const limit = stats.find((st) => st.qualityLimitationReason)?.qualityLimitationReason;
-        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${limit ? ` obmedz:${limit}` : ''}${fallbackDone ? ' (1 kvalita)' : ''}`;
+        // Zapnuté vrstvy vysielania (1 = posiela, 0 = vypnutá serverom/prehliadačom).
+        let layersOn = '';
+        try {
+          const enc = track.sender?.getParameters().encodings ?? [];
+          layersOn = enc.map((e) => (e.active === false ? '0' : '1')).join('');
+        } catch {
+          layersOn = '?';
+        }
+        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${layersOn ? ` zap:${layersOn}` : ''}${limit ? ` obmedz:${limit}` : ''}${fallbackDone ? ' (1 kvalita)' : ''}`;
         if (frames > 0) {
           zeroSince = undefined;
           return;
