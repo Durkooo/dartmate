@@ -58,7 +58,7 @@ export function VoiceScore({
   const onUnclear = useCallback((heard: string) => {
     setNote(heard ? `Nerozumel som „${heard}“, zopakuj skóre.` : 'Nerozumel som, zopakuj.');
   }, []);
-  const { listening, error } = useVoiceScore(active, onScore, onUnclear);
+  const { listening, error, heard } = useVoiceScore(active, onScore, onUnclear);
   // Zápis po 1,2 s, ak ho hráč nezruší.
   useEffect(() => {
     if (pending === null) return undefined;
@@ -113,7 +113,14 @@ export function VoiceScore({
             </View>
           ) : (
             <Txt className="text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-              {listening ? '🎤 Počúvam — povedz skóre, napr. „sto štyridsať“' : 'Spúšťam mikrofón…'}
+              {listening
+                ? '🎤 Počúvam — povedz skóre, napr. „sto štyridsať“ alebo „šesťdesiat“'
+                : 'Spúšťam mikrofón…'}
+            </Txt>
+          )}
+          {!!heard && !disabledReason && (
+            <Txt className="text-muted text-[12px]" numberOfLines={1}>
+              Počul som: „{heard}“
             </Txt>
           )}
           {!!note && !disabledReason && <Txt className="text-muted text-[12px]">{note}</Txt>}

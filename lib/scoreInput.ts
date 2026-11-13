@@ -9,6 +9,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 // ───────────── Slovenské čísla z reči → skóre ─────────────
 const WORDS: Record<string, number> = {
+  // slovensky
   nula: 0,
   nic: 0,
   jeden: 1,
@@ -43,6 +44,60 @@ const WORDS: Record<string, number> = {
   devatdesiat: 90,
   sto: 100,
   jednosto: 100,
+  // česky (ak telefón slovenčinu nemá a použije češtinu)
+  ctyri: 4,
+  pet: 5,
+  sedm: 7,
+  osm: 8,
+  devet: 9,
+  deset: 10,
+  jedenact: 11,
+  dvanact: 12,
+  trinact: 13,
+  ctrnact: 14,
+  patnact: 15,
+  sestnact: 16,
+  sedmnact: 17,
+  osmnact: 18,
+  devatenact: 19,
+  dvacet: 20,
+  tricet: 30,
+  ctyricet: 40,
+  padesat: 50,
+  sedesat: 60,
+  sedmdesat: 70,
+  osmdesat: 80,
+  devadesat: 90,
+  // anglicky (posledná záloha)
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+  hundred: 100,
 };
 const KEYS = Object.keys(WORDS).sort((a, b) => b.length - a.length);
 const strip = (s: string) =>
@@ -51,24 +106,64 @@ const strip = (s: string) =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 
-/** „sto štyridsať“, „140“, „stoosemdesiat“, „dvadsaťpäť“ → číslo; null = nerozumel. */
-export function parseSpokenScore(text: string): number | null {
-  const t = strip(text).trim();
-  const digits = t.match(/\d{1,3}/);
-  if (digits) return Number(digits[0]);
-  let rest = t.replace(/[^a-z]/g, '');
-  if (!rest) return null;
-  let sum = 0;
-  let found = false;
+/** Jedno slovo → čísla, ktoré v ňom sú („stoosemdesiat“ → [100, 80]); null = nie je to číslo. */
+function wordNumbers(word: string): number[] | null {
+  let rest = word;
+  const out: number[] = [];
   while (rest) {
     const key = KEYS.find((k) => rest.startsWith(k));
-    if (!key) return null; // iné slová (napr. „podaj mi pivo“) → nič
-    sum += WORDS[key];
+    if (!key) return null;
+    out.push(WORDS[key]);
     rest = rest.slice(key.length);
-    found = true;
   }
-  return found ? sum : null;
+  return out.length ? out : null;
 }
+/** Najmenší rád čísla (100 → 100, 140 → 10, 145 → 1, 40 → 10, 7 → 1). */
+const place = (n: number) => (n % 10 !== 0 ? 1 : n % 100 !== 0 ? 10 : 100);
+
+/** Slová a číslice v reči → skóre. Zvládne „sto štyridsať“, „140“, „sto 40“, „100 40“,
+ *  „stoosemdesiat“, „mám šesťdesiat“. Ostatné slová ignoruje; viac čísel = posledné.
+ *  null = žiadne číslo. */
+export function parseSpokenScore(text: string): number | null {
+  const tokens = strip(text)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+  // Postupnosť čísel v poradí, ako zazneli (slová môžu mať viac častí).
+  const parts: number[] = [];
+  const breaks: boolean[] = []; // true = pred touto časťou bolo nečíselné slovo
+  let gap = false;
+  for (const tok of tokens) {
+    const nums = /^\d{1,3}$/.test(tok) ? [Number(tok)] : wordNumbers(tok);
+    if (!nums) {
+      gap = true;
+      continue;
+    }
+    nums.forEach((n, i) => {
+      parts.push(n);
+      breaks.push(i === 0 ? gap : false);
+    });
+    gap = false;
+  }
+  if (!parts.length) return null;
+  // Skladanie: 100 + 40 + 5, 100 + 80, 20 + 5… Nová skupina, keď číslo nesedí do rádu.
+  const groups: number[] = [];
+  let cur = parts[0];
+  for (let i = 1; i < parts.length; i += 1) {
+    const n = parts[i];
+    if (!breaks[i] && n < place(cur) && cur + n <= 999) cur += n;
+    else {
+      groups.push(cur);
+      cur = n;
+    }
+  }
+  groups.push(cur);
+  return groups[groups.length - 1];
+}
+
+/** Číslo, po ktorom môže ešte niečo nasledovať (sto… / sto dvadsať… / štyridsať…). */
+export const mayContinue = (n: number) => n === 100 || (n % 10 === 0 && n >= 20 && n <= 170);
 
 // ───────────── Hlasový vstup ─────────────
 type Recognition = {
@@ -101,6 +196,8 @@ export function useVoiceScore(
 ) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState('');
+  /** Čo rozpoznávač práve počuje (aj priebežne) — zobrazí sa hráčovi. */
+  const [heard, setHeard] = useState('');
   const cb = useRef({ onScore, onUnclear });
   useEffect(() => {
     cb.current = { onScore, onUnclear };
@@ -110,13 +207,19 @@ export function useVoiceScore(
     if (!enabled || !Ctor) return undefined;
     let stopped = false;
     const rec = new Ctor();
-    rec.lang = 'sk-SK';
+    // Slovenčina; ak ju telefón nepodporuje, skúsime češtinu a potom angličtinu.
+    const LANGS = ['sk-SK', 'cs-CZ', 'en-US'];
+    let langIndex = 0;
+    rec.lang = LANGS[langIndex];
     rec.continuous = true;
     // Čiastočné výsledky: platné číslo prijmeme, keď sa 0,8 s nezmení — nemusíme
     // čakať, kým prehliadač vyhodnotí koniec vety (na iPhone aj 1–2 s).
     rec.interimResults = true;
     rec.maxAlternatives = 3;
-    const STABLE_MS = 800;
+    // Kým sa číslo nezmení: krátko pri „hotových“ číslach (60, 140, 45),
+    // dlhšie pri tých, za ktorými môže ešte niečo prísť („sto…“, „sto dvadsať…“).
+    const STABLE_MS = 600;
+    const STABLE_PREFIX_MS = 1400;
     const accepted = new Set<number>();
     let interimTimer: ReturnType<typeof setTimeout> | undefined;
     let interimFor = -1;
@@ -141,6 +244,7 @@ export function useVoiceScore(
           heard = r[a].transcript;
           value = parseSpokenScore(heard);
         }
+        setHeard(r[0]?.transcript ?? heard);
         if (r.isFinal) {
           if (interimFor === i) clearTimeout(interimTimer);
           if (accepted.has(i)) continue;
@@ -156,7 +260,10 @@ export function useVoiceScore(
             interimValue = value;
             const v = value;
             const h = heard;
-            interimTimer = setTimeout(() => accept(i, v, h), STABLE_MS);
+            interimTimer = setTimeout(
+              () => accept(i, v, h),
+              mayContinue(v) ? STABLE_PREFIX_MS : STABLE_MS,
+            );
           }
         }
       }
@@ -164,6 +271,11 @@ export function useVoiceScore(
     rec.onerror = (e: unknown) => {
       const raw: unknown = typeof e === 'object' && e !== null ? Reflect.get(e, 'error') : '';
       const code = typeof raw === 'string' ? raw : '';
+      if (code === 'language-not-supported' && langIndex < LANGS.length - 1) {
+        langIndex += 1;
+        rec.lang = LANGS[langIndex];
+        return; // onend reštartuje s ďalším jazykom
+      }
       if (code === 'not-allowed' || code === 'service-not-allowed') {
         stopped = true;
         setError('Mikrofón nie je povolený. Povoľ ho v prehliadači.');
@@ -206,7 +318,7 @@ export function useVoiceScore(
       setListening(false);
     };
   }, [enabled]);
-  return { listening: enabled && listening, error };
+  return { listening: enabled && listening, error, heard: enabled ? heard : '' };
 }
 
 /** Hlasový režim si zápas pamätá, kým beží (aj po odchode z obrazovky a návrate). */
