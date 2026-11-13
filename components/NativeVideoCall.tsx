@@ -5,6 +5,7 @@ import {
   Track,
   ConnectionState,
   LocalVideoTrack,
+  RemoteTrackPublication,
   VideoPresets,
   ConnectionQuality,
   RoomEvent,
@@ -21,6 +22,7 @@ import {
   useConnectionState,
   useParticipants,
 } from '@livekit/react-native';
+import { Phone } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
 import { Button } from 'heroui-native';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
@@ -45,6 +47,7 @@ function RoomContent({
   room,
   onLeave,
   large,
+  audioOnly,
   micWanted,
   onMicChange,
   peerName,
@@ -54,6 +57,7 @@ function RoomContent({
   room: Room;
   onLeave: () => void;
   large: boolean;
+  audioOnly: boolean;
   micWanted: boolean;
   onMicChange?: (on: boolean) => void;
   peerName?: string;
@@ -82,7 +86,8 @@ function RoomContent({
   const participants = useParticipants();
   // Diagnostika súperovho obrazu (vidí ju aj hráč — podľa nej spoznáme, kde to viazne).
   const peer = participants.find((p) => !p.isLocal);
-  const peerPub = peer?.getTrackPublication(Track.Source.Camera);
+  const publication = peer?.getTrackPublication(Track.Source.Camera);
+  const peerPub = publication instanceof RemoteTrackPublication ? publication : undefined;
   const peerVideoShowing = shownTracks.some(
     (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
   );
@@ -100,7 +105,7 @@ function RoomContent({
   const autoCam = useRef(false);
   const [camError, setCamError] = useState('');
   useEffect(() => {
-    if (state !== ConnectionState.Connected || autoCam.current) return;
+    if (audioOnly || state !== ConnectionState.Connected || autoCam.current) return;
     autoCam.current = true;
     void (async () => {
       // Android: bez povolenia systému kamera vôbec neštartuje.
@@ -127,7 +132,7 @@ function RoomContent({
           );
         });
     })();
-  }, [state, room, initialFacing, initialDeviceId]);
+  }, [state, room, initialFacing, initialDeviceId, audioOnly]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [facing, setFacing] = useState<'user' | 'environment'>(initialFacing ?? 'user');
@@ -209,96 +214,117 @@ function RoomContent({
   };
   return (
     <View className="bg-surface rounded-xl p-3">
-      {!peerVideoShowing && (
-        <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
-          {peerStatus}
-        </Txt>
-      )}
-      {shownTracks.map((track) => {
-        // Súperovo okno maximalizujeme, vlastné o 10 % menšie — obe vidno aj so skóre.
-        // Odznak v rohu ukazuje živé rozlíšenie (vlastné = vysielané pásmo).
-        const isLocalTrack = track.participant.isLocal;
-        const h = isLocalTrack ? (large ? 140 : 120) : large ? 280 : 150;
-        const showing = isTrackReference(track) && !track.publication.isMuted;
-        const badge = !showing ? '' : isLocalTrack ? ['480p', '720p', '1080p'][pubTier] : rxSize;
-        return (
-          <View key={track.participant.identity} className="mb-2">
-            <Txt className="mb-1 text-[12px]" numberOfLines={1}>
-              {track.participant.isLocal
-                ? 'Tvoja kamera'
-                : peerName
-                  ? `@${peerName}`
-                  : `@${track.participant.name || track.participant.identity}`}
+      {audioOnly ? (
+        <View className="items-center gap-3 py-5">
+          <Phone size={32} strokeWidth={1.8} color={palette.ink} />
+          <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
+            {peerName ? `@${peerName}` : 'Hlasový hovor'}
+          </Txt>
+          <Txt className="text-muted text-[13px]">
+            {peer ? 'Hovor prebieha' : 'Čakám na priateľa…'}
+          </Txt>
+        </View>
+      ) : (
+        <>
+          {!peerVideoShowing && (
+            <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
+              {peerStatus}
             </Txt>
-            {showing && isTrackReference(track) ? (
-              <View style={{ position: 'relative', height: h }}>
-                <VideoTrack
-                  trackRef={track}
-                  objectFit={large ? 'contain' : 'cover'}
-                  style={{
-                    height: h,
-                    width: '100%',
-                    backgroundColor: palette.ink,
-                    borderRadius: 10,
-                  }}
-                />
-                {!!badge && (
+          )}
+          {shownTracks.map((track) => {
+            // Súperovo okno maximalizujeme, vlastné o 10 % menšie — obe vidno aj so skóre.
+            // Odznak v rohu ukazuje živé rozlíšenie (vlastné = vysielané pásmo).
+            const isLocalTrack = track.participant.isLocal;
+            const h = isLocalTrack ? (large ? 140 : 120) : large ? 280 : 150;
+            const showing = isTrackReference(track) && !track.publication.isMuted;
+            const badge = !showing
+              ? ''
+              : isLocalTrack
+                ? ['480p', '720p', '1080p'][pubTier]
+                : rxSize;
+            return (
+              <View key={track.participant.identity} className="mb-2">
+                <Txt className="mb-1 text-[12px]" numberOfLines={1}>
+                  {track.participant.isLocal
+                    ? 'Tvoja kamera'
+                    : peerName
+                      ? `@${peerName}`
+                      : `@${track.participant.name || track.participant.identity}`}
+                </Txt>
+                {showing && isTrackReference(track) ? (
+                  <View style={{ position: 'relative', height: h }}>
+                    <VideoTrack
+                      trackRef={track}
+                      objectFit={large ? 'contain' : 'cover'}
+                      style={{
+                        height: h,
+                        width: '100%',
+                        backgroundColor: palette.ink,
+                        borderRadius: 10,
+                      }}
+                    />
+                    {!!badge && (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          right: 8,
+                          bottom: 8,
+                          backgroundColor: 'rgba(0,0,0,0.55)',
+                          borderRadius: 6,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                        }}
+                      >
+                        <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
+                      </View>
+                    )}
+                  </View>
+                ) : (
                   <View
-                    style={{
-                      position: 'absolute',
-                      right: 8,
-                      bottom: 8,
-                      backgroundColor: 'rgba(0,0,0,0.55)',
-                      borderRadius: 6,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                    }}
+                    style={{ height: h }}
+                    className="bg-ink items-center justify-center rounded-xl"
                   >
-                    <Txt style={{ color: '#fff', fontSize: 11 }}>{badge}</Txt>
+                    <Txt className="text-on-ink">Kamera je vypnutá</Txt>
                   </View>
                 )}
               </View>
-            ) : (
-              <View style={{ height: h }} className="bg-ink items-center justify-center rounded-xl">
-                <Txt className="text-on-ink">Kamera je vypnutá</Txt>
-              </View>
-            )}
-          </View>
-        );
-      })}
-      {/* Obnova zaseknutého odberu: krátko odhlási a znova prihlási súperov obraz.
+            );
+          })}
+          {/* Obnova zaseknutého odberu: krátko odhlási a znova prihlási súperov obraz.
           Zdravý prenos to len žmurkne, zaseknutý sa tým často preberie. */}
-      {large && !!peer && !peerVideoShowing && !!peerPub && !peerPub.isMuted && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mb-2"
-          accessibilityLabel="Obnoviť obraz súpera"
-          onPress={() => {
-            const pub = peerPub;
-            void (async () => {
-              try {
-                await pub.setSubscribed(false);
-              } catch {
-                // Odhlásenie nemusí prejsť — skúsime aspoň prihlásenie.
-              }
-              await new Promise((r) => setTimeout(r, 400));
-              try {
-                await pub.setSubscribed(true);
-              } catch {
-                setError('Obraz sa nepodarilo obnoviť. Skús vypnúť a zapnúť kameru.');
-                feedback.error();
-                return;
-              }
-              feedback.selection();
-            })();
-          }}
-        >
-          <Button.Label>Obnoviť obraz súpera</Button.Label>
-        </Button>
-      )}
-      {large && participants.length < 2 && (
-        <Txt className="text-muted text-[12px]">Súper sa ešte nepripojil k videohovoru.</Txt>
+          {large && !!peer && !peerVideoShowing && !!peerPub && !peerPub.isMuted && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-2"
+              accessibilityLabel="Obnoviť obraz súpera"
+              onPress={() => {
+                const pub = peerPub;
+                void (async () => {
+                  try {
+                    pub.setSubscribed(false);
+                  } catch {
+                    // Odhlásenie nemusí prejsť — skúsime aspoň prihlásenie.
+                  }
+                  await new Promise((r) => setTimeout(r, 400));
+                  try {
+                    pub.setSubscribed(true);
+                  } catch {
+                    setError('Obraz sa nepodarilo obnoviť. Skús vypnúť a zapnúť kameru.');
+                    feedback.error();
+                    return;
+                  }
+                  feedback.selection();
+                })();
+              }}
+            >
+              <Button.Label>Obnoviť obraz súpera</Button.Label>
+            </Button>
+          )}
+          {large && participants.length < 2 && (
+            <Txt className="text-muted text-[12px]">Súper sa ešte nepripojil k videohovoru.</Txt>
+          )}
+        </>
       )}
       {!!camError && (
         <Txt className="text-danger mt-2 text-[13px]" accessibilityRole="alert">
@@ -311,6 +337,7 @@ function RoomContent({
         </Txt>
       )}
       <VideoControls
+        audioOnly={audioOnly}
         camera={isCameraEnabled}
         microphone={isMicrophoneEnabled}
         pending={pending}
@@ -363,6 +390,7 @@ export default function NativeVideoCall({
   matchId,
   onLeave,
   large,
+  audioOnly = false,
   micWanted = true,
   onMicChange,
   getCredentials,
@@ -437,6 +465,7 @@ export default function NativeVideoCall({
   if (!credentials)
     return (
       <VideoNotice
+        audioOnly={audioOnly}
         error={error}
         pending={!error}
         retry={() => setRequest({ matchId })}
@@ -456,13 +485,17 @@ export default function NativeVideoCall({
         token={credentials.token}
         connect
         audio={micWanted}
-        video
+        video={!audioOnly}
         onError={(e) => {
           setError(e.message);
           feedback.error();
         }}
         onDisconnected={() => {
-          setError('Videohovor je odpojený. V hre môžeš pokračovať bez kamery.');
+          setError(
+            audioOnly
+              ? 'Hovor je odpojený. Skús sa pripojiť znova.'
+              : 'Videohovor je odpojený. V hre môžeš pokračovať bez kamery.',
+          );
           feedback.error();
         }}
       >
@@ -470,6 +503,7 @@ export default function NativeVideoCall({
           room={room}
           onLeave={onLeave}
           large={large ?? false}
+          audioOnly={audioOnly}
           micWanted={micWanted}
           onMicChange={onMicChange}
           peerName={peerName}

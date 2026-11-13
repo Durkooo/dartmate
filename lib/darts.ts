@@ -335,10 +335,7 @@ export const useDarts = create<DartsState>()(
           const last = idx.length ? s.game.turns[idx[0]] : undefined;
           const previous = idx.length > 1 ? s.game.turns[idx[1]] : undefined;
           const pair =
-            s.game.bot &&
-            last?.player === 1 &&
-            previous?.player === 0 &&
-            previous.leg === last.leg;
+            s.game.bot && last?.player === 1 && previous?.player === 0 && previous.leg === last.leg;
           const mark = new Set(pair ? idx.slice(0, 2) : idx.slice(0, 1));
           const legWon = !!last && !last.bust && last.remaining === 0 && mark.has(idx[0]);
           return {

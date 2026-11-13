@@ -91,8 +91,12 @@ export function appIsActive() {
     (Platform.OS !== 'web' || document.visibilityState !== 'hidden')
   );
 }
-/** Systémové správy videohovorov (`📹call:{timestamp}`) — číslo sa nikde nezobrazuje. */
+/** Legacy video invitations and audio invitations share the polling prefix. */
 export const CALL_PREFIX = '📹call:';
+export type CallKind = 'audio' | 'video';
+export function callKind(body: string | null | undefined): CallKind {
+  return body?.startsWith(`${CALL_PREFIX}audio:`) ? 'audio' : 'video';
+}
 export function isCallMessage(body: string | null | undefined): boolean {
   return !!body && body.startsWith(CALL_PREFIX);
 }

@@ -3,7 +3,7 @@ import { View, FlatList, KeyboardAvoidingView, Platform, Pressable } from 'react
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from 'heroui-native';
-import { Video, X } from 'lucide-react-native';
+import { Phone, Video, X } from 'lucide-react-native';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { MessageComposer } from '@/components/MessageComposer';
 import { MessagePhoto } from '@/components/MessagePhoto';
@@ -31,6 +31,8 @@ import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
   CALL_PREFIX,
+  callKind,
+  type CallKind,
   incomingCallState,
   isCallMessage,
   loadJoinedCalls,
@@ -70,7 +72,7 @@ function ConversationContent({
   const key = userId && uuidPattern.test(id) ? `${userId}:${id}` : null;
   const loader = useCallback(async () => {
     if (!userId || !uuidPattern.test(id)) return null;
-    const [result, contacts, matches] = await Promise.all([
+    const [result, contacts, matches, handledCalls] = await Promise.all([
       bilt
         .from('direct_messages')
         .select('*')
@@ -81,11 +83,13 @@ function ConversationContent({
         .limit(50),
       loadContacts(),
       loadOpenMatches(),
+      loadJoinedCalls(),
     ]);
     if (result.error) throw new Error(result.error.message);
     const messages: DirectMessage[] = result.data ?? [];
     return {
       messages,
+      handledCalls,
       contact: contacts.find((c: any) => c.user_id === id),
       matches: matches.filter((m: any) => m.host_id === id || m.guest_id === id),
     };
@@ -129,6 +133,7 @@ function ConversationContent({
     setError('');
   }, []);
   const [callOpen, setCallOpen] = useState(false);
+  const [kind, setKind] = useState<CallKind>('video');
   const [joined, setJoined] = useState<Record<string, number>>({});
   const [camPrefs, setCamPrefs] = useState<CameraPrefs>({ match: 'environment', call: 'user' });
   useEffect(() => {
@@ -144,58 +149,80 @@ function ConversationContent({
   const loadCallCredentials = useCallback(() => getCallCredentials(id), [id]);
   const { error: callQueryError, refresh: refreshCallQuery } = query;
   /** Tlačidlo kamery v chate: pošle pozvánku k hovoru a rovno otvorí miestnosť. */
-  const startCall = useCallback(async () => {
-    if (!userId || pending || !key || callQueryError) return;
-    setPending(true);
-    setError('');
-    try {
-      const { data, error: e } = await bilt.rpc('send_direct_message', {
-        peer: id,
-        message_body: `${CALL_PREFIX}${Date.now()}`,
-        client_request: Crypto.randomUUID(),
-      });
-      if (e) throw new Error(e.message);
-      if (!data?.[0]) throw new Error('Pozvánku k hovoru sa nepodarilo odoslať.');
-      if (usePlayers.getState().session?.user.id !== userId) return;
-      setCallOpen(true);
-      void markCallJoined(id);
-      setJoined((j) => ({ ...j, [id]: Date.now() }));
-      feedback.success();
-      const invitingNick = usePlayers.getState().profile?.nickname;
-      if (invitingNick)
-        notifyRecipient(
-          id,
-          `@${invitingNick}`,
-          '📹 Videohovor — klepni pre pripojenie',
-          // Ťuknutie na notifikáciu (aj zo zatvorenej appky) rovno pripojí, ak pozvánka ešte platí.
-          `/conversation/${userId}?autoJoin=1`,
-        );
-      await refreshCallQuery();
-    } catch (e) {
-      if (usePlayers.getState().session?.user.id === userId) {
-        setError(
-          playerError({
-            message: e instanceof Error ? e.message : 'Hovor sa nepodarilo začať.',
-          }),
-        );
-        feedback.error();
+  const startCall = useCallback(
+    async (nextKind: CallKind = 'video') => {
+      if (!userId || pending || callOpen || !key || callQueryError) return;
+      setPending(true);
+      setError('');
+      try {
+        const { data, error: e } = await bilt.rpc('send_direct_message', {
+          peer: id,
+          message_body: `${CALL_PREFIX}${nextKind === 'audio' ? 'audio:' : ''}${Date.now()}`,
+          client_request: Crypto.randomUUID(),
+        });
+        if (e) throw new Error(e.message);
+        if (!data?.[0]) throw new Error('Pozvánku k hovoru sa nepodarilo odoslať.');
+        if (usePlayers.getState().session?.user.id !== userId) return;
+        setKind(nextKind);
+        setMicWanted(true);
+        setCallOpen(true);
+        void markCallJoined(id);
+        setJoined((j) => ({ ...j, [id]: Date.now() }));
+        feedback.success();
+        const invitingNick = usePlayers.getState().profile?.nickname;
+        if (invitingNick)
+          notifyRecipient(
+            id,
+            `@${invitingNick}`,
+            nextKind === 'audio' ? 'Prichádzajúci hlasový hovor' : 'Prichádzajúci videohovor',
+            `/conversation/${userId}?incomingCall=${data[0].id}`,
+          );
+        await refreshCallQuery();
+      } catch (e) {
+        if (usePlayers.getState().session?.user.id === userId) {
+          setError(
+            playerError({
+              message: e instanceof Error ? e.message : 'Hovor sa nepodarilo začať.',
+            }),
+          );
+          feedback.error();
+        }
+      } finally {
+        setPending(false);
       }
-    } finally {
-      setPending(false);
-    }
-  }, [userId, pending, key, callQueryError, refreshCallQuery, id]);
+    },
+    [userId, pending, callOpen, key, callQueryError, refreshCallQuery, id],
+  );
   const [older, setOlder] = useState<{
     key: string;
     rows: DirectMessage[];
     hasMore: boolean;
   } | null>(null);
   /** Pripojenie k čakajúcej pozvánke (tlačidlo „Pripojiť sa“). */
-  const joinCall = useCallback(() => {
-    void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
-    void markCallJoined(id);
-    setJoined((j) => ({ ...j, [id]: Date.now() }));
-    setCallOpen(true);
-  }, [camPrefs.call, camPrefs.callDeviceId, id]);
+  const joinCall = useCallback(
+    (nextKind: CallKind) => {
+      if (nextKind === 'video')
+        void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+      setKind(nextKind);
+      setMicWanted(true);
+      void markCallJoined(id);
+      setJoined((j) => ({ ...j, [id]: Date.now() }));
+      setCallOpen(true);
+      feedback.success();
+    },
+    [camPrefs.call, camPrefs.callDeviceId, id],
+  );
+  const acceptInvitation = useCallback(
+    async (invitation: DirectMessage) => {
+      if (callOpen) return;
+      const stored = await loadJoinedCalls();
+      if (usePlayers.getState().session?.user.id !== userId) return;
+      setJoined((current) => ({ ...current, [id]: Math.max(current[id] ?? 0, stored[id] ?? 0) }));
+      if (incomingCallState(invitation.created_at, stored[id] ?? 0) === 'waiting')
+        joinCall(callKind(invitation.body));
+    },
+    [callOpen, id, userId, joinCall],
+  );
   /** Odmietnutie prichádzajúcej pozvánky — karta ostane ako zmeškaná (bez tlačidla). */
   const declineCall = useCallback(() => {
     void markCallJoined(id);
@@ -203,16 +230,27 @@ function ConversationContent({
     feedback.selection();
   }, [id]);
   /** Zavolanie späť: nová pozvánka + rovno otvorím miestnosť. */
-  const callBack = useCallback(() => {
-    void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
-    void markCallJoined(id);
-    setJoined((j) => ({ ...j, [id]: Date.now() }));
-    void startCall();
-  }, [camPrefs.call, camPrefs.callDeviceId, id, startCall]);
+  const callBack = useCallback(
+    (nextKind: CallKind) => {
+      if (nextKind === 'video')
+        void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+      void markCallJoined(id);
+      setJoined((j) => ({ ...j, [id]: Date.now() }));
+      void startCall(nextKind);
+    },
+    [camPrefs.call, camPrefs.callDeviceId, id, startCall],
+  );
   const [previousPage, setPreviousPage] = useState(query.data);
   if (query.data !== previousPage) {
     setPreviousPage(query.data);
     if (key && query.data) {
+      const stored = query.data.handledCalls;
+      setJoined((current) => {
+        const merged = { ...current };
+        for (const [peer, at] of Object.entries(stored))
+          merged[peer] = Math.max(merged[peer] ?? 0, at);
+        return merged;
+      });
       const previous = older?.key === key ? older : null;
       const merged = [
         ...new Map(
@@ -239,23 +277,36 @@ function ConversationContent({
     (m) => m.sender_id === userId && !m.image_path && !isCallMessage(m.body),
   )?.id;
   // Príchod zo zvoniaceho prehľadu (notifikácia): čakajúcu pozvánku prijmem rovno.
-  const autoJoined = useRef(false);
+  const autoJoined = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (autoJoin !== '1' || autoJoined.current || callOpen || !query.data || !userId) return;
-    const fresh = query.data.messages.some(
+    if (!autoJoin || autoJoined.current === autoJoin || callOpen || !query.data || !userId)
+      return undefined;
+    const fresh = query.data.messages.find(
       (m) =>
         m.sender_id !== userId &&
+        (autoJoin === '1' || String(m.id) === autoJoin) &&
         isCallMessage(m.body) &&
         incomingCallState(m.created_at, joined[id] ?? 0) === 'waiting',
     );
-    if (!fresh) return;
-    autoJoined.current = true;
-    void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
-    void markCallJoined(id).then(() => {
-      setJoined((j) => ({ ...j, [id]: Date.now() }));
-      setCallOpen(true);
+    if (!fresh) return undefined;
+    // Synchronize with persisted acceptance/decline before accepting a routed invitation.
+    // The foreground watcher may have handled it since this screen last loaded.
+    let active = true;
+    void loadJoinedCalls().then((storedJoined) => {
+      if (
+        !active ||
+        autoJoined.current === autoJoin ||
+        usePlayers.getState().session?.user.id !== userId ||
+        incomingCallState(fresh.created_at, storedJoined[id] ?? 0) !== 'waiting'
+      )
+        return;
+      autoJoined.current = autoJoin;
+      joinCall(callKind(fresh.body));
     });
-  }, [autoJoin, callOpen, joined, id, query.data, userId, camPrefs.call, camPrefs.callDeviceId]);
+    return () => {
+      active = false;
+    };
+  }, [autoJoin, callOpen, joined, id, query.data, userId, joinCall]);
   const startEdit = (item: DirectMessage) => {
     if (pending || item.id !== newestMineId || item.image_path) return;
     clearPhoto();
@@ -416,19 +467,29 @@ function ConversationContent({
             {query.loading ? (
               <LoadingRows />
             ) : contact ? (
-              <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-row flex-wrap items-center justify-between gap-3">
                 <Presence
                   online={!!contact.online}
                   playing={!!contact.in_match}
                   unknown={!!query.error}
                 />
-                <View className="flex-row items-center gap-2">
+                <View className="flex-row flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    isIconOnly
+                    accessibilityLabel="Hlasový hovor"
+                    isDisabled={pending || callOpen || !!query.error}
+                    onPress={() => void startCall('audio')}
+                  >
+                    <Phone size={19} strokeWidth={1.8} color={palette.ink} />
+                  </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     isIconOnly
                     accessibilityLabel="Videohovor"
-                    isDisabled={pending || !!query.error}
+                    isDisabled={pending || callOpen || !!query.error}
                     onPress={() => {
                       // Povolenie kamery musí prísť z gesta — predhrejeme ju ešte pred hovorom.
                       void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(
@@ -480,6 +541,8 @@ function ConversationContent({
           {callOpen && userId && (
             <View className="my-2">
               <VideoCall
+                key={kind}
+                audioOnly={kind === 'audio'}
                 matchId={`dm:${userId}:${id}`}
                 onLeave={() => setCallOpen(false)}
                 large
@@ -504,6 +567,8 @@ function ConversationContent({
             if (isCallMessage(item.body)) {
               // Vlastná pozvánka: tlačidlo len kým som v hovore. Prichádzajúca:
               // čaká → „Pripojiť sa“ + „Odmietnuť“, zmeškaná → „Zavolať späť“, inak nič.
+              const inviteKind = callKind(item.body);
+              const CallIcon = inviteKind === 'audio' ? Phone : Video;
               const inviteState = mine
                 ? 'outgoing'
                 : incomingCallState(item.created_at, joined[id] ?? 0);
@@ -515,7 +580,7 @@ function ConversationContent({
                 >
                   <View className="bg-surface gap-2 rounded-2xl p-4">
                     <View className="flex-row items-center gap-2">
-                      <Video size={18} color={palette.ink} strokeWidth={1.8} />
+                      <CallIcon size={18} color={palette.ink} strokeWidth={1.8} />
                       <Txt
                         style={
                           inviteState === 'missed'
@@ -530,8 +595,10 @@ function ConversationContent({
                           : inviteState === 'waiting'
                             ? 'Prichádzajúci hovor'
                             : inviteState === 'missed'
-                              ? '📹 Miss call'
-                              : '📹 Videohovor'}
+                              ? 'Zmeškaný hovor'
+                              : inviteKind === 'audio'
+                                ? 'Hlasový hovor'
+                                : 'Videohovor'}
                       </Txt>
                     </View>
                     {callOpen ? (
@@ -540,15 +607,15 @@ function ConversationContent({
                       </Button>
                     ) : inviteState === 'waiting' ? (
                       <View className="gap-2">
-                        <Button variant="secondary" onPress={joinCall}>
-                          <Button.Label>Pripojiť sa</Button.Label>
+                        <Button variant="secondary" onPress={() => void acceptInvitation(item)}>
+                          <Button.Label>Prijať</Button.Label>
                         </Button>
                         <Button variant="ghost" onPress={declineCall}>
                           <Button.Label>Odmietnuť</Button.Label>
                         </Button>
                       </View>
                     ) : inviteState === 'missed' ? (
-                      <Button variant="secondary" onPress={callBack}>
+                      <Button variant="secondary" onPress={() => callBack(inviteKind)}>
                         <Button.Label>Zavolať späť</Button.Label>
                       </Button>
                     ) : null}

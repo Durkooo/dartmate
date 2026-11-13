@@ -104,12 +104,8 @@ export function MessagePhoto({ path, mine }: { path: string; mine: boolean }) {
               }}
             />
           </Pressable>
-          <Modal
-            visible={zoomed}
-            animationType="fade"
-            onRequestClose={() => setZoomed(false)}
-          >
-            <View className="bg-black flex-1">
+          <Modal visible={zoomed} animationType="fade" onRequestClose={() => setZoomed(false)}>
+            <View className="flex-1 bg-black">
               <View className="flex-1 items-center justify-center p-4">
                 <Image
                   source={{ uri: url }}

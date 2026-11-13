@@ -69,6 +69,13 @@ export default function OnlineGame() {
   }, []);
   const [abandon, setAbandon] = useState(false);
   const [showTurns, setShowTurns] = useState(false);
+  // Keep undo snapshots scoped to the match, even while authentication is loading.
+  const [voided, setVoided] = useState<OnlineTurn[]>([]);
+  const [voidedMatch, setVoidedMatch] = useState('');
+  if (voidedMatch !== id) {
+    setVoidedMatch(id);
+    setVoided([]);
+  }
   const [foreground, setForeground] = useState(appIsActive());
   const [focused, setFocused] = useState(false);
 
@@ -231,18 +238,10 @@ export default function OnlineGame() {
   const turns = query.data?.turns ?? [];
   // Vrátené ťahy server zmaže — na zobrazenie prečiarknutých si držíme ich snímky.
   // Vidno len tie, ktoré server medzitým nenahradil novým hodom (rovnaké leg + číslo).
-  const [voided, setVoided] = useState<OnlineTurn[]>([]);
-  const [voidedMatch, setVoidedMatch] = useState('');
-  if (voidedMatch !== id) {
-    setVoidedMatch(id);
-    setVoided([]);
-  }
   const extraVoided = voided.filter(
     (v) => !turns.some((t) => t.leg_number === v.leg_number && t.turn_number === v.turn_number),
   );
-  const voidedKeys = new Set(
-    extraVoided.map((v) => `${v.leg_number}:${v.turn_number}`),
-  );
+  const voidedKeys = new Set(extraVoided.map((v) => `${v.leg_number}:${v.turn_number}`));
   const shownTurns = [...turns, ...extraVoided].sort(
     (a, b) => b.leg_number - a.leg_number || b.turn_number - a.turn_number,
   );
@@ -636,26 +635,28 @@ export default function OnlineGame() {
             shownTurns.map((item) => {
               const voidedTurn = voidedKeys.has(`${item.leg_number}:${item.turn_number}`);
               return (
-              <View
-                key={item.turn_number}
-                className="border-border flex-row justify-between gap-3 border-b py-2"
-              >
-                <View className="flex-1">
-                  <Txt numberOfLines={1}>{item.player_id === userId ? 'Ty' : `@${peerName}`}</Txt>
-                  <Txt className="text-muted text-[12px]">
-                    Ťah {item.turn_number} · {item.darts} {item.darts === 1 ? 'šípka' : 'šípky'}
+                <View
+                  key={item.turn_number}
+                  className="border-border flex-row justify-between gap-3 border-b py-2"
+                >
+                  <View className="flex-1">
+                    <Txt numberOfLines={1}>{item.player_id === userId ? 'Ty' : `@${peerName}`}</Txt>
+                    <Txt className="text-muted text-[12px]">
+                      Ťah {item.turn_number} · {item.darts} {item.darts === 1 ? 'šípka' : 'šípky'}
+                    </Txt>
+                  </View>
+                  <Txt
+                    style={{
+                      fontFamily: 'Inter_600SemiBold',
+                      textDecorationLine: voidedTurn ? 'line-through' : 'none',
+                    }}
+                    className={
+                      item.bust && !voidedTurn ? 'text-danger' : voidedTurn ? 'text-muted' : ''
+                    }
+                  >
+                    {item.bust && !voidedTurn ? 'Prehodené' : item.score} → {item.remaining}
                   </Txt>
                 </View>
-                <Txt
-                  style={{
-                    fontFamily: 'Inter_600SemiBold',
-                    textDecorationLine: voidedTurn ? 'line-through' : 'none',
-                  }}
-                  className={item.bust && !voidedTurn ? 'text-danger' : voidedTurn ? 'text-muted' : ''}
-                >
-                  {item.bust && !voidedTurn ? 'Prehodené' : item.score} → {item.remaining}
-                </Txt>
-              </View>
               );
             })
           ))}

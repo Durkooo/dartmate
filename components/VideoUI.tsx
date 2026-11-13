@@ -6,6 +6,7 @@ import { palette } from '@/lib/darts';
 
 export type VideoControlsProps = {
   camera: boolean;
+  audioOnly?: boolean;
   microphone: boolean;
   pending: boolean;
   onCamera: () => void;
@@ -16,6 +17,7 @@ export type VideoControlsProps = {
 };
 export function VideoControls({
   camera,
+  audioOnly = false,
   microphone,
   pending,
   onCamera,
@@ -39,20 +41,24 @@ export function VideoControls({
         },
         { label: 'Otočiť kameru', Icon: SwitchCamera, action: onFlip },
         { label: 'Zaostriť na terč', Icon: Focus, action: onFocus },
-        { label: 'Odpojiť videohovor', Icon: PhoneOff, action: onLeave },
-      ].map(({ label, Icon, action }) => (
-        <Button
-          key={label}
-          className="flex-1"
-          variant="secondary"
-          isIconOnly
-          isDisabled={pending}
-          accessibilityLabel={label}
-          onPress={action}
-        >
-          <Icon size={20} color={palette.ink} strokeWidth={1.8} />
-        </Button>
-      ))}
+        { label: 'Ukončiť hovor', Icon: PhoneOff, action: onLeave },
+      ]
+        .filter(
+          (control) => !audioOnly || control.action === onMicrophone || control.action === onLeave,
+        )
+        .map(({ label, Icon, action }) => (
+          <Button
+            key={label}
+            className="flex-1"
+            variant="secondary"
+            isIconOnly
+            isDisabled={pending}
+            accessibilityLabel={label}
+            onPress={action}
+          >
+            <Icon size={20} color={palette.ink} strokeWidth={1.8} />
+          </Button>
+        ))}
     </View>
   );
 }
@@ -61,7 +67,9 @@ export function VideoNotice({
   pending,
   retry,
   leave,
+  audioOnly = false,
 }: {
+  audioOnly?: boolean;
   error: string;
   pending: boolean;
   retry: () => void;
@@ -69,12 +77,14 @@ export function VideoNotice({
 }) {
   return (
     <View className="bg-surface gap-3 rounded-xl p-4">
-      <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Videohovor</Txt>
+      <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
+        {audioOnly ? 'Hlasový hovor' : 'Videohovor'}
+      </Txt>
       <Txt
         className={error ? 'text-danger text-[13px] leading-5' : 'text-muted text-[13px]'}
         accessibilityRole={error ? 'alert' : undefined}
       >
-        {error || 'Pripájam videohovor…'}
+        {error || (audioOnly ? 'Pripájam hovor…' : 'Pripájam videohovor…')}
       </Txt>
       {!!error && (
         <Button variant="secondary" isDisabled={pending} onPress={retry}>

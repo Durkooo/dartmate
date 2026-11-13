@@ -32,6 +32,9 @@ self.addEventListener('notificationclick', (event) => {
       const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       for (const w of wins) {
         if (new URL(w.url).pathname === new URL(url, self.location.origin).pathname) {
+          if (w.url !== new URL(url, self.location.origin).href) {
+            await w.navigate(new URL(url, self.location.origin).href);
+          }
           await w.focus();
           return;
         }

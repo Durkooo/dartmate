@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { usePlayers } from '@/lib/players';
 import {
   hasUnread,
+  callKind,
   incomingCallState,
   isCallMessage,
   loadContacts,
@@ -142,10 +143,12 @@ function OnlineMessages({ userId }: { userId: string }) {
                       }
                     >
                       {waitingCall
-                        ? '📹 Prichádzajúci hovor'
+                        ? 'Prichádzajúci hovor'
                         : missedCall
-                          ? '📹 Miss call'
-                          : '📹 Videohovor'}
+                          ? 'Zmeškaný hovor'
+                          : callKind(item.last_body) === 'audio'
+                            ? 'Hlasový hovor'
+                            : 'Videohovor'}
                     </Txt>
                   ) : (
                     <Txt className="text-muted flex-1 text-[13px] leading-5" numberOfLines={2}>

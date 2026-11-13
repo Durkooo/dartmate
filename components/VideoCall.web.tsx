@@ -10,6 +10,8 @@ import {
   type Participant,
 } from 'livekit-client';
 import { trackOptions, singleShotFocus, VIDEO_PRESETS } from '@/lib/video';
+import { Button } from 'heroui-native';
+import { Phone } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import { feedback, palette } from '@/lib/darts';
@@ -44,6 +46,7 @@ export default function VideoCall({
   matchId,
   onLeave,
   large,
+  audioOnly = false,
   micWanted = true,
   onMicChange,
   getCredentials,
@@ -56,6 +59,7 @@ export default function VideoCall({
   const [request, setRequest] = useState({ matchId });
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [pending, setPending] = useState(false);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const micRef = useRef(micWanted);
   useEffect(() => {
     micRef.current = micWanted;
@@ -92,13 +96,18 @@ export default function VideoCall({
     });
     const fail = (e: unknown) => {
       if (active) {
-        setError(e instanceof Error ? e.message : 'Video sa nepodarilo pripojiť.');
+        setError(e instanceof Error ? e.message : 'Hovor sa nepodarilo pripojiť.');
         feedback.error();
       }
     };
     const update = () => {
       if (active) {
-        setTracks(snapshotTracks(session));
+        setTracks(
+          snapshotTracks(session).filter(
+            ({ track }) => !audioOnly || track?.kind === Track.Kind.Audio,
+          ),
+        );
+        setAudioBlocked(!session.canPlaybackAudio);
         setCamera(session.localParticipant.isCameraEnabled);
         setMicrophone(session.localParticipant.isMicrophoneEnabled);
       }
@@ -110,11 +119,14 @@ export default function VideoCall({
       setRoom(null);
       setTracks([]);
       setError(
-        'Videohovor je odpojený. Skús ho pripojiť znova; v hre môžeš pokračovať bez kamery.',
+        audioOnly
+          ? 'Hovor je odpojený. Skús sa pripojiť znova.'
+          : 'Videohovor je odpojený. Skús ho pripojiť znova; v hre môžeš pokračovať bez kamery.',
       );
       feedback.error();
     };
     session
+      .on(RoomEvent.AudioPlaybackStatusChanged, update)
       .on(RoomEvent.Disconnected, disconnected)
       .on(RoomEvent.TrackSubscribed, update)
       .on(RoomEvent.TrackUnsubscribed, update)
@@ -148,28 +160,30 @@ export default function VideoCall({
           await session.disconnect();
           return;
         }
-        const facingMode = initialFacing ?? 'user';
-        const enableCam = (cameraDeviceId?: string) =>
-          session.localParticipant.setCameraEnabled(true, {
-            resolution: VideoPresets.h720,
-            ...(cameraDeviceId ? { deviceId: { exact: cameraDeviceId } } : { facingMode }),
-          });
-        try {
-          await enableCam(initialDeviceId);
-        } catch {
-          // Konkrétne zariadenie nemusí existovať — skús stranu.
+        if (!audioOnly) {
+          const facingMode = initialFacing ?? 'user';
+          const enableCam = (cameraDeviceId?: string) =>
+            session.localParticipant.setCameraEnabled(true, {
+              resolution: VideoPresets.h720,
+              ...(cameraDeviceId ? { deviceId: { exact: cameraDeviceId } } : { facingMode }),
+            });
           try {
-            if (initialDeviceId) await enableCam(undefined);
-            else throw new Error('blocked');
-          } catch (e) {
-            if (active) {
-              const msg = e instanceof Error ? `${e.message} ${e.name}` : '';
-              const blocked = /notallowed|denied|permission/i.test(msg);
-              setError(
-                blocked
-                  ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
-                  : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
-              );
+            await enableCam(initialDeviceId);
+          } catch {
+            // Konkrétne zariadenie nemusí existovať — skús stranu.
+            try {
+              if (initialDeviceId) await enableCam(undefined);
+              else throw new Error('blocked');
+            } catch (e) {
+              if (active) {
+                const msg = e instanceof Error ? `${e.message} ${e.name}` : '';
+                const blocked = /notallowed|denied|permission/i.test(msg);
+                setError(
+                  blocked
+                    ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
+                    : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
+                );
+              }
             }
           }
         }
@@ -201,7 +215,7 @@ export default function VideoCall({
       session.removeAllListeners();
       void session.disconnect();
     };
-  }, [request, initialFacing, initialDeviceId]);
+  }, [request, initialFacing, initialDeviceId, audioOnly]);
   // Auto-kvalita podľa internetu (vlastný efekt — vidí aktuálnu kameru).
   useEffect(() => {
     if (!room) return undefined;
@@ -331,7 +345,9 @@ export default function VideoCall({
       }
       setCamera(room.localParticipant.isCameraEnabled);
       setMicrophone(room.localParticipant.isMicrophoneEnabled);
-      setTracks(snapshotTracks(room));
+      setTracks(
+        snapshotTracks(room).filter(({ track }) => !audioOnly || track?.kind === Track.Kind.Audio),
+      );
       feedback.selection();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Kamera alebo mikrofón nie sú dostupné.');
@@ -343,6 +359,7 @@ export default function VideoCall({
   if (!room)
     return (
       <VideoNotice
+        audioOnly={audioOnly}
         error={error}
         pending={!error}
         retry={() => setRequest({ matchId })}
@@ -351,86 +368,116 @@ export default function VideoCall({
     );
   return (
     <View className="bg-surface rounded-xl p-3">
-      {(() => {
-        const s = room ? peerStatus(room, tracks) : null;
-        return s ? (
-          <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
-            {s}
+      {audioOnly ? (
+        <View className="items-center gap-3 py-5">
+          <Phone size={32} strokeWidth={1.8} color={palette.ink} />
+          <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
+            {peerName ? `@${peerName}` : 'Hlasový hovor'}
           </Txt>
-        ) : null;
-      })()}
-      <View className="gap-3">
-        <View>
-          <Txt className="mb-1 text-[12px]" numberOfLines={1}>
-            {peerName ? `@${peerName}` : large ? 'Súper' : 'Súperova kamera'}
+          <Txt className="text-muted text-[13px]">
+            {room.remoteParticipants.size ? 'Hovor prebieha' : 'Čakám na priateľa…'}
           </Txt>
-          <div style={{ position: 'relative' }}>
-            <div
-              ref={remoteHost}
-              style={{
-                minHeight: remoteHeight,
-                backgroundColor: palette.ink,
-                borderRadius: 10,
-                overflow: 'hidden',
-              }}
-            />
-            {!!rxSize && (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 8,
-                  bottom: 8,
-                  backgroundColor: 'rgba(0,0,0,0.55)',
-                  borderRadius: 6,
-                  padding: '2px 6px',
-                  color: '#fff',
-                  fontSize: 11,
-                }}
-              >
-                {rxSize}
-              </div>
-            )}
-          </div>
+          <div ref={remoteHost} style={{ display: 'none' }} />
         </View>
-        {large && (
-          <View>
-            <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
-            <div style={{ position: 'relative' }}>
-              <div
-                ref={localHost}
-                style={{
-                  minHeight: 140,
-                  backgroundColor: palette.ink,
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                }}
-              />
-              {camera && (
+      ) : (
+        <>
+          {(() => {
+            const s = room ? peerStatus(room, tracks) : null;
+            return s ? (
+              <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
+                {s}
+              </Txt>
+            ) : null;
+          })()}
+          <View className="gap-3">
+            <View>
+              <Txt className="mb-1 text-[12px]" numberOfLines={1}>
+                {peerName ? `@${peerName}` : large ? 'Súper' : 'Súperova kamera'}
+              </Txt>
+              <div style={{ position: 'relative' }}>
                 <div
+                  ref={remoteHost}
                   style={{
-                    position: 'absolute',
-                    right: 8,
-                    bottom: 8,
-                    backgroundColor: 'rgba(0,0,0,0.55)',
-                    borderRadius: 6,
-                    padding: '2px 6px',
-                    color: '#fff',
-                    fontSize: 11,
+                    minHeight: remoteHeight,
+                    backgroundColor: palette.ink,
+                    borderRadius: 10,
+                    overflow: 'hidden',
                   }}
-                >
-                  {['480p', '720p', '1080p'][pubTier]}
+                />
+                {!!rxSize && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      bottom: 8,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      borderRadius: 6,
+                      padding: '2px 6px',
+                      color: '#fff',
+                      fontSize: 11,
+                    }}
+                  >
+                    {rxSize}
+                  </div>
+                )}
+              </div>
+            </View>
+            {large && (
+              <View>
+                <Txt className="mb-1 text-[12px]">Tvoja kamera</Txt>
+                <div style={{ position: 'relative' }}>
+                  <div
+                    ref={localHost}
+                    style={{
+                      minHeight: 140,
+                      backgroundColor: palette.ink,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}
+                  />
+                  {camera && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        bottom: 8,
+                        backgroundColor: 'rgba(0,0,0,0.55)',
+                        borderRadius: 6,
+                        padding: '2px 6px',
+                        color: '#fff',
+                        fontSize: 11,
+                      }}
+                    >
+                      {['480p', '720p', '1080p'][pubTier]}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </>
+      )}
+      {audioBlocked && (
+        <Button
+          variant="secondary"
+          isDisabled={pending}
+          onPress={() =>
+            void control(async () => {
+              await room.startAudio();
+              setAudioBlocked(!room.canPlaybackAudio);
+            })
+          }
+        >
+          <Button.Label>Zapnúť zvuk hovoru</Button.Label>
+        </Button>
+      )}
       {!!error && (
         <Txt className="text-danger mt-2 text-[12px]" accessibilityRole="alert">
           {error}
         </Txt>
       )}
       <VideoControls
+        audioOnly={audioOnly}
         camera={camera}
         microphone={microphone}
         pending={pending}

@@ -89,9 +89,7 @@ export default function Match() {
             .filter((t) => t.player === player && !t.bust && !t.undone)
             .map((t) => t.score),
     ),
-    ...game.turns
-      .filter((t) => t.player === player && !t.bust && !t.undone)
-      .map((t) => t.score),
+    ...game.turns.filter((t) => t.player === player && !t.bust && !t.undone).map((t) => t.score),
   ]);
   const score = Number(input);
   const checkout =
@@ -151,7 +149,7 @@ export default function Match() {
     }
     saveWith(3, n);
   };
-  const lastTurn = [...game.turns].reverse().find((t) => !t.undone);
+  const lastTurn = game.turns.findLast((t) => !t.undone);
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: 'Zápas' }} />
@@ -490,11 +488,7 @@ export default function Match() {
               }
               style={item.undone ? { textDecorationLine: 'line-through' } : undefined}
             >
-              {item.undone
-                ? item.score
-                : item.bust
-                  ? `Prehodené (${item.score})`
-                  : item.score}
+              {item.undone ? item.score : item.bust ? `Prehodené (${item.score})` : item.score}
             </Txt>
             <Txt
               className="w-12 text-right text-[14px]"

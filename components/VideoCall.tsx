@@ -7,6 +7,7 @@ export type VideoCallProps = {
   matchId: string;
   onLeave: () => void;
   large?: boolean;
+  audioOnly?: boolean;
   micWanted?: boolean;
   onMicChange?: (on: boolean) => void;
   /** Vlastné načítanie credentials (chat-hovor); predvolene token k matchId. */
@@ -62,6 +63,7 @@ export default function VideoCall(props: VideoCallProps) {
   ) : (
     <VideoNotice
       error={error}
+      audioOnly={props.audioOnly}
       pending={!error}
       retry={() => setRequest({ load: () => import('@/components/NativeVideoCall') })}
       leave={props.onLeave}
