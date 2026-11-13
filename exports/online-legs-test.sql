@@ -1,7 +1,9 @@
 -- Backend RPC test. Not executed by the assistant.
 -- Run the complete script in a privileged PostgreSQL session that permits
 -- SET ROLE authenticated and setting transaction-local JWT claims.
--- Existing accounts below must remain friends. No application changes needed.
+-- Replace host/guest UUIDs below with two existing friend test accounts before running.
+-- The original host UUID no longer exists (checked during the 1–15 limit update).
+-- No application changes needed.
 -- All test writes are rolled back; on an error, issue ROLLBACK if needed.
 BEGIN;
 SET LOCAL ROLE authenticated;
@@ -22,8 +24,22 @@ BEGIN
   END IF;
 
   IF EXISTS (SELECT 1 FROM public.invite_online_match(guest,301,true,0))
-     OR EXISTS (SELECT 1 FROM public.invite_online_match(guest,301,true,10)) THEN
+     OR EXISTS (SELECT 1 FROM public.invite_online_match(guest,301,true,16)) THEN
     RAISE EXCEPTION 'Invalid legs_to_win accepted';
+  END IF;
+
+  SELECT * INTO m FROM public.invite_online_match(guest,301,true,15);
+  IF m.id IS NULL OR m.status IS DISTINCT FROM 'invited'
+     OR m.legs_to_win IS DISTINCT FROM 15 THEN
+    RAISE EXCEPTION 'Fifteen-leg invitation failed';
+  END IF;
+  test_id := m.id;
+  IF EXISTS (SELECT 1 FROM public.invite_online_match(guest,301,true,16)) THEN
+    RAISE EXCEPTION 'Invalid legs_to_win returned an existing invitation';
+  END IF;
+  SELECT * INTO m FROM public.respond_online_match(test_id,'cancel');
+  IF m.id IS NULL OR m.status IS DISTINCT FROM 'cancelled' THEN
+    RAISE EXCEPTION 'Fifteen-leg invitation cancellation failed';
   END IF;
 
   SELECT * INTO m FROM public.invite_online_match(guest,301,true,2);

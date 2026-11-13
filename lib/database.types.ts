@@ -226,6 +226,24 @@ declare module '@biltme/backend' {
             },
           ]
         }
+        player_backups: {
+          Row: {
+            user_id: string
+            data: Json
+            updated_at: string
+          }
+          Insert: {
+            user_id: string
+            data: Json
+            updated_at?: string
+          }
+          Update: {
+            user_id?: string
+            data?: Json
+            updated_at?: string
+          }
+          Relationships: []
+        }
         player_friends: {
           Row: {
             owner_id: string
@@ -389,6 +407,13 @@ declare module '@biltme/backend' {
             darts: number | null
           }[]
         }
+        get_my_backup: {
+          Args: Record<PropertyKey, never>
+          Returns: {
+            data: Json | null
+            updated_at: string | null
+          }[]
+        }
         invite_online_match: {
           Args: {
             peer: string
@@ -511,6 +536,12 @@ declare module '@biltme/backend' {
             isOneToOne: false
             isSetofReturn: true
           }
+        }
+        save_my_backup: {
+          Args: {
+            backup: Json
+          }
+          Returns: string
         }
         send_direct_message: {
           Args: {
