@@ -1,6 +1,6 @@
 import { View } from 'react-native';
-import { Button } from 'heroui-native';
 import { TrainingScreen } from '@/components/TrainingUI';
+import { PadButton } from '@/components/GameBoard';
 import { Txt } from '@/components/DartsUI';
 import { feedback } from '@/lib/darts';
 import {
@@ -27,12 +27,14 @@ export default function Bobs27() {
       running={!!game}
       intro={`Začínaš s 27 bodmi. V každom kole hodíš 3 šípky na jeden double: D1, D2 … D20 a nakoniec D-bull. Každý zásah pripočíta hodnotu doublu, keď netrafíš ani raz, hodnota sa odpočíta. Pod nulou hra končí.${best !== null ? ` Tvoj rekord: ${best} bodov.` : ''}`}
       onStart={() => setGame(newBobs())}
+      top={game ? `Kolo ${Math.min(game.round + 1, BOBS_ROUNDS)} z ${BOBS_ROUNDS}` : ''}
       big={game ? String(game.score) : ''}
-      caption={
+      sub={game ? `Zásahy ${game.hits}` : undefined}
+      bottom={
         game
           ? finished
-            ? `Zásahy: ${game.hits}`
-            : `Kolo ${game.round + 1}/${BOBS_ROUNDS} · hádžeš na ${bobsLabel(game.round)} (${bobsDouble(game.round)})`
+            ? 'Koniec hry'
+            : `Hádžeš na: ${bobsLabel(game.round)} (${bobsDouble(game.round)} bodov)`
           : ''
       }
       done={finished}
@@ -51,19 +53,16 @@ export default function Bobs27() {
       <Txt className="text-muted text-center text-[13px]">Koľkokrát si trafil double?</Txt>
       <View className="flex-row gap-2">
         {([0, 1, 2, 3] as const).map((hits) => (
-          <Button
+          <PadButton
             key={hits}
-            size="lg"
-            className="flex-1"
-            variant={hits ? 'primary' : 'secondary'}
+            label={String(hits)}
+            accessibilityLabel={`${hits} zásahy`}
             onPress={() => {
               if (!game) return;
               setGame(bobsRound(game, hits));
               feedback.selection();
             }}
-          >
-            <Button.Label>{String(hits)}</Button.Label>
-          </Button>
+          />
         ))}
       </View>
     </TrainingScreen>

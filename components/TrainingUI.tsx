@@ -1,20 +1,23 @@
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Trophy, Undo2 } from 'lucide-react-native';
-import { Page, Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { Target, Trophy, Undo2 } from 'lucide-react-native';
+import { Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { PadButton, ScoreBoard } from '@/components/GameBoard';
 import { palette } from '@/lib/darts';
 
-/** Spoločný rámec tréningových hier: úvod → hra → výsledok. */
+/** Spoločný rámec tréningov vo vzhľade zápasu 301/501: úvod → hra → výsledok. */
 export function TrainingScreen({
   title,
   hydrated,
   running,
   intro,
   onStart,
+  top,
   big,
-  caption,
+  sub,
+  bottom,
   done,
   result,
   onFinish,
@@ -28,82 +31,96 @@ export function TrainingScreen({
   running: boolean;
   intro: string;
   onStart: () => void;
-  /** Veľký údaj (aktuálny cieľ). */
+  /** Malý text hore na tabuli (kolo, pokus). */
+  top: string;
+  /** Veľký údaj na tabuli (aktuálny cieľ / skóre). */
   big: string;
-  caption: string;
+  sub?: string;
+  /** Žltý pásik (čo práve hádžeš). */
+  bottom: string;
   done: boolean;
   result: string;
   onFinish: () => void;
   onUndo: () => void;
   canUndo: boolean;
   onCancel: () => void;
-  /** Tlačidlá pre zadávanie (len počas hry). */
+  /** Riadky klávesnice (len počas hry). */
   children: ReactNode;
 }) {
-  if (!hydrated)
-    return (
-      <Page>
-        <LoadingRows />
-      </Page>
-    );
   return (
-    <Page hideFallback={running}>
+    <View className="bg-background flex-1">
       <Stack.Screen options={{ title }} />
-      {!running ? (
-        <View className="mt-3 gap-4">
-          <Heading>{title}</Heading>
-          <Txt className="text-muted text-[14px] leading-6">{intro}</Txt>
-          <Button size="lg" onPress={onStart}>
-            <Button.Label>Začať</Button.Label>
-          </Button>
-        </View>
-      ) : (
-        <View className="mt-3 gap-4">
-          <View className="bg-ink items-center rounded-xl p-5">
-            <Txt className="text-on-ink text-[13px]">{caption}</Txt>
-            <Txt
-              style={{
-                fontFamily: 'Inter_700Bold',
-                fontSize: 56,
-                lineHeight: 64,
-                color: palette.yellow,
-                fontVariant: ['tabular-nums'],
-              }}
-            >
-              {big}
-            </Txt>
-          </View>
-          {done ? (
-            <View className="items-center gap-3 py-2">
-              <Trophy size={32} color={palette.ink} strokeWidth={1.8} />
-              <Heading>{result}</Heading>
-              <Button
-                size="lg"
-                className="w-full"
-                onPress={() => {
-                  onFinish();
-                  router.dismissTo('/games');
-                }}
-              >
-                <Button.Label>Uložiť a skončiť</Button.Label>
-              </Button>
-            </View>
-          ) : (
-            children
-          )}
-          <View className="flex-row gap-2">
-            <Button className="flex-1" variant="ghost" isDisabled={!canUndo} onPress={onUndo}>
-              <Undo2 size={18} color={palette.ink} />
-              <Button.Label>Späť</Button.Label>
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 4,
+          paddingBottom: 32,
+          maxWidth: 600,
+          width: '100%',
+          alignSelf: 'center',
+        }}
+      >
+        {!hydrated ? (
+          <LoadingRows />
+        ) : !running ? (
+          <View className="mt-3 gap-4">
+            <Heading>{title}</Heading>
+            <Txt className="text-muted text-[14px] leading-6">{intro}</Txt>
+            <Button size="lg" onPress={onStart}>
+              <Target size={20} color={palette.ink} strokeWidth={1.8} />
+              <Button.Label>Začať tréning</Button.Label>
             </Button>
-            {!done && (
-              <Button className="flex-1" variant="ghost" onPress={onCancel}>
-                <Button.Label>Zrušiť hru</Button.Label>
-              </Button>
-            )}
+            <Button variant="ghost" onPress={() => router.dismissTo('/games')}>
+              <Button.Label>Späť na tréning</Button.Label>
+            </Button>
           </View>
-        </View>
-      )}
-    </Page>
+        ) : (
+          <>
+            <ScoreBoard
+              top={top}
+              players={[{ name: title, value: big, sub }]}
+              active={done ? null : 0}
+              bottom={bottom}
+            />
+            {done ? (
+              <View className="items-center gap-4 py-6">
+                <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
+                <Heading>{result}</Heading>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onPress={() => {
+                    onFinish();
+                    router.dismissTo('/games');
+                  }}
+                >
+                  <Button.Label>Uložiť výsledok</Button.Label>
+                </Button>
+                <Button variant="ghost" isDisabled={!canUndo} onPress={onUndo}>
+                  <Undo2 size={18} color={palette.ink} />
+                  <Button.Label>Opraviť posledný hod</Button.Label>
+                </Button>
+              </View>
+            ) : (
+              <View className="gap-2">
+                {children}
+                <View className="flex-row gap-2">
+                  <PadButton
+                    accessibilityLabel="Vrátiť posledný hod"
+                    disabled={!canUndo}
+                    onPress={onUndo}
+                  >
+                    <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+                  </PadButton>
+                </View>
+                <Button className="mt-4" variant="ghost" onPress={onCancel}>
+                  <Button.Label>Zrušiť tréning</Button.Label>
+                </Button>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }

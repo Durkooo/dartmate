@@ -9,6 +9,7 @@ import { LegPicker } from '@/components/LegPicker';
 import { feedback, palette, useDarts, type Friend } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
 import { BOTS, type BotId } from '@/lib/bots';
+import { newCricket, useExtraGames } from '@/lib/games';
 
 const soloFriend: Friend = {
   id: 'solo',
@@ -17,6 +18,58 @@ const soloFriend: Friend = {
   color: 'peach',
   demo: false,
 };
+/** Spustenie Cricketu (hrajú vždy dvaja; bez legov a double out). */
+function CricketStart({
+  opponent,
+  twoPlayers,
+  running,
+  onStart,
+}: {
+  opponent: Friend;
+  twoPlayers: boolean;
+  running: boolean;
+  onStart: () => void;
+}) {
+  const [replace, setReplace] = useState(false);
+  return (
+    <View className="mt-4 mb-2 gap-3">
+      <Txt className="text-muted text-[13px] leading-5">
+        Zavri 20 až 15 a bull trojicou zásahov (double = 2, triple = 3). Zásahy navyše do zavretého
+        čísla dávajú body, kým ho nezavrie aj súper. Vyhrá, kto zavrie všetko a má aspoň toľko bodov
+        ako súper.
+      </Txt>
+      {!twoPlayers ? (
+        <Txt className="text-danger text-[13px]">
+          Cricket hrajú dvaja — vyber priateľa alebo napíš meno súpera hore.
+        </Txt>
+      ) : running && !replace ? (
+        <>
+          <Txt>Máš rozohraný Cricket.</Txt>
+          <Button onPress={() => router.push('/games/cricket')}>
+            <Button.Label>Pokračovať v Crickete</Button.Label>
+            <ChevronRight size={20} color={palette.ink} />
+          </Button>
+          <Button variant="ghost" onPress={() => setReplace(true)}>
+            <Button.Label>Začať odznova</Button.Label>
+          </Button>
+        </>
+      ) : (
+        <>
+          {replace && (
+            <Txt className="text-danger text-[13px]">
+              Začatím novej hry zahodíš rozohraný Cricket.
+            </Txt>
+          )}
+          <Button size="lg" onPress={onStart}>
+            <Target size={20} color={palette.ink} strokeWidth={1.8} />
+            <Button.Label>Začať Cricket proti {opponent.name}</Button.Label>
+          </Button>
+        </>
+      )}
+    </View>
+  );
+}
+
 export default function NewMatch() {
   const { friendId } = useLocalSearchParams<{ friendId?: string }>();
   const localFriends = useDarts((s) => s.friends);
@@ -32,6 +85,10 @@ export default function NewMatch() {
     friends.find((friend) => friend.id === friendId)?.id ?? friends[0]?.id ?? 'solo',
   );
   const [starting, setStarting] = useState<301 | 501>(501);
+  // Druh hry: 301/501 (x01) alebo Cricket.
+  const [mode, setMode] = useState<'x01' | 'cricket'>('x01');
+  const cricketGame = useExtraGames((s) => s.cricket);
+  const setCricket = useExtraGames((s) => s.setCricket);
   const [doubleOut, setDoubleOut] = useState(true);
   const [legsToWin, setLegsToWin] = useState(2);
   const [replace, setReplace] = useState(false);
@@ -214,9 +271,10 @@ export default function NewMatch() {
                 <Button
                   key={n}
                   className="h-16 flex-1 rounded-xl"
-                  variant={starting === n ? 'primary' : 'secondary'}
+                  variant={mode === 'x01' && starting === n ? 'primary' : 'secondary'}
                   onPress={() => {
-                    if (starting !== n) {
+                    if (mode !== 'x01' || starting !== n) {
+                      setMode('x01');
                       setStarting(n);
                       feedback.selection();
                     }
@@ -227,81 +285,117 @@ export default function NewMatch() {
                   </Button.Label>
                 </Button>
               ))}
-            </View>
-            <Heading className="mt-7 mb-4 text-[20px]">Na koľko víťazných legov?</Heading>
-            <LegPicker value={legsToWin} onChange={setLegsToWin} />
-            <Heading className="mt-7 mb-4 text-[20px]">Ukončenie hry</Heading>
-            <View className="flex-row gap-3">
-              {[true, false].map((d) => (
-                <Button
-                  key={String(d)}
-                  className="flex-1 rounded-xl"
-                  variant={doubleOut === d ? 'primary' : 'secondary'}
-                  onPress={() => {
-                    if (doubleOut !== d) {
-                      setDoubleOut(d);
-                      feedback.selection();
-                    }
-                  }}
+              <Button
+                className="h-16 flex-1 rounded-xl"
+                variant={mode === 'cricket' ? 'primary' : 'secondary'}
+                onPress={() => {
+                  if (mode !== 'cricket') {
+                    setMode('cricket');
+                    feedback.selection();
+                  }
+                }}
+              >
+                <Button.Label
+                  className="text-[20px]"
+                  numberOfLines={1}
+                  style={{ fontFamily: 'Inter_700Bold' }}
                 >
-                  <Button.Label numberOfLines={1}>{d ? 'Double out' : 'Straight out'}</Button.Label>
-                </Button>
-              ))}
+                  Cricket
+                </Button.Label>
+              </Button>
             </View>
-            <Txt className="text-muted mt-3 mb-7 text-[13px]">
-              {doubleOut
-                ? 'Posledná šípka musí trafiť double alebo bull za 50.'
-                : 'Na výhru stačí znížiť skóre presne na nulu.'}
-            </Txt>
-            {game && !replace ? (
-              <View className="gap-3">
-                <Txt>
-                  {game.winner !== null
-                    ? 'Máš dohraný zápas, ktorý čaká na uloženie.'
-                    : 'Máš rozhraný zápas.'}
-                </Txt>
-                <Button onPress={() => router.push('/match')}>
-                  <Button.Label>
-                    {game.winner !== null ? 'Zobraziť výsledok' : 'Pokračovať v zápase'}
-                  </Button.Label>
-                  <ChevronRight size={20} color={palette.ink} />
-                </Button>
-                <Button variant="ghost" onPress={() => setReplace(true)}>
-                  <Button.Label>Začať odznova</Button.Label>
-                </Button>
-              </View>
+            {mode === 'cricket' ? (
+              <CricketStart
+                opponent={opponent}
+                twoPlayers={selected !== 'solo' && selected !== 'bot'}
+                running={!!cricketGame}
+                onStart={() => {
+                  setCricket(newCricket(['Ty', opponent.name]));
+                  feedback.success();
+                  router.replace('/games/cricket');
+                }}
+              />
             ) : (
-              <View className="gap-3">
-                {replace && (
-                  <Txt className="text-danger text-[13px]">
-                    Začatím nového zápasu zahodíš predchádzajúci zápas.
-                  </Txt>
+              <>
+                <Heading className="mt-7 mb-4 text-[20px]">Na koľko víťazných legov?</Heading>
+                <LegPicker value={legsToWin} onChange={setLegsToWin} />
+                <Heading className="mt-7 mb-4 text-[20px]">Ukončenie hry</Heading>
+                <View className="flex-row gap-3">
+                  {[true, false].map((d) => (
+                    <Button
+                      key={String(d)}
+                      className="flex-1 rounded-xl"
+                      variant={doubleOut === d ? 'primary' : 'secondary'}
+                      onPress={() => {
+                        if (doubleOut !== d) {
+                          setDoubleOut(d);
+                          feedback.selection();
+                        }
+                      }}
+                    >
+                      <Button.Label numberOfLines={1}>
+                        {d ? 'Double out' : 'Straight out'}
+                      </Button.Label>
+                    </Button>
+                  ))}
+                </View>
+                <Txt className="text-muted mt-3 mb-7 text-[13px]">
+                  {doubleOut
+                    ? 'Posledná šípka musí trafiť double alebo bull za 50.'
+                    : 'Na výhru stačí znížiť skóre presne na nulu.'}
+                </Txt>
+                {game && !replace ? (
+                  <View className="gap-3">
+                    <Txt>
+                      {game.winner !== null
+                        ? 'Máš dohraný zápas, ktorý čaká na uloženie.'
+                        : 'Máš rozhraný zápas.'}
+                    </Txt>
+                    <Button onPress={() => router.push('/match')}>
+                      <Button.Label>
+                        {game.winner !== null ? 'Zobraziť výsledok' : 'Pokračovať v zápase'}
+                      </Button.Label>
+                      <ChevronRight size={20} color={palette.ink} />
+                    </Button>
+                    <Button variant="ghost" onPress={() => setReplace(true)}>
+                      <Button.Label>Začať odznova</Button.Label>
+                    </Button>
+                  </View>
+                ) : (
+                  <View className="gap-3">
+                    {replace && (
+                      <Txt className="text-danger text-[13px]">
+                        Začatím nového zápasu zahodíš predchádzajúci zápas.
+                      </Txt>
+                    )}
+                    <Button
+                      size="lg"
+                      onPress={() => {
+                        startGame(
+                          opponent,
+                          starting,
+                          doubleOut,
+                          legsToWin,
+                          opponent.id === 'solo',
+                          selected === 'bot'
+                            ? {
+                                id: selectedBot.id,
+                                target:
+                                  selectedBot.min +
+                                  Math.random() * (selectedBot.max - selectedBot.min),
+                              }
+                            : undefined,
+                        );
+                        feedback.success();
+                        router.replace('/match');
+                      }}
+                    >
+                      <Target size={20} color={palette.ink} strokeWidth={1.8} />
+                      <Button.Label>Začať zápas</Button.Label>
+                    </Button>
+                  </View>
                 )}
-                <Button
-                  size="lg"
-                  onPress={() => {
-                    startGame(
-                      opponent,
-                      starting,
-                      doubleOut,
-                      legsToWin,
-                      opponent.id === 'solo',
-                      selected === 'bot'
-                        ? {
-                            id: selectedBot.id,
-                            target:
-                              selectedBot.min + Math.random() * (selectedBot.max - selectedBot.min),
-                          }
-                        : undefined,
-                    );
-                    feedback.success();
-                    router.replace('/match');
-                  }}
-                >
-                  <Target size={20} color={palette.ink} strokeWidth={1.8} />
-                  <Button.Label>Začať zápas</Button.Label>
-                </Button>
-              </View>
+              </>
             )}
             <Button className="mt-5" variant="ghost" onPress={() => router.dismissTo('/')}>
               <Button.Label>Späť domov</Button.Label>

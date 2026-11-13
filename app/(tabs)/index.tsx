@@ -5,6 +5,7 @@ import { Target, ChevronRight } from 'lucide-react-native';
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
 import { palette, useDarts } from '@/lib/darts';
+import { useExtraGames } from '@/lib/games';
 import { useCallback, useMemo, useState } from 'react';
 import { usePlayers } from '@/lib/players';
 import {
@@ -49,6 +50,7 @@ export default function Home() {
   const titleFont = titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
   const friends = useDarts((s) => s.friends);
   const game = useDarts((s) => s.game);
+  const cricketRunning = useExtraGames((s) => !!s.cricket);
   const hydrated = useDarts((s) => s.hydrated);
   const session = usePlayers((s) => s.session);
   const social = useOnlineQuery(
@@ -194,37 +196,34 @@ export default function Home() {
                   DartMate
                 </Txt>
               </View>
+              {/* Tri rovnaké tlačidlá: online, offline (301/501 a Cricket), tréning. */}
               <View className="mt-3 flex-row gap-2">
-                <Button
-                  size="md"
-                  onPress={() => router.push('/online')}
-                  className="flex-1 rounded-xl"
-                >
-                  <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>
-                    Hrať online
-                  </Button.Label>
-                </Button>
-                <Button
-                  size="md"
-                  variant="secondary"
-                  onPress={() => router.push('/new-match')}
-                  className="flex-1 rounded-xl"
-                >
-                  <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>
-                    Hrať offline
-                  </Button.Label>
-                </Button>
+                {(
+                  [
+                    ['Hrať online', '/online'],
+                    ['Hrať offline', '/new-match'],
+                    ['Tréning', '/games'],
+                  ] as const
+                ).map(([text, href]) => (
+                  <Button
+                    key={href}
+                    size="md"
+                    onPress={() => router.push(href)}
+                    className="flex-1 rounded-xl px-1"
+                  >
+                    <Button.Label
+                      numberOfLines={1}
+                      style={{
+                        fontFamily: 'Inter_600SemiBold',
+                        // Tri tlačidlá vedľa seba: menšie písmo, keď je karta úzka.
+                        fontSize: cardWidth < 300 ? 11.5 : cardWidth < 340 ? 14 : 15,
+                      }}
+                    >
+                      {text}
+                    </Button.Label>
+                  </Button>
+                ))}
               </View>
-              <Button
-                size="md"
-                variant="outline"
-                onPress={() => router.push('/games')}
-                className="mt-2 rounded-xl"
-              >
-                <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>
-                  Cricket a tréning
-                </Button.Label>
-              </Button>
             </View>
           </View>
         </View>
@@ -232,6 +231,11 @@ export default function Home() {
       {game && (
         <Button className="mt-5" variant="secondary" onPress={() => router.push('/match')}>
           <Button.Label>Pokračovať v lokálnom zápase</Button.Label>
+        </Button>
+      )}
+      {cricketRunning && (
+        <Button className="mt-3" variant="secondary" onPress={() => router.push('/games/cricket')}>
+          <Button.Label>Pokračovať v Crickete</Button.Label>
         </Button>
       )}
     </Page>

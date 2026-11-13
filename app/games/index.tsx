@@ -44,23 +44,15 @@ export default function Games() {
   const r = s.records;
   return (
     <Page>
-      <Stack.Screen options={{ title: 'Ďalšie hry' }} />
+      <Stack.Screen options={{ title: 'Tréning' }} />
       {!s.hydrated ? (
         <LoadingRows />
       ) : (
         <View className="mt-3">
-          <Heading>Ďalšie hry</Heading>
+          <Heading>Tréning</Heading>
           <Txt className="text-muted mt-1 mb-3 text-[13px]">
-            Hrajú sa na tomto telefóne. Klasické zápasy 301/501 nájdeš pod „Hrať offline“.
+            Tréningy pre jedného hráča na tomto telefóne. Výsledky sa ukladajú ako tvoje rekordy.
           </Txt>
-          <GameRow
-            title="Cricket"
-            detail="Dvaja hráči · zavri 20–15 a bull, body za zavreté čísla"
-            record={r.cricketPlayed ? `Výhry ${r.cricketWins} z ${r.cricketPlayed}` : undefined}
-            href="/games/cricket"
-            running={!!s.cricket}
-          />
-          <Txt className="text-muted mt-6 text-[12px] uppercase">Tréning</Txt>
           <GameRow
             title="Around the Clock"
             detail="Trafiť 1 až 20 a bull po poradí, čo najmenej šípok"

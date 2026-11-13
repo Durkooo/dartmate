@@ -1,67 +1,48 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Button, Input } from 'heroui-native';
+import { Button } from 'heroui-native';
 import { Trophy, Undo2 } from 'lucide-react-native';
-import { Page, Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { Heading, Txt, LoadingRows, Empty } from '@/components/DartsUI';
+import { PadButton, ScoreBoard } from '@/components/GameBoard';
 import { feedback, palette } from '@/lib/darts';
-import { usePlayers } from '@/lib/players';
 import {
   CRICKET_TARGETS,
   cricketDart,
   cricketEndTurn,
   cricketUndo,
-  newCricket,
   useExtraGames,
 } from '@/lib/games';
 
-const markSymbol = (m: number) => (m >= 3 ? 'Ⓧ' : m === 2 ? '✕' : m === 1 ? '/' : '');
+const markSymbol = (m: number) => (m >= 3 ? 'Ⓧ' : m === 2 ? '✕' : m === 1 ? '/' : '–');
+const label = (value: number) => (value === 25 ? 'Bull' : String(value));
 
 export default function Cricket() {
   const hydrated = useExtraGames((s) => s.hydrated);
   const game = useExtraGames((s) => s.cricket);
   const setGame = useExtraGames((s) => s.setCricket);
   const finish = useExtraGames((s) => s.finish);
-  const myNick = usePlayers((s) => s.profile?.nickname);
-  const [opponent, setOpponent] = useState('');
   const [mult, setMult] = useState<1 | 2 | 3>(1);
   if (!hydrated)
     return (
-      <Page>
+      <View className="bg-background flex-1 p-5">
         <LoadingRows />
-      </Page>
+      </View>
     );
   if (!game)
     return (
-      <Page>
+      <View className="bg-background flex-1 p-5">
         <Stack.Screen options={{ title: 'Cricket' }} />
-        <View className="mt-3 gap-4">
-          <Heading>Cricket</Heading>
-          <Txt className="text-muted text-[14px] leading-6">
-            Každý hráč zatvára čísla 20 až 15 a bull trojicou zásahov (double = 2, triple = 3).
-            Zásahy navyše do zavretého čísla dávajú body, kým ho nezavrie aj súper. Vyhrá, kto
-            zavrie všetko a má aspoň toľko bodov ako súper.
-          </Txt>
-          <Input
-            value={opponent}
-            onChangeText={setOpponent}
-            placeholder="Meno súpera"
-            accessibilityLabel="Meno súpera"
-            maxLength={24}
-          />
-          <Button
-            size="lg"
-            onPress={() => {
-              setGame(newCricket([myNick ? `@${myNick}` : 'Ja', opponent.trim() || 'Súper']));
-              feedback.success();
-            }}
-          >
-            <Button.Label>Začať Cricket</Button.Label>
-          </Button>
-        </View>
-      </Page>
+        <Empty
+          text="Nemáš rozohraný Cricket."
+          action="Nová hra"
+          onPress={() => router.replace('/new-match')}
+        />
+      </View>
     );
   const p = game.turn;
+  const finished = game.winner !== null;
+  const round = Math.floor((game.totalDarts[0] + game.totalDarts[1]) / 6) + 1;
   const dart = (target: number | null) => {
     const next = cricketDart(game, target, target === 6 && mult === 3 ? 2 : mult);
     setGame(next);
@@ -70,146 +51,150 @@ export default function Cricket() {
     else feedback.selection();
   };
   return (
-    <Page hideFallback>
+    <View className="bg-background flex-1">
       <Stack.Screen options={{ title: 'Cricket' }} />
-      <View className="mt-2 gap-3">
-        {/* Hlavička: mená a body, aktívny hráč zvýraznený */}
-        <View className="flex-row gap-2">
-          {game.players.map((name, i) => (
-            <View
-              key={name + String(i)}
-              className="flex-1 rounded-xl p-3"
-              style={{
-                backgroundColor: game.winner === null && p === i ? palette.ink : palette.white,
-              }}
-            >
-              <Txt
-                numberOfLines={1}
-                style={{
-                  fontFamily: 'Inter_600SemiBold',
-                  color: game.winner === null && p === i ? palette.white : palette.ink,
-                }}
-              >
-                {name}
-              </Txt>
-              <Txt
-                style={{
-                  fontFamily: 'Inter_700Bold',
-                  fontSize: 32,
-                  fontVariant: ['tabular-nums'],
-                  color: game.winner === null && p === i ? palette.yellow : palette.ink,
-                }}
-              >
-                {game.points[i]}
-              </Txt>
-            </View>
-          ))}
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 4,
+          paddingBottom: 32,
+          maxWidth: 600,
+          width: '100%',
+          alignSelf: 'center',
+        }}
+      >
+        <ScoreBoard
+          top={finished ? 'Hra dohraná' : `Kolo ${round}`}
+          players={game.players.map((name, i) => ({
+            name,
+            value: String(game.points[i]),
+            sub: `Šípky ${game.totalDarts[i]}`,
+          }))}
+          active={finished ? null : p}
+          bottom={
+            finished
+              ? game.winner === 0
+                ? 'Vyhral si!'
+                : `${game.players[game.winner ?? 1]} vyhráva!`
+              : `Na ťahu: ${game.players[p]} · šípka ${game.dartsInTurn + 1} z 3`
+          }
+        />
+        <View className="mb-4 flex-row items-center justify-between">
+          <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Cricket · 20–15 a bull</Txt>
         </View>
-        {/* Tabuľka zásahov */}
-        <View className="bg-surface rounded-xl px-3 py-1">
-          {CRICKET_TARGETS.map((value, t) => (
-            <View key={value} className="flex-row items-center" style={{ height: 26 }}>
-              <Txt className="flex-1 text-center text-[18px]">{markSymbol(game.marks[0][t])}</Txt>
-              <Txt
-                className="w-16 text-center"
-                style={{
-                  fontFamily: 'Inter_700Bold',
-                  color:
-                    game.marks[0][t] >= 3 && game.marks[1][t] >= 3 ? palette.muted : palette.ink,
-                }}
-              >
-                {value === 25 ? 'Bull' : value}
-              </Txt>
-              <Txt className="flex-1 text-center text-[18px]">{markSymbol(game.marks[1][t])}</Txt>
-            </View>
-          ))}
+        {/* Zásahy: hráč 1 | číslo | hráč 2 */}
+        <View className="bg-surface mb-4 rounded-xl px-3 py-2">
+          {CRICKET_TARGETS.map((value, t) => {
+            const dead = game.marks[0][t] >= 3 && game.marks[1][t] >= 3;
+            return (
+              <View key={value} className="flex-row items-center" style={{ height: 28 }}>
+                <Txt
+                  className="flex-1 text-center text-[18px]"
+                  style={{ color: game.marks[0][t] ? palette.ink : palette.line }}
+                >
+                  {markSymbol(game.marks[0][t])}
+                </Txt>
+                <Txt
+                  className="w-16 text-center text-[16px]"
+                  style={{
+                    fontFamily: 'Inter_700Bold',
+                    color: dead ? palette.muted : palette.ink,
+                    textDecorationLine: dead ? 'line-through' : 'none',
+                  }}
+                >
+                  {label(value)}
+                </Txt>
+                <Txt
+                  className="flex-1 text-center text-[18px]"
+                  style={{ color: game.marks[1][t] ? palette.ink : palette.line }}
+                >
+                  {markSymbol(game.marks[1][t])}
+                </Txt>
+              </View>
+            );
+          })}
         </View>
-        {game.winner !== null ? (
-          <View className="items-center gap-3 py-4">
-            <Trophy size={32} color={palette.ink} strokeWidth={1.8} />
-            <Heading>Vyhral {game.players[game.winner]}</Heading>
-            <Txt className="text-muted">
-              Šípky: {game.totalDarts[0]} : {game.totalDarts[1]}
-            </Txt>
+        {finished ? (
+          <View className="items-center gap-4 py-6">
+            <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
+            <Heading>{game.winner === 0 ? 'Dobrý zásah.' : 'Čas na odvetu.'}</Heading>
             <Button
               size="lg"
               className="w-full"
               onPress={() => {
                 finish('cricket');
-                router.dismissTo('/games');
+                feedback.success();
+                router.dismissTo('/');
               }}
             >
-              <Button.Label>Uložiť a skončiť</Button.Label>
+              <Button.Label>Uložiť výsledok</Button.Label>
             </Button>
             <Button variant="ghost" onPress={() => setGame(cricketUndo(game))}>
               <Undo2 size={18} color={palette.ink} />
-              <Button.Label>Vrátiť poslednú šípku</Button.Label>
+              <Button.Label>Opraviť poslednú šípku</Button.Label>
             </Button>
           </View>
         ) : (
-          <>
-            <Txt className="text-muted text-center text-[13px]">
-              Hádže {game.players[p]} · šípka {game.dartsInTurn + 1} z 3
-            </Txt>
+          <View className="gap-2">
             <View className="flex-row gap-2">
               {([1, 2, 3] as const).map((m) => (
-                <Button
+                <PadButton
                   key={m}
-                  className="flex-1"
-                  variant={mult === m ? 'primary' : 'secondary'}
-                  onPress={() => setMult(m)}
-                >
-                  <Button.Label>{m === 1 ? 'Single' : m === 2 ? 'Double' : 'Triple'}</Button.Label>
-                </Button>
+                  label={m === 1 ? 'Single' : m === 2 ? 'Double' : 'Triple'}
+                  selected={mult === m}
+                  onPress={() => {
+                    setMult(m);
+                    feedback.selection();
+                  }}
+                />
               ))}
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              {CRICKET_TARGETS.map((value, t) => (
-                <Button
-                  key={value}
-                  size="lg"
-                  variant="secondary"
-                  style={{ width: '22.5%' }}
-                  isDisabled={value === 25 && mult === 3}
-                  onPress={() => dart(t)}
-                >
-                  <Button.Label>{value === 25 ? 'Bull' : String(value)}</Button.Label>
-                </Button>
-              ))}
-              <Button
-                size="lg"
-                variant="outline"
-                style={{ width: '22.5%' }}
-                onPress={() => dart(null)}
-              >
-                <Button.Label>Mimo</Button.Label>
-              </Button>
             </View>
             <View className="flex-row gap-2">
-              <Button
-                className="flex-1"
-                variant="ghost"
-                isDisabled={!game.past.length}
-                onPress={() => setGame(cricketUndo(game))}
-              >
-                <Undo2 size={18} color={palette.ink} />
-                <Button.Label>Späť</Button.Label>
-              </Button>
-              <Button
-                className="flex-1"
-                variant="ghost"
-                isDisabled={game.dartsInTurn === 0}
-                onPress={() => setGame(cricketEndTurn(game))}
-              >
-                <Button.Label>Ukončiť kolo</Button.Label>
-              </Button>
+              {[0, 1, 2, 3].map((t) => (
+                <PadButton key={t} label={label(CRICKET_TARGETS[t])} onPress={() => dart(t)} />
+              ))}
             </View>
-            <Button variant="ghost" onPress={() => setGame(null)}>
+            <View className="flex-row gap-2">
+              {[4, 5, 6].map((t) => (
+                <PadButton
+                  key={t}
+                  label={label(CRICKET_TARGETS[t])}
+                  disabled={t === 6 && mult === 3}
+                  onPress={() => dart(t)}
+                />
+              ))}
+              <PadButton label="Mimo" onPress={() => dart(null)} />
+            </View>
+            <View className="flex-row gap-2">
+              <PadButton
+                accessibilityLabel="Vrátiť poslednú šípku"
+                disabled={!game.past.length}
+                onPress={() => {
+                  setGame(cricketUndo(game));
+                  feedback.selection();
+                }}
+              >
+                <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+              </PadButton>
+              <PadButton
+                label="Ďalší hráč"
+                disabled={game.dartsInTurn === 0}
+                onPress={() => setGame(cricketEndTurn(game))}
+              />
+            </View>
+            <Button
+              className="mt-4"
+              variant="ghost"
+              onPress={() => {
+                setGame(null);
+                router.dismissTo('/');
+              }}
+            >
               <Button.Label>Zrušiť hru</Button.Label>
             </Button>
-          </>
+          </View>
         )}
-      </View>
-    </Page>
+      </ScrollView>
+    </View>
   );
 }
