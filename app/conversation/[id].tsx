@@ -9,7 +9,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
-import { Stack, router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from 'heroui-native';
 import { Phone, Video, X } from 'lucide-react-native';
@@ -814,7 +814,7 @@ function ConversationContent({
                                 fromNick: contact?.nickname ?? '',
                               });
                               feedback.success();
-                              router.push(TRAINING_ROUTES[c.mode] as Href);
+                              router.push(TRAINING_ROUTES[c.mode]);
                             }}
                           >
                             <Button.Label>Prijať výzvu</Button.Label>

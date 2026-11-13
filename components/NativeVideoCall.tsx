@@ -259,7 +259,7 @@ function RoomContent({
                       style={{
                         height: h,
                         width: '100%',
-                        backgroundColor: palette.ink,
+                        backgroundColor: palette.navy,
                         borderRadius: 10,
                       }}
                     />

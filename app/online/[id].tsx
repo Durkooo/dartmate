@@ -67,15 +67,6 @@ export default function OnlineGame() {
   // Hlásenie skóre hlasom (počas celého zápasu) a Bluetooth klávesnica.
   const [voiceOn, setVoiceOn] = useVoiceMode(`online:${id}`);
   const hardwareKeyboard = useInputSettings((s) => s.hardwareKeyboard);
-  useHardwareKeyboard(hardwareKeyboard, {
-    digit: (d) => {
-      setInput((prev) => (prev.length >= 3 ? prev : prev === '0' ? d : prev + d));
-      setError('');
-    },
-    backspace: () => setInput((prev) => prev.slice(0, -1)),
-    clear: () => setInput(''),
-    enter: () => clickById('score-submit-online'),
-  });
   // Vyskakovacie okno s kamerou: otvorí sa samo pri zmene ťahu na súpera;
   // „Skryť“ vydrží do ďalšieho ťahu, kuk (peek) ho otvorí aj v mojom ťahu.
   const [camHiddenTurn, setCamHiddenTurn] = useState<string | null>(null);
@@ -107,6 +98,16 @@ export default function OnlineGame() {
   );
 
   const m = query.data?.match;
+  // Klávesnica len v mojom ťahu (inak by písala do poľa súperovi počas jeho hodu).
+  useHardwareKeyboard(hardwareKeyboard && m?.status === 'active' && m?.next_player === userId, {
+    digit: (d) => {
+      setInput((prev) => (prev.length >= 3 ? prev : prev === '0' ? d : prev + d));
+      setError('');
+    },
+    backspace: () => setInput((prev) => prev.slice(0, -1)),
+    clear: () => setInput(''),
+    enter: () => clickById('score-submit-online'),
+  });
   const [previousTurn, setPreviousTurn] = useState({ turnCount: m?.turn_count, id, userId });
   if (
     previousTurn.turnCount !== m?.turn_count ||

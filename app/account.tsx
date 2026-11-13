@@ -82,7 +82,7 @@ function ProfilePhoto({
             width: 26,
             height: 26,
             borderRadius: 13,
-            backgroundColor: palette.ink,
+            backgroundColor: palette.navy,
             borderWidth: 2,
             borderColor: palette.white,
           }}

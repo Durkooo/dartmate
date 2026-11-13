@@ -224,10 +224,10 @@ export function useVoiceScore(
     let interimTimer: ReturnType<typeof setTimeout> | undefined;
     let interimFor = -1;
     let interimValue: number | null = null;
-    const accept = (index: number, value: number, heard: string) => {
+    const accept = (index: number, value: number, spoken: string) => {
       if (accepted.has(index)) return;
       accepted.add(index);
-      cb.current.onScore(value, heard);
+      cb.current.onScore(value, spoken);
     };
     rec.onresult = (e: unknown) => {
       const results = e as {
@@ -238,20 +238,20 @@ export function useVoiceScore(
       };
       for (let i = results.resultIndex; i < results.results.length; i += 1) {
         const r = results.results[i];
-        let heard = '';
+        let said = '';
         let value: number | null = null;
         for (let a = 0; a < r.length && value === null; a += 1) {
-          heard = r[a].transcript;
-          value = parseSpokenScore(heard);
+          said = r[a].transcript;
+          value = parseSpokenScore(said);
         }
-        setHeard(r[0]?.transcript ?? heard);
+        setHeard(r[0]?.transcript ?? said);
         if (r.isFinal) {
           if (interimFor === i) clearTimeout(interimTimer);
           if (accepted.has(i)) continue;
           if (value === null) {
             accepted.add(i);
             cb.current.onUnclear(r[0]?.transcript ?? '');
-          } else accept(i, value, heard);
+          } else accept(i, value, said);
         } else if (value !== null && !accepted.has(i)) {
           // Čiastočný text: čakáme, či sa číslo ešte nezmení („sto…“ → „sto štyridsať“).
           if (interimFor !== i || interimValue !== value) {
@@ -259,7 +259,7 @@ export function useVoiceScore(
             interimFor = i;
             interimValue = value;
             const v = value;
-            const h = heard;
+            const h = said;
             interimTimer = setTimeout(
               () => accept(i, v, h),
               mayContinue(v) ? STABLE_PREFIX_MS : STABLE_MS,

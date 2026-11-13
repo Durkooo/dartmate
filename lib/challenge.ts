@@ -28,7 +28,7 @@ export const TRAINING_ROUTES: Record<TrainingMode, string> = {
   randomCheckout: '/games/random-checkout',
   bull: '/games/bull',
 };
-const MODES = Object.keys(TRAINING_TITLES) as TrainingMode[];
+const isMode = (v: string): v is TrainingMode => v in TRAINING_TITLES;
 
 export type Challenge = {
   mode: TrainingMode;
@@ -51,7 +51,7 @@ export function parseChallenge(body: string | null | undefined): Challenge | nul
   if (!body || !body.startsWith(`${CHALLENGE_HEADER}\n`)) return null;
   const m = body.trim().match(CODE);
   if (!m) return null;
-  const mode = MODES.find((k) => k === m[1]);
+  const mode = isMode(m[1]) ? m[1] : undefined;
   if (!mode) return null;
   return { mode, target: Number(m[2]), lower: m[3] === 'l', unit: m[4] ?? '' };
 }

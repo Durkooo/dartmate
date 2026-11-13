@@ -85,6 +85,12 @@ export default function NewMatch() {
     // Bez vybraného priateľa (z profilu) začíname „Hrám sám“ — zoznam priateľov je zbalený.
     friends.find((friend) => friend.id === friendId)?.id ?? 'solo',
   );
+  // Priatelia sa môžu načítať až po otvorení (zo servera) — vyber ho, keď sa objaví.
+  const [preselected, setPreselected] = useState(selected !== 'solo' || !friendId);
+  if (!preselected && friendId && friends.some((f) => f.id === friendId)) {
+    setPreselected(true);
+    setSelected(friendId);
+  }
   const [starting, setStarting] = useState<301 | 501>(501);
   // Druh hry: 301/501 (x01) alebo Cricket.
   const [mode, setMode] = useState<'x01' | 'cricket'>('x01');

@@ -367,19 +367,25 @@ export async function loadHeadToHead(
     legsLost += theirLegs;
   }
   if (online.length) {
-    const {
-      data: turns,
-      error: turnsError,
-    }: QueryPage<Pick<OnlineTurn, 'player_id' | 'score' | 'darts' | 'bust'>> = await bilt
-      .from('online_turns')
-      .select('player_id, score, darts, bust')
-      .in(
-        'match_id',
-        online.map((m) => m.id),
-      )
-      .limit(10000);
-    if (turnsError) throw new Error(turnsError.message);
-    for (const t of turns ?? [])
+    // Po stránkach (server vracia najviac 1000 riadkov naraz).
+    const ids = online.map((m) => m.id);
+    const turns: Pick<OnlineTurn, 'player_id' | 'score' | 'darts' | 'bust'>[] = [];
+    for (let from = 0; ; from += 1000) {
+      const {
+        data: page,
+        error: turnsError,
+      }: QueryPage<Pick<OnlineTurn, 'player_id' | 'score' | 'darts' | 'bust'>> = await bilt
+        .from('online_turns')
+        .select('player_id, score, darts, bust')
+        .in('match_id', ids)
+        .order('match_id', { ascending: true })
+        .order('turn_number', { ascending: true })
+        .range(from, from + 999);
+      if (turnsError) throw new Error(turnsError.message);
+      turns.push(...(page ?? []));
+      if (!page || page.length < 1000 || from > 50000) break;
+    }
+    for (const t of turns)
       addVisit(t.player_id === userId ? me : them, t.score, t.bust, t.darts || 3);
   }
   return {

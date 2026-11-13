@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
-import { ChevronRight, Mail, Swords, Wifi, WifiOff } from 'lucide-react-native';
+import { ChevronRight, Mail, Swords } from 'lucide-react-native';
 import { Empty, Heading, LoadingRows, Txt } from '@/components/DartsUI';
 import { feedback, palette, CARD_ROW } from '@/lib/darts';
 import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
@@ -166,24 +166,6 @@ const styles = StyleSheet.create({
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
 });
-export function SyncStatus({ error, syncedAt }: { error: string; syncedAt: number }) {
-  return (
-    <View className="flex-row items-center gap-2 py-3">
-      {error ? (
-        <WifiOff size={16} color={palette.danger} strokeWidth={1.8} />
-      ) : (
-        <Wifi size={16} color={palette.muted} strokeWidth={1.8} />
-      )}
-      <Txt className={error ? 'text-danger flex-1 text-[12px]' : 'text-muted flex-1 text-[12px]'}>
-        {error
-          ? 'Spojenie prerušené · skóre nie je aktuálne'
-          : syncedAt
-            ? `Obnovené o ${new Date(syncedAt).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-            : 'Pripájam…'}
-      </Txt>
-    </View>
-  );
-}
 export function MatchRow({
   match,
   userId,

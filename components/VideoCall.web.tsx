@@ -847,7 +847,7 @@ export default function VideoCall({
                   ref={remoteHost}
                   style={{
                     minHeight: remoteHeight,
-                    backgroundColor: palette.ink,
+                    backgroundColor: palette.navy,
                     borderRadius: 10,
                     overflow: 'hidden',
                   }}
@@ -889,7 +889,7 @@ export default function VideoCall({
                     ref={localHost}
                     style={{
                       minHeight: localHeight,
-                      backgroundColor: palette.ink,
+                      backgroundColor: palette.navy,
                       borderRadius: 10,
                       overflow: 'hidden',
                     }}
