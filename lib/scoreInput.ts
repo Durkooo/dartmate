@@ -112,8 +112,20 @@ export function useVoiceScore(
     const rec = new Ctor();
     rec.lang = 'sk-SK';
     rec.continuous = true;
-    rec.interimResults = false;
+    // Čiastočné výsledky: platné číslo prijmeme, keď sa 0,8 s nezmení — nemusíme
+    // čakať, kým prehliadač vyhodnotí koniec vety (na iPhone aj 1–2 s).
+    rec.interimResults = true;
     rec.maxAlternatives = 3;
+    const STABLE_MS = 800;
+    const accepted = new Set<number>();
+    let interimTimer: ReturnType<typeof setTimeout> | undefined;
+    let interimFor = -1;
+    let interimValue: number | null = null;
+    const accept = (index: number, value: number, heard: string) => {
+      if (accepted.has(index)) return;
+      accepted.add(index);
+      cb.current.onScore(value, heard);
+    };
     rec.onresult = (e: unknown) => {
       const results = e as {
         results: ArrayLike<
@@ -123,15 +135,30 @@ export function useVoiceScore(
       };
       for (let i = results.resultIndex; i < results.results.length; i += 1) {
         const r = results.results[i];
-        if (!r.isFinal) continue;
         let heard = '';
         let value: number | null = null;
         for (let a = 0; a < r.length && value === null; a += 1) {
           heard = r[a].transcript;
           value = parseSpokenScore(heard);
         }
-        if (value === null) cb.current.onUnclear(r[0]?.transcript ?? '');
-        else cb.current.onScore(value, heard);
+        if (r.isFinal) {
+          if (interimFor === i) clearTimeout(interimTimer);
+          if (accepted.has(i)) continue;
+          if (value === null) {
+            accepted.add(i);
+            cb.current.onUnclear(r[0]?.transcript ?? '');
+          } else accept(i, value, heard);
+        } else if (value !== null && !accepted.has(i)) {
+          // Čiastočný text: čakáme, či sa číslo ešte nezmení („sto…“ → „sto štyridsať“).
+          if (interimFor !== i || interimValue !== value) {
+            clearTimeout(interimTimer);
+            interimFor = i;
+            interimValue = value;
+            const v = value;
+            const h = heard;
+            interimTimer = setTimeout(() => accept(i, v, h), STABLE_MS);
+          }
+        }
       }
     };
     rec.onerror = (e: unknown) => {
@@ -156,6 +183,10 @@ export function useVoiceScore(
         }, 250);
     };
     rec.onstart = () => {
+      // Nové počúvanie číslujú výsledky odznova.
+      accepted.clear();
+      interimFor = -1;
+      interimValue = null;
       setListening(true);
       setError('');
     };
@@ -166,6 +197,7 @@ export function useVoiceScore(
     }
     return () => {
       stopped = true;
+      clearTimeout(interimTimer);
       try {
         rec.abort();
       } catch {

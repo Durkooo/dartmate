@@ -7,7 +7,7 @@ import { feedback, palette } from '@/lib/darts';
 import { useVoiceScore, voiceSupported } from '@/lib/scoreInput';
 
 /** Prepínač „Hlásiť hlasom“ / „Písať čísla“ a stav počúvania.
- *  Rozpoznané skóre sa ukáže v okne skóre a po 2 s zapíše (dá sa zrušiť).
+ *  Rozpoznané skóre sa ukáže v okne skóre a po 1,2 s zapíše (dá sa zrušiť).
  *  Pri zatvorení legu sa nezapíše samo — hráč vyberie počet šípok. */
 export function VoiceScore({
   on,
@@ -59,13 +59,13 @@ export function VoiceScore({
     setNote(heard ? `Nerozumel som „${heard}“, zopakuj skóre.` : 'Nerozumel som, zopakuj.');
   }, []);
   const { listening, error } = useVoiceScore(active, onScore, onUnclear);
-  // Zápis po 2 s, ak ho hráč nezruší.
+  // Zápis po 1,2 s, ak ho hráč nezruší.
   useEffect(() => {
     if (pending === null) return undefined;
     const t = setTimeout(() => {
       commitRef.current(pending);
       setPending(null);
-    }, 2000);
+    }, 1200);
     return () => clearTimeout(t);
   }, [pending]);
   if (!supported) return null;
