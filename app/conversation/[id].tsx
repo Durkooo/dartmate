@@ -9,7 +9,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
-import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from 'heroui-native';
 import { Phone, Video, X } from 'lucide-react-native';
@@ -38,6 +38,13 @@ import { getCallCredentials, loadCameraPrefs, warmUpCamera, type CameraPrefs } f
 import { notifyRecipient } from '@/lib/sendPush';
 import { closeCallNotifications } from '@/lib/callNotifications';
 import { RESULT_HEADER, isResultMessage, resultLines } from '@/lib/matchResult';
+import {
+  CHALLENGE_HEADER,
+  TRAINING_ROUTES,
+  challengeLines,
+  parseChallenge,
+  useChallenge,
+} from '@/lib/challenge';
 import {
   REACTIONS,
   loadChatState,
@@ -773,7 +780,48 @@ function ConversationContent({
                       );
                     })()}
                     {item.image_path && <MessagePhoto path={item.image_path} mine={mine} />}
-                    {isResultMessage(item.body) ? (
+                    {parseChallenge(item.body) ? (
+                      // Výzva na tréning: karta, príjemca ju môže prijať.
+                      <View className="gap-1">
+                        <Txt
+                          className={mine ? 'text-on-ink text-[12px]' : 'text-muted text-[12px]'}
+                        >
+                          {CHALLENGE_HEADER}
+                        </Txt>
+                        {challengeLines(item.body).map((line, i) => (
+                          <Txt
+                            key={line}
+                            className={mine ? 'text-white' : undefined}
+                            style={
+                              i === 0
+                                ? { fontFamily: 'Inter_700Bold', fontSize: 17 }
+                                : { fontSize: 13 }
+                            }
+                          >
+                            {line}
+                          </Txt>
+                        ))}
+                        {!mine && (
+                          <Button
+                            size="sm"
+                            className="mt-2 self-start"
+                            onPress={() => {
+                              const c = parseChallenge(item.body);
+                              if (!c) return;
+                              useChallenge.getState().accept({
+                                ...c,
+                                fromId: item.sender_id,
+                                fromNick: contact?.nickname ?? '',
+                              });
+                              feedback.success();
+                              router.push(TRAINING_ROUTES[c.mode] as Href);
+                            }}
+                          >
+                            <Button.Label>Prijať výzvu</Button.Label>
+                          </Button>
+                        )}
+                      </View>
+                    ) : isResultMessage(item.body) ? (
                       // Výsledok zápasu ako karta: prvý riadok (skóre) zvýraznený.
                       <View className="gap-1">
                         <Txt

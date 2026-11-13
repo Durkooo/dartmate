@@ -10,6 +10,9 @@ import { ShareResult } from '@/components/ShareResult';
 import { formatTrainingResult } from '@/lib/matchResult';
 import { usePlayers } from '@/lib/players';
 import { TrainingHistory } from '@/components/TrainingHistory';
+import { ChallengeButton } from '@/components/Challenge';
+import { challengeMet, useChallenge } from '@/lib/challenge';
+import { sendResult } from '@/lib/matchResult';
 import { useExtraGames, type TrainingMode } from '@/lib/games';
 import { useTrainingPresence } from '@/lib/online';
 import { renderResultImage } from '@/lib/resultImage';
@@ -121,6 +124,11 @@ export function TrainingScreen({
 }) {
   const myNick = usePlayers((s) => s.profile?.nickname);
   const addEntry = useExtraGames((s) => s.addTrainingEntry);
+  // Prijatá výzva pre tento tréning (z chatu).
+  const challenge = useChallenge((s) => (s.active?.mode === mode ? s.active : null));
+  const clearChallenge = useChallenge((s) => s.clear);
+  const challengeDone =
+    challenge && done && scoreValue !== null ? challengeMet(challenge, scoreValue) : null;
   // Priatelia uvidia „Trénuje“, kým je tréning rozohraný a obrazovka otvorená.
   useTrainingPresence(running && !done);
   return (
@@ -151,6 +159,25 @@ export function TrainingScreen({
               )}
               <Heading>{title}</Heading>
             </View>
+            {challenge && (
+              <View className="bg-ink gap-2 rounded-2xl p-4">
+                <Txt className="text-white" style={{ fontFamily: 'Inter_700Bold' }}>
+                  🏆 Výzva od @{challenge.fromNick}
+                </Txt>
+                <Txt className="text-on-ink text-[13px]">
+                  {challenge.lower ? 'Zvládni to za' : 'Prekonaj'} {challenge.target}
+                  {challenge.unit ? ` ${challenge.unit}` : ''}. Výsledok sa mu po uložení pošle sám.
+                </Txt>
+                <Button
+                  size="sm"
+                  variant="tertiary"
+                  className="self-start"
+                  onPress={clearChallenge}
+                >
+                  <Button.Label>Zrušiť výzvu</Button.Label>
+                </Button>
+              </View>
+            )}
             <Txt className="text-muted text-[14px] leading-6">{intro}</Txt>
             {introExtra}
             <Button size="lg" onPress={onStart}>
@@ -174,6 +201,25 @@ export function TrainingScreen({
               <View className="items-center gap-4 py-6">
                 <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
                 <Heading>{result}</Heading>
+                {challenge && challengeDone !== null && (
+                  <Txt
+                    className="text-center"
+                    style={{
+                      fontFamily: 'Inter_700Bold',
+                      color: challengeDone ? palette.success : palette.danger,
+                    }}
+                  >
+                    {challengeDone
+                      ? `✅ Výzvu od @${challenge.fromNick} si splnil!`
+                      : `❌ Výzvu od @${challenge.fromNick} si nesplnil (cieľ ${challenge.target}).`}{' '}
+                    Výsledok mu pošleme po uložení.
+                  </Txt>
+                )}
+                {scoreValue !== null && (
+                  <ChallengeButton
+                    challenge={{ mode, target: scoreValue, lower: lowerIsBetter, unit }}
+                  />
+                )}
                 {stats.length > 0 && (
                   <View className="bg-surface w-full rounded-xl px-4 py-2">
                     {stats.map((st) => (
@@ -210,6 +256,28 @@ export function TrainingScreen({
                   onPress={() => {
                     // Uloží tréning do histórie (štatistiky, poslanie neskôr).
                     addEntry({ mode, result, score: shareScore ?? big, value: scoreValue, stats });
+                    // Výzva: výsledok sa automaticky pošle tomu, kto ťa vyzval.
+                    if (challenge && challengeDone !== null && myNick) {
+                      const verdict = challengeDone ? '✅ Výzva splnená' : '❌ Výzva nesplnená';
+                      void sendResult(
+                        challenge.fromId,
+                        myNick,
+                        formatTrainingResult({
+                          me: myNick,
+                          title,
+                          result: `${verdict} · ${result} (cieľ ${challenge.target}${challenge.unit ? ` ${challenge.unit}` : ''})`,
+                          stats,
+                        }),
+                        () =>
+                          renderResultImage({
+                            subtitle: `Výzva · ${title}`,
+                            players: [{ name: `@${myNick}`, score: shareScore ?? big }],
+                            winner: challengeDone ? 0 : null,
+                            rows: stats.map((st) => ({ label: st.label, values: [st.value] })),
+                          }),
+                      ).catch(() => undefined);
+                      clearChallenge();
+                    }
                     onFinish();
                     router.dismissTo('/games');
                   }}

@@ -4,13 +4,24 @@ import { PressableFeedback } from 'heroui-native';
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import { Heading, Txt } from '@/components/DartsUI';
 import { ShareResult } from '@/components/ShareResult';
+import { ChallengeButton } from '@/components/Challenge';
 import { CARD_ROW, palette } from '@/lib/darts';
 import { useExtraGames, type TrainingEntry, type TrainingMode } from '@/lib/games';
 import { formatTrainingResult } from '@/lib/matchResult';
 import { usePlayers } from '@/lib/players';
 import { renderResultImage } from '@/lib/resultImage';
 
-function EntryRow({ entry, title }: { entry: TrainingEntry; title: string }) {
+function EntryRow({
+  entry,
+  title,
+  lowerIsBetter,
+  unit,
+}: {
+  entry: TrainingEntry;
+  title: string;
+  lowerIsBetter: boolean;
+  unit: string;
+}) {
   const myNick = usePlayers((s) => s.profile?.nickname);
   const [open, setOpen] = useState(false);
   return (
@@ -49,6 +60,13 @@ function EntryRow({ entry, title }: { entry: TrainingEntry; title: string }) {
               </Txt>
             </View>
           ))}
+          {entry.value !== null && (
+            <View className="mt-2">
+              <ChallengeButton
+                challenge={{ mode: entry.mode, target: entry.value, lower: lowerIsBetter, unit }}
+              />
+            </View>
+          )}
           {!!myNick && (
             <View className="mt-2">
               <ShareResult
@@ -133,7 +151,7 @@ export function TrainingHistory({
       </Txt>
       <View>
         {shown.map((e) => (
-          <EntryRow key={e.id} entry={e} title={title} />
+          <EntryRow key={e.id} entry={e} title={title} lowerIsBetter={lowerIsBetter} unit={unit} />
         ))}
       </View>
       {entries.length > 5 && (
