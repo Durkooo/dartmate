@@ -9,6 +9,8 @@ import { palette } from '@/lib/darts';
 import { ShareResult } from '@/components/ShareResult';
 import { formatTrainingResult } from '@/lib/matchResult';
 import { usePlayers } from '@/lib/players';
+import { TrainingHistory } from '@/components/TrainingHistory';
+import { useExtraGames, type TrainingMode } from '@/lib/games';
 import { useTrainingPresence } from '@/lib/online';
 import { renderResultImage } from '@/lib/resultImage';
 
@@ -69,9 +71,21 @@ export function TrainingScreen({
   shareScore,
   onEnd,
   icon,
+  mode,
+  scoreValue = null,
+  lowerIsBetter = false,
+  unit = '',
   onCancel,
   children,
 }: {
+  /** Druh tréningu — pre históriu a štatistiky. */
+  mode: TrainingMode;
+  /** Číselný výsledok (rekord, priemer v štatistikách). */
+  scoreValue?: number | null;
+  /** Menej je lepšie (napr. počet šípok v Around the Clock). */
+  lowerIsBetter?: boolean;
+  /** Jednotka výsledku v štatistikách (bodov, šípok…). */
+  unit?: string;
   title: string;
   hydrated: boolean;
   running: boolean;
@@ -106,6 +120,7 @@ export function TrainingScreen({
   children: ReactNode;
 }) {
   const myNick = usePlayers((s) => s.profile?.nickname);
+  const addEntry = useExtraGames((s) => s.addTrainingEntry);
   // Priatelia uvidia „Trénuje“, kým je tréning rozohraný a obrazovka otvorená.
   useTrainingPresence(running && !done);
   return (
@@ -145,6 +160,7 @@ export function TrainingScreen({
             <Button variant="ghost" onPress={() => router.dismissTo('/games')}>
               <Button.Label>Späť na tréning</Button.Label>
             </Button>
+            <TrainingHistory mode={mode} title={title} lowerIsBetter={lowerIsBetter} unit={unit} />
           </View>
         ) : (
           <>
@@ -192,6 +208,8 @@ export function TrainingScreen({
                   size="lg"
                   className="w-full"
                   onPress={() => {
+                    // Uloží tréning do histórie (štatistiky, poslanie neskôr).
+                    addEntry({ mode, result, score: shareScore ?? big, value: scoreValue, stats });
                     onFinish();
                     router.dismissTo('/games');
                   }}

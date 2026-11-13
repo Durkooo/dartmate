@@ -26,6 +26,9 @@ export default function Bobs27() {
   return (
     <TrainingScreen
       icon={TRAINING_ICONS.bobs}
+      mode="bobs"
+      scoreValue={game ? game.score : null}
+      unit="bodov"
       title="Bob's 27"
       hydrated={hydrated}
       running={!!game}

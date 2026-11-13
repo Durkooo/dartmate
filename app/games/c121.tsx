@@ -36,6 +36,8 @@ export default function Checkout121() {
   return (
     <TrainingScreen
       icon={TRAINING_ICONS.c121}
+      mode="c121"
+      scoreValue={game?.best ? game.best : null}
       title="121"
       hydrated={hydrated}
       running={!!game}

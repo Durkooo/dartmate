@@ -16,6 +16,10 @@ export default function AroundTheClock() {
   return (
     <TrainingScreen
       icon={TRAINING_ICONS.clock}
+      mode="clock"
+      scoreValue={game?.done ? game.darts : null}
+      lowerIsBetter
+      unit="šípok"
       title="Around the Clock"
       hydrated={hydrated}
       running={!!game}

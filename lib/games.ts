@@ -353,6 +353,63 @@ export function checkoutRoute(n: number): string {
   return '';
 }
 
+// ─────────────────────── Bull Challenge ───────────────────────
+/** 3 šípky na kolo na bull (50) alebo 25. Kolo bez zásahu = koniec hry. */
+export type BullDart = 50 | 25 | 0;
+export type BullGame = {
+  /** Šípky po kolách (každé kolo max 3). */
+  rounds: BullDart[][];
+  done: boolean;
+};
+export const newBull = (): BullGame => ({ rounds: [[]], done: false });
+export function bullDart(g: BullGame, d: BullDart): BullGame {
+  if (g.done) return g;
+  const rounds = g.rounds.map((r) => [...r]);
+  const cur = rounds[rounds.length - 1];
+  cur.push(d);
+  if (cur.length < 3) return { rounds, done: false };
+  // Kolo dohrané: bez zásahu = game over, inak ďalšie kolo.
+  if (cur.every((x) => x === 0)) return { rounds, done: true };
+  rounds.push([]);
+  return { rounds, done: false };
+}
+export function bullUndo(g: BullGame): BullGame {
+  const rounds = g.rounds.map((r) => [...r]);
+  let cur = rounds[rounds.length - 1];
+  if (!cur.length && rounds.length > 1) {
+    rounds.pop();
+    cur = rounds[rounds.length - 1];
+  }
+  if (!cur.length) return g;
+  cur.pop();
+  return { rounds, done: false };
+}
+export const bullDarts = (g: BullGame) => g.rounds.flat();
+export const bullScore = (g: BullGame) => bullDarts(g).reduce<number>((a, b) => a + b, 0);
+
+// ─────────────────────── História tréningov ───────────────────────
+export type TrainingMode =
+  | 'clock'
+  | 'bobs'
+  | 'c121'
+  | 'highscore'
+  | 'finishing'
+  | 'randomCheckout'
+  | 'bull';
+/** Jeden dohraný (uložený) tréning: výsledok a štatistiky na zobrazenie/poslanie. */
+export type TrainingEntry = {
+  id: string;
+  mode: TrainingMode;
+  date: string;
+  /** Hlavný výsledok (text). */
+  result: string;
+  /** Veľké číslo na obrázku. */
+  score: string;
+  /** Číselná hodnota výsledku na porovnanie (rekord, priemer). */
+  value: number | null;
+  stats: { label: string; value: string }[];
+};
+
 // ───────────────────────── Úložisko ─────────────────────────
 export type GameRecords = {
   cricketPlayed: number;
@@ -366,6 +423,7 @@ export type GameRecords = {
   finishBest?: number | null;
   /** Najviac bodov v Random Checkout. */
   rcBest?: number | null;
+  bullBest?: number | null;
 };
 type ExtraGamesState = {
   hydrated: boolean;
@@ -376,6 +434,9 @@ type ExtraGamesState = {
   highscore: HighscoreGame | null;
   finishing: FinishGame | null;
   randomCheckout: RandomCheckoutGame | null;
+  bull: BullGame | null;
+  /** Uložené tréningy (najnovšie prvé, max 300). */
+  trainingHistory?: TrainingEntry[];
   records: GameRecords;
   setCricket: (g: CricketGame | null) => void;
   setClock: (g: ClockGame | null) => void;
@@ -384,10 +445,10 @@ type ExtraGamesState = {
   setHighscore: (g: HighscoreGame | null) => void;
   setFinishing: (g: FinishGame | null) => void;
   setRandomCheckout: (g: RandomCheckoutGame | null) => void;
+  setBull: (g: BullGame | null) => void;
+  addTrainingEntry: (e: Omit<TrainingEntry, 'id' | 'date'>) => void;
   /** Uloží rekord dohranej hry a hru zavrie. */
-  finish: (
-    mode: 'cricket' | 'clock' | 'bobs' | 'c121' | 'highscore' | 'finishing' | 'randomCheckout',
-  ) => void;
+  finish: (mode: 'cricket' | TrainingMode) => void;
 };
 const emptyRecords: GameRecords = {
   cricketPlayed: 0,
@@ -398,6 +459,7 @@ const emptyRecords: GameRecords = {
   highscoreBest: null,
   finishBest: null,
   rcBest: null,
+  bullBest: null,
 };
 const better = (prev: number | null, value: number, lower = false) =>
   prev === null ? value : lower ? Math.min(prev, value) : Math.max(prev, value);
@@ -413,6 +475,8 @@ export const useExtraGames = create<ExtraGamesState>()(
       highscore: null,
       finishing: null,
       randomCheckout: null,
+      bull: null,
+      trainingHistory: [],
       records: emptyRecords,
       setCricket: (cricket) => set({ cricket }),
       setClock: (clock) => set({ clock }),
@@ -421,6 +485,18 @@ export const useExtraGames = create<ExtraGamesState>()(
       setHighscore: (highscore) => set({ highscore }),
       setFinishing: (finishing) => set({ finishing }),
       setRandomCheckout: (randomCheckout) => set({ randomCheckout }),
+      setBull: (bull) => set({ bull }),
+      addTrainingEntry: (e) =>
+        set((s) => ({
+          trainingHistory: [
+            {
+              ...e,
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              date: new Date().toISOString(),
+            },
+            ...(s.trainingHistory ?? []),
+          ].slice(0, 300),
+        })),
       finish: (mode) => {
         const s = get();
         // Staré uložené rekordy nemusia mať nové položky → doplníme predvolené.
@@ -440,6 +516,8 @@ export const useExtraGames = create<ExtraGamesState>()(
           r.finishBest = better(r.finishBest ?? null, finishTotal(s.finishing));
         if (mode === 'randomCheckout' && s.randomCheckout?.done)
           r.rcBest = better(r.rcBest ?? null, rcPoints(s.randomCheckout));
+        if (mode === 'bull' && s.bull?.done)
+          r.bullBest = better(r.bullBest ?? null, bullScore(s.bull));
         set({ records: r, [mode]: null });
       },
     }),
@@ -454,6 +532,8 @@ export const useExtraGames = create<ExtraGamesState>()(
         highscore: s.highscore,
         finishing: s.finishing,
         randomCheckout: s.randomCheckout,
+        bull: s.bull,
+        trainingHistory: s.trainingHistory,
         records: s.records,
       }),
       onRehydrateStorage: () => () => {

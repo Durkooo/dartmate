@@ -114,6 +114,14 @@ export default function Games() {
             href="/games/random-checkout"
             running={!!s.randomCheckout}
           />
+          <GameRow
+            title="Bull Challenge"
+            icon={TRAINING_ICONS.bull}
+            detail="3 šípky na bull (50) alebo 25, kolo bez zásahu = koniec"
+            record={(r.bullBest ?? null) !== null ? `Rekord: ${r.bullBest} bodov` : undefined}
+            href="/games/bull"
+            running={!!s.bull}
+          />
         </View>
       )}
     </Page>

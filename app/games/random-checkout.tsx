@@ -40,6 +40,9 @@ export default function RandomCheckout() {
   return (
     <TrainingScreen
       icon={TRAINING_ICONS.randomCheckout}
+      mode="randomCheckout"
+      scoreValue={game ? points : null}
+      unit="bodov"
       title="Random Checkout"
       hydrated={hydrated}
       running={!!game}

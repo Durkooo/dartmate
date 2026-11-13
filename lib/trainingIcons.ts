@@ -1,6 +1,13 @@
 import type { ImageSourcePropType } from 'react-native';
 
-type TrainingIcon = 'clock' | 'bobs' | 'c121' | 'highscore' | 'finishing' | 'randomCheckout';
+type TrainingIcon =
+  | 'clock'
+  | 'bobs'
+  | 'c121'
+  | 'highscore'
+  | 'finishing'
+  | 'randomCheckout'
+  | 'bull';
 
 /** Ikony tréningov (z návrhu ikon DartMate). */
 export const TRAINING_ICONS: Record<TrainingIcon, ImageSourcePropType> = {
@@ -10,4 +17,5 @@ export const TRAINING_ICONS: Record<TrainingIcon, ImageSourcePropType> = {
   highscore: require('../assets/training/highscore.png'),
   finishing: require('../assets/training/finishing.png'),
   randomCheckout: require('../assets/training/random-checkout.png'),
+  bull: require('../assets/training/bull.png'),
 };

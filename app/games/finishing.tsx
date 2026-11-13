@@ -40,6 +40,9 @@ export default function Finishing50() {
   return (
     <TrainingScreen
       icon={TRAINING_ICONS.finishing}
+      mode="finishing"
+      scoreValue={game ? total : null}
+      unit="bodov"
       title="Finishing 50"
       hydrated={hydrated}
       running={!!game}

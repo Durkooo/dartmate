@@ -35,6 +35,9 @@ export default function Highscore() {
   return (
     <TrainingScreen
       icon={TRAINING_ICONS.highscore}
+      mode="highscore"
+      scoreValue={game ? total : null}
+      unit="bodov"
       title="Highscore"
       hydrated={hydrated}
       running={!!game}
