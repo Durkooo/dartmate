@@ -1,3 +1,4 @@
+import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { useState } from 'react';
 import { Txt } from '@/components/DartsUI';
 import { NumberPad } from '@/components/NumberPad';
@@ -33,6 +34,7 @@ export default function Highscore() {
   const avg = round ? (total / round).toFixed(1) : '–';
   return (
     <TrainingScreen
+      icon={TRAINING_ICONS.highscore}
       title="Highscore"
       hydrated={hydrated}
       running={!!game}

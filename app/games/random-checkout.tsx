@@ -1,3 +1,4 @@
+import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Txt } from '@/components/DartsUI';
@@ -38,6 +39,7 @@ export default function RandomCheckout() {
   const closed = closedList.length;
   return (
     <TrainingScreen
+      icon={TRAINING_ICONS.randomCheckout}
       title="Random Checkout"
       hydrated={hydrated}
       running={!!game}

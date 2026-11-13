@@ -40,7 +40,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // 'single' = SPA export: one index.html + client routing, so edge serving
       // needs only a single 404→index.html fallback rule.
       output: 'single',
-      favicon: './public/icons/icon-192.png',
+      favicon: './public/icons/icon-192-v2.png',
     },
     extra: {
       appStoreAppId: process.env.BILT_APP_STORE_APP_ID,

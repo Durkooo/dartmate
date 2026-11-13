@@ -1,3 +1,4 @@
+import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { View } from 'react-native';
 import { Txt } from '@/components/DartsUI';
 import { PadButton } from '@/components/GameBoard';
@@ -38,6 +39,7 @@ export default function Finishing50() {
   const closed = game ? game.results.filter((r) => r > 0).length : 0;
   return (
     <TrainingScreen
+      icon={TRAINING_ICONS.finishing}
       title="Finishing 50"
       hydrated={hydrated}
       running={!!game}

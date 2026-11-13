@@ -1,3 +1,4 @@
+import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { View } from 'react-native';
 import { TrainingScreen } from '@/components/TrainingUI';
 import { PadButton } from '@/components/GameBoard';
@@ -24,6 +25,7 @@ export default function Bobs27() {
   const finished = !!game?.over;
   return (
     <TrainingScreen
+      icon={TRAINING_ICONS.bobs}
       title="Bob's 27"
       hydrated={hydrated}
       running={!!game}

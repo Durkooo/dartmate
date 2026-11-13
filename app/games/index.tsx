@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { Image, View, type ImageSourcePropType } from 'react-native';
+import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { Stack, router, type Href } from 'expo-router';
 import { PressableFeedback } from 'heroui-native';
 import { ChevronRight } from 'lucide-react-native';
@@ -12,7 +13,9 @@ function GameRow({
   record,
   href,
   running,
+  icon,
 }: {
+  icon?: ImageSourcePropType;
   title: string;
   detail: string;
   record?: string;
@@ -26,6 +29,14 @@ function GameRow({
       accessibilityRole="button"
       accessibilityLabel={title}
     >
+      {!!icon && (
+        <Image
+          source={icon}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+          style={{ width: 56, height: 56, borderRadius: 14 }}
+        />
+      )}
       <View className="flex-1 gap-1">
         <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
           {title}
@@ -55,6 +66,7 @@ export default function Games() {
           </Txt>
           <GameRow
             title="Around the Clock"
+            icon={TRAINING_ICONS.clock}
             detail="Trafiť 1 až 20 a bull po poradí, čo najmenej šípok"
             record={r.clockBest !== null ? `Rekord: ${r.clockBest} šípok` : undefined}
             href="/games/clock"
@@ -62,6 +74,7 @@ export default function Games() {
           />
           <GameRow
             title="Bob's 27"
+            icon={TRAINING_ICONS.bobs}
             detail="Tréning doublov D1–D20 a D-bull, štart 27 bodov"
             record={r.bobsBest !== null ? `Rekord: ${r.bobsBest} bodov` : undefined}
             href="/games/bobs"
@@ -69,6 +82,7 @@ export default function Games() {
           />
           <GameRow
             title="121"
+            icon={TRAINING_ICONS.c121}
             detail="Zatváranie od 121, 5–20 alebo ∞ pokusov po 3–12 šípok"
             record={r.c121Best !== null ? `Rekord: zatvorené ${r.c121Best}` : undefined}
             href="/games/c121"
@@ -76,6 +90,7 @@ export default function Games() {
           />
           <GameRow
             title="Highscore"
+            icon={TRAINING_ICONS.highscore}
             detail="5–20 alebo ∞ kôl po 3 šípky, čo najvyšší súčet"
             record={
               (r.highscoreBest ?? null) !== null ? `Rekord: ${r.highscoreBest} bodov` : undefined
@@ -85,6 +100,7 @@ export default function Games() {
           />
           <GameRow
             title="Finishing 50"
+            icon={TRAINING_ICONS.finishing}
             detail="Náhodné zatvorenia od 2 do 50 na 3 šípky, 5–20 alebo ∞ kôl"
             record={(r.finishBest ?? null) !== null ? `Rekord: ${r.finishBest} bodov` : undefined}
             href="/games/finishing"
@@ -92,6 +108,7 @@ export default function Games() {
           />
           <GameRow
             title="Random Checkout"
+            icon={TRAINING_ICONS.randomCheckout}
             detail="Náhodné zatvorenia 2–170 na 3, 6 alebo 9 šípok"
             record={(r.rcBest ?? null) !== null ? `Rekord: ${r.rcBest} bodov` : undefined}
             href="/games/random-checkout"

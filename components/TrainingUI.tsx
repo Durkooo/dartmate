@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Image, ScrollView, View, type ImageSourcePropType } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Button } from 'heroui-native';
 import { Target, Trophy, Undo2 } from 'lucide-react-native';
@@ -66,6 +66,7 @@ export function TrainingScreen({
   stats = [],
   shareScore,
   onEnd,
+  icon,
   onCancel,
   children,
 }: {
@@ -96,6 +97,8 @@ export function TrainingScreen({
   shareScore?: string;
   /** Ukončenie skôr (pri ∞ kolách) — ukáže výsledky a štatistiky. */
   onEnd?: () => void;
+  /** Ikona tréningu (úvod). */
+  icon?: ImageSourcePropType;
   onCancel: () => void;
   /** Riadky klávesnice (len počas hry). */
   children: ReactNode;
@@ -118,7 +121,17 @@ export function TrainingScreen({
           <LoadingRows />
         ) : !running ? (
           <View className="mt-3 gap-4">
-            <Heading>{title}</Heading>
+            <View className="flex-row items-center gap-4">
+              {!!icon && (
+                <Image
+                  source={icon}
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
+                  style={{ width: 72, height: 72, borderRadius: 18 }}
+                />
+              )}
+              <Heading>{title}</Heading>
+            </View>
             <Txt className="text-muted text-[14px] leading-6">{intro}</Txt>
             {introExtra}
             <Button size="lg" onPress={onStart}>

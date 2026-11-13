@@ -45,16 +45,16 @@ self.addEventListener('push', (event) => {
     const options = call.missed
       ? {
           body: call.audio ? 'Zmeškaný hlasový hovor' : 'Zmeškaný videohovor',
-          icon: '/icons/icon-192.png',
-          badge: '/icons/icon-192.png',
+          icon: '/icons/icon-192-v2.png',
+          badge: '/icons/icon-192-v2.png',
           tag: call.tag,
           renotify: false,
           data: { url: call.path },
         }
       : {
           body: call.audio ? 'Prichádzajúci hlasový hovor' : 'Prichádzajúci videohovor',
-          icon: '/icons/icon-192.png',
-          badge: '/icons/icon-192.png',
+          icon: '/icons/icon-192-v2.png',
+          badge: '/icons/icon-192-v2.png',
           tag: call.tag,
           renotify: true,
           // Android: ostane na obrazovke, kým naň neťukneš, a dlho vibruje ako zvonenie.
@@ -72,8 +72,8 @@ self.addEventListener('push', (event) => {
   }
   const options = {
     body: data.body || 'Máš novú správu.',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: '/icons/icon-192-v2.png',
+    badge: '/icons/icon-192-v2.png',
     tag: data.tag || 'dartmate-message',
     renotify: true,
     data: { url },

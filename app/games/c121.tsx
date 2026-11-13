@@ -1,3 +1,4 @@
+import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { OptionPicker, TrainingScreen } from '@/components/TrainingUI';
@@ -34,6 +35,7 @@ export default function Checkout121() {
   const gameRounds = game ? (game.rounds === undefined ? C121_ATTEMPTS : game.rounds) : rounds;
   return (
     <TrainingScreen
+      icon={TRAINING_ICONS.c121}
       title="121"
       hydrated={hydrated}
       running={!!game}
