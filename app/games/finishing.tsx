@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Txt } from '@/components/DartsUI';
 import { PadButton } from '@/components/GameBoard';
 import { OptionPicker, TrainingScreen } from '@/components/TrainingUI';
-import { feedback } from '@/lib/darts';
+import { feedback, validCheckout } from '@/lib/darts';
 import { useState } from 'react';
 import {
   FINISH_ROUNDS,
@@ -98,21 +98,24 @@ export default function Finishing50() {
       onCancel={() => setGame(null)}
     >
       <Txt className="text-muted text-center text-[13px]">
-        Koľkou šípkou si zatvoril? (1., 2. alebo 3.)
+        Koľkou šípkou si zatvoril? (nemožné počty sú vypnuté)
       </Txt>
       <View className="flex-row gap-2">
         {(
           [
-            [3, '1.'],
-            [2, '2.'],
-            [1, '3.'],
+            [3, '1.', 1],
+            [2, '2.', 2],
+            [1, '3.', 3],
           ] as const
-        ).map(([points, label]) => (
+        ).map(([points, label, dartsUsed]) => (
           <PadButton
             key={points}
             label={label}
             accessibilityLabel={`Zatvorené ${label} šípkou`}
             selected
+            // Len taký počet šípok, ktorým sa číslo naozaj dá zavrieť na double
+            // (napr. 17 nejde 1. šípkou, 50 = bull ide).
+            disabled={target === null || !validCheckout(target, dartsUsed, true)}
             onPress={() => {
               if (!game) return;
               setGame(finishRound(game, points));
