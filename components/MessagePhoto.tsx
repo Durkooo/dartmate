@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Linking, Modal, Platform, Pressable, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Button, Skeleton } from 'heroui-native';
-import { ImageOff } from 'lucide-react-native';
+import { Download, ImageOff, X } from 'lucide-react-native';
 import { bilt } from '@/lib/bilt';
 import { feedback, palette } from '@/lib/darts';
 import { MESSAGE_PHOTOS_BUCKET } from '@/lib/messagePhotos';
@@ -12,6 +12,8 @@ export function MessagePhoto({ path, mine }: { path: string; mine: boolean }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [zoomed, setZoomed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const load = useCallback(
     async (isActive: () => boolean = () => true) => {
       setLoading(true);
@@ -36,6 +38,24 @@ export function MessagePhoto({ path, mine }: { path: string; mine: boolean }) {
     },
     [path],
   );
+  // Stiahnutie do mobilu: bez natívnych modulov sa plné rozlíšenie otvorí
+  // v prehliadači, odkiaľ sa fotka uloží podržaním prsta (iOS) / stiahnutím (Android).
+  const download = async () => {
+    if (!url || saving) return;
+    setSaving(true);
+    try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await Linking.openURL(url);
+      }
+      feedback.selection();
+    } catch {
+      feedback.error();
+    } finally {
+      setSaving(false);
+    }
+  };
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -65,16 +85,56 @@ export function MessagePhoto({ path, mine }: { path: string; mine: boolean }) {
           </Button>
         </View>
       ) : (
-        <Image
-          source={{ uri: url }}
-          accessibilityLabel="Fotografia v správe"
-          resizeMode="contain"
-          style={{ width: '100%', height: 180, borderRadius: 12 }}
-          onError={() => {
-            setError('Fotografiu sa nepodarilo zobraziť.');
-            feedback.error();
-          }}
-        />
+        <>
+          <Pressable
+            accessibilityLabel="Zväčšiť fotografiu"
+            onPress={() => {
+              setZoomed(true);
+              feedback.selection();
+            }}
+          >
+            <Image
+              source={{ uri: url }}
+              accessibilityLabel="Fotografia v správe"
+              resizeMode="contain"
+              style={{ width: '100%', height: 180, borderRadius: 12 }}
+              onError={() => {
+                setError('Fotografiu sa nepodarilo zobraziť.');
+                feedback.error();
+              }}
+            />
+          </Pressable>
+          <Modal
+            visible={zoomed}
+            animationType="fade"
+            onRequestClose={() => setZoomed(false)}
+          >
+            <View className="bg-black flex-1">
+              <View className="flex-1 items-center justify-center p-4">
+                <Image
+                  source={{ uri: url }}
+                  accessibilityLabel="Fotografia v plnej veľkosti"
+                  resizeMode="contain"
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </View>
+              <View className="flex-row items-center justify-between gap-3 p-4">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  isDisabled={saving}
+                  onPress={() => void download()}
+                >
+                  <Download size={18} strokeWidth={1.8} color={palette.ink} />
+                  <Button.Label>{saving ? 'Otváram…' : 'Stiahnuť fotku'}</Button.Label>
+                </Button>
+                <Button variant="secondary" isIconOnly onPress={() => setZoomed(false)}>
+                  <X size={20} strokeWidth={1.8} color={palette.ink} />
+                </Button>
+              </View>
+            </View>
+          </Modal>
+        </>
       )}
     </View>
   );

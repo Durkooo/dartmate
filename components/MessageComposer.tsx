@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Image, Platform, View } from 'react-native';
-import { Button, Input, Popover, Spinner } from 'heroui-native';
+import { Image, Modal, Platform, Pressable, View } from 'react-native';
+import { Button, Input, Spinner } from 'heroui-native';
 import { Camera, Image as ImageIcon, Send, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { feedback, palette } from '@/lib/darts';
@@ -66,38 +66,43 @@ export function MessageComposer({
   return (
     <View className="flex-row items-end gap-2">
       {!editing && (
-        <Popover isOpen={open} onOpenChange={setOpen}>
-          <Popover.Trigger asChild>
-            <Button
-              variant="secondary"
-              isIconOnly
-              className="rounded-full"
-              isDisabled={busy || disabled}
-              accessibilityLabel="Pridať fotografiu"
-              onPress={() => feedback.selection()}
+        <>
+          <Button
+            variant="secondary"
+            isIconOnly
+            className="rounded-full"
+            isDisabled={busy || disabled}
+            accessibilityLabel="Pridať fotografiu"
+            onPress={() => {
+              setOpen(true);
+              feedback.selection();
+            }}
+          >
+            <ImageIcon size={22} strokeWidth={1.8} color={palette.ink} />
+          </Button>
+          <Modal
+            visible={open}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setOpen(false)}
+          >
+            <Pressable
+              className="flex-1 items-center justify-center bg-black/60 p-6"
+              onPress={() => setOpen(false)}
             >
-              <ImageIcon size={22} strokeWidth={1.8} color={palette.ink} />
-            </Button>
-          </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Overlay />
-            <Popover.Content
-              presentation="popover"
-              placement="top"
-              align="start"
-              className="bg-surface w-44 gap-1 rounded-2xl p-2"
-            >
-              <Button variant="ghost" className="justify-start" onPress={() => void pick(false)}>
-                <ImageIcon size={20} strokeWidth={1.8} color={palette.ink} />
-                <Button.Label>Z albumu</Button.Label>
-              </Button>
-              <Button variant="ghost" className="justify-start" onPress={() => void pick(true)}>
-                <Camera size={20} strokeWidth={1.8} color={palette.ink} />
-                <Button.Label>Kamera</Button.Label>
-              </Button>
-            </Popover.Content>
-          </Popover.Portal>
-        </Popover>
+              <View className="bg-surface w-full max-w-[300px] gap-1 rounded-2xl p-2">
+                <Button variant="ghost" className="justify-start" onPress={() => void pick(false)}>
+                  <ImageIcon size={20} strokeWidth={1.8} color={palette.ink} />
+                  <Button.Label>Z albumu</Button.Label>
+                </Button>
+                <Button variant="ghost" className="justify-start" onPress={() => void pick(true)}>
+                  <Camera size={20} strokeWidth={1.8} color={palette.ink} />
+                  <Button.Label>Kamera</Button.Label>
+                </Button>
+              </View>
+            </Pressable>
+          </Modal>
+        </>
       )}
       <View className="bg-background min-w-0 flex-1 rounded-xl">
         {photo && (
