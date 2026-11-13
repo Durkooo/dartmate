@@ -5,7 +5,7 @@ import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
 import { ChevronRight, Mail, Swords, Wifi, WifiOff } from 'lucide-react-native';
 import { Empty, Heading, LoadingRows, Txt } from '@/components/DartsUI';
-import { feedback, palette } from '@/lib/darts';
+import { feedback, palette, CARD_ROW } from '@/lib/darts';
 import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
 import { playerError, usePlayers } from '@/lib/players';
 
@@ -64,7 +64,10 @@ export function Presence({
   inline = false,
   playing = false,
   lastSeen = null,
+  onDark = false,
 }: {
+  /** Na tmavomodrej dlaždici — svetlejšie farby. */
+  onDark?: boolean;
   online: boolean;
   unknown?: boolean;
   inline?: boolean;
@@ -91,12 +94,18 @@ export function Presence({
     return () => loop.stop();
   }, [online, playing, unknown, blink]);
   const color = unknown
-    ? palette.muted
+    ? onDark
+      ? palette.onInk
+      : palette.muted
     : playing
       ? palette.playing
       : online
-        ? palette.success
-        : palette.danger;
+        ? onDark
+          ? palette.successOnInk
+          : palette.success
+        : onDark
+          ? palette.dangerOnInk
+          : palette.danger;
   return (
     <View
       style={inline ? styles.inlineRow : undefined}
@@ -106,7 +115,7 @@ export function Presence({
         style={[
           styles.dot,
           {
-            backgroundColor: unknown ? palette.muted : online ? palette.success : color,
+            backgroundColor: color,
             opacity: blink,
           },
         ]}
@@ -130,7 +139,7 @@ export function Presence({
   );
 }
 /** Blikajúca čierna obálka = neprečítaná správa od priateľa. */
-export function UnreadEnvelope() {
+export function UnreadEnvelope({ color = palette.ink }: { color?: string } = {}) {
   const [blink] = useState(() => new Animated.Value(1));
   useEffect(() => {
     const loop = Animated.loop(
@@ -144,7 +153,7 @@ export function UnreadEnvelope() {
   }, [blink]);
   return (
     <Animated.View style={{ opacity: blink }}>
-      <Mail size={16} color={palette.ink} strokeWidth={1.8} />
+      <Mail size={16} color={color} strokeWidth={1.8} />
     </Animated.View>
   );
 }
@@ -205,18 +214,18 @@ export function MatchRow({
             : { pathname: '/online/[id]', params: { id: match.id } },
         )
       }
-      className="border-border flex-row items-center gap-3 border-b py-4"
+      className={CARD_ROW}
     >
       <View className="flex-1 gap-1">
-        <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+        <Txt numberOfLines={1} className="text-white" style={{ fontFamily: 'Inter_600SemiBold' }}>
           @{opponentName(match, userId)}
         </Txt>
-        <Txt className="text-muted text-[13px]">
+        <Txt className="text-on-ink text-[13px]">
           {label} · {match.starting}
           {stats ? ` · ${new Date(match.created_at).toLocaleDateString('sk-SK')} · Online` : ''}
         </Txt>
       </View>
-      <ChevronRight size={20} color={palette.ink} strokeWidth={1.8} />
+      <ChevronRight size={20} color={palette.yellow} strokeWidth={1.8} />
     </PressableFeedback>
   );
 }

@@ -14,7 +14,7 @@ import {
   LoadingRows,
   StorageNotice,
 } from '@/components/DartsUI';
-import { palette, useDarts, feedback, type Friend } from '@/lib/darts';
+import { palette, useDarts, feedback, type Friend, CARD_ROW } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import { usePlayers } from '@/lib/players';
 import {
@@ -265,14 +265,14 @@ export default function Friends() {
               {session ? (
                 <PressableFeedback
                   onPress={() => router.push({ pathname: '/friend/[id]', params: { id: item.id } })}
-                  className="flex-row items-center gap-3 py-3"
+                  className={CARD_ROW}
                 >
-                  <Avatar friend={item} />
+                  <Avatar friend={item} onDark />
                   <View className="flex-1">
                     <View className="flex-row items-baseline gap-2">
                       <Txt
                         numberOfLines={1}
-                        className="flex-1"
+                        className="flex-1 text-white"
                         style={{ fontFamily: 'Inter_600SemiBold' }}
                       >
                         @{item.handle}
@@ -281,7 +281,7 @@ export default function Friends() {
                         <Txt
                           numberOfLines={1}
                           className="text-[13px]"
-                          style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
+                          style={{ fontFamily: 'Inter_700Bold', color: palette.yellow }}
                         >
                           avg. {combined}
                         </Txt>
@@ -289,6 +289,7 @@ export default function Friends() {
                     </View>
                     <View className="mt-2">
                       <Presence
+                        onDark
                         online={!!contact?.online}
                         playing={!!contact?.in_match}
                         unknown={social.loading || !!social.error}
@@ -296,7 +297,7 @@ export default function Friends() {
                       />
                     </View>
                   </View>
-                  <ChevronRight size={20} color={palette.muted} strokeWidth={1.8} />
+                  <ChevronRight size={20} color={palette.yellow} strokeWidth={1.8} />
                 </PressableFeedback>
               ) : (
                 <FriendRow

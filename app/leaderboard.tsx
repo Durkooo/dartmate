@@ -99,11 +99,11 @@ export default function Leaderboard() {
                 return (
                   <View
                     key={r.userId}
-                    className="border-border flex-row items-center gap-3 border-b py-3"
-                    style={me ? { backgroundColor: palette.paper } : undefined}
+                    className="bg-ink mb-2 flex-row items-center gap-3 rounded-2xl px-4 py-3"
+                    style={me ? { borderWidth: 2, borderColor: palette.yellow } : undefined}
                   >
                     <Txt
-                      className="w-7 text-center"
+                      className="w-7 text-center text-white"
                       style={{ fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] }}
                     >
                       {i + 1}.
@@ -115,13 +115,18 @@ export default function Leaderboard() {
                         avatarUrl: me ? myAvatar : friend?.avatarUrl,
                       }}
                       size={36}
+                      onDark
                     />
                     <View className="flex-1">
-                      <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+                      <Txt
+                        numberOfLines={1}
+                        className="text-white"
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                      >
                         @{r.nickname}
                         {me ? ' (ty)' : ''}
                       </Txt>
-                      <Txt className="text-muted text-[12px]">
+                      <Txt className="text-on-ink text-[12px]">
                         Zápasy {r.matches} · výhry {r.wins}
                       </Txt>
                     </View>
@@ -130,6 +135,7 @@ export default function Leaderboard() {
                         fontFamily: 'Inter_700Bold',
                         fontSize: 18,
                         fontVariant: ['tabular-nums'],
+                        color: palette.yellow,
                       }}
                     >
                       {sort === 'avg' ? (r.avg?.toFixed(1) ?? '–') : r.wins}

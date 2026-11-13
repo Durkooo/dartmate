@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { palette, useDarts, type Friend } from '@/lib/darts';
+import { CARD_ROW, palette, useDarts, type Friend } from '@/lib/darts';
 
 export function Txt({ className = '', style, ...props }: TextProps & { className?: string }) {
   return (
@@ -74,9 +74,12 @@ export function Page({
 export function Avatar({
   friend,
   size = 48,
+  onDark = false,
 }: {
   friend: Pick<Friend, 'name' | 'color' | 'avatarUrl'>;
   size?: number;
+  /** Na tmavomodrej dlaždici: o odtieň svetlejší kruh, aby bol vidieť. */
+  onDark?: boolean;
 }) {
   // Fotka, ktorá sa nenačítala (vypršaný odkaz, výpadok), sa vráti na písmená.
   const [failedUrl, setFailedUrl] = useState<string | undefined>();
@@ -107,7 +110,7 @@ export function Avatar({
         width: size,
         height: size,
         // Štýl ikon DartMate: tmavomodrý kruh so žltými písmenami.
-        backgroundColor: palette.ink,
+        backgroundColor: onDark ? palette.inkRaised : palette.ink,
         borderRadius: size / 2,
       }}
       className="items-center justify-center"
@@ -136,21 +139,21 @@ export function FriendRow({
             : { pathname: '/new-match', params: { friendId: friend.id } },
         )
       }
-      className="border-border flex-row items-center gap-3 border-b py-4"
+      className={CARD_ROW}
     >
-      <Avatar friend={friend} />
+      <Avatar friend={friend} onDark />
       <View className="flex-1 gap-1">
-        <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+        <Txt numberOfLines={1} className="text-white" style={{ fontFamily: 'Inter_600SemiBold' }}>
           {friend.name}
         </Txt>
-        <Txt className="text-muted text-[13px]" numberOfLines={2}>
+        <Txt className="text-on-ink text-[13px]" numberOfLines={2}>
           {detail ?? `@${friend.handle}`}
         </Txt>
       </View>
       {action === 'play' ? (
-        <Target size={21} color={palette.ink} strokeWidth={1.8} />
+        <Target size={21} color={palette.yellow} strokeWidth={1.8} />
       ) : (
-        <ChevronRight size={20} color={palette.muted} strokeWidth={1.8} />
+        <ChevronRight size={20} color={palette.yellow} strokeWidth={1.8} />
       )}
     </PressableFeedback>
   );

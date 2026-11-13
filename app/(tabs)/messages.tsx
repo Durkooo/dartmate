@@ -104,7 +104,7 @@ function OnlineMessages({ userId }: { userId: string }) {
               'waiting';
           return (
             <PressableFeedback
-              className="bg-surface mb-2 flex-row items-start gap-3 rounded-2xl p-3"
+              className="bg-ink mb-2 flex-row items-start gap-3 rounded-2xl p-4"
               onPress={() =>
                 router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
               }
@@ -112,7 +112,7 @@ function OnlineMessages({ userId }: { userId: string }) {
               <View className="flex-1 gap-2">
                 <View className="flex-row items-center gap-2">
                   <Txt
-                    className="flex-1"
+                    className="flex-1 text-white"
                     numberOfLines={1}
                     style={{ fontFamily: 'Inter_600SemiBold' }}
                   >
@@ -120,26 +120,27 @@ function OnlineMessages({ userId }: { userId: string }) {
                   </Txt>
                   <Presence
                     inline
+                    onDark
                     online={!!item.online}
                     playing={!!item.in_match}
                     unknown={!!query.error}
                   />
                   {item.last_message_at && (
-                    <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
+                    <Txt className="text-on-ink text-[11px]">{timeLabel(item.last_message_at)}</Txt>
                   )}
                 </View>
                 <View className="flex-row items-center gap-2">
-                  {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
+                  {hasUnread(item, userId, read) ? <UnreadEnvelope color={palette.yellow} /> : null}
                   {call ? (
                     <Txt
                       numberOfLines={2}
                       className="flex-1 text-[13px] leading-5"
                       style={
                         waitingCall
-                          ? { color: palette.success, fontFamily: 'Inter_600SemiBold' }
+                          ? { color: palette.successOnInk, fontFamily: 'Inter_600SemiBold' }
                           : missedCall
-                            ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
-                            : { color: palette.muted }
+                            ? { color: palette.dangerOnInk, fontFamily: 'Inter_600SemiBold' }
+                            : { color: palette.onInk }
                       }
                     >
                       {waitingCall
@@ -151,7 +152,7 @@ function OnlineMessages({ userId }: { userId: string }) {
                             : 'Videohovor'}
                     </Txt>
                   ) : (
-                    <Txt className="text-muted flex-1 text-[13px] leading-5" numberOfLines={2}>
+                    <Txt className="text-on-ink flex-1 text-[13px] leading-5" numberOfLines={2}>
                       {item.last_sender_id === userId ? 'Ty: ' : ''}
                       {item.last_body}
                     </Txt>
@@ -214,21 +215,21 @@ function LocalMessages() {
         renderItem={({ item }) => (
           <PressableFeedback
             onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.friend.id } })}
-            className="flex-row gap-3 py-3"
+            className="bg-ink mb-2 flex-row gap-3 rounded-2xl p-4"
           >
-            <Avatar friend={item.friend} size={52} />
+            <Avatar friend={item.friend} size={52} onDark />
             <View className="flex-1 gap-2">
               <View className="flex-row gap-2">
                 <Txt
-                  className="flex-1"
+                  className="flex-1 text-white"
                   numberOfLines={1}
                   style={{ fontFamily: 'Inter_600SemiBold' }}
                 >
                   {item.friend.name}
                 </Txt>
-                <Txt className="text-muted text-[11px]">{item.last?.time}</Txt>
+                <Txt className="text-on-ink text-[11px]">{item.last?.time}</Txt>
               </View>
-              <Txt className="text-muted text-[13px] leading-5" numberOfLines={2}>
+              <Txt className="text-on-ink text-[13px] leading-5" numberOfLines={2}>
                 {item.last?.mine ? 'Ty: ' : ''}
                 {item.last?.text}
               </Txt>
