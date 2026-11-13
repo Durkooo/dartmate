@@ -11,6 +11,11 @@ create table if not exists public.player_backups (
 alter table public.player_backups enable row level security;
 -- Priamo sa do tabuľky nepristupuje (žiadne policies) — len cez funkcie nižšie.
 
+-- Limit je vynútený tabuľkou: neplatná veľkosť vyvolá chybu, nie tichý úspech.
+alter table public.player_backups drop constraint if exists player_backups_size_check;
+alter table public.player_backups add constraint player_backups_size_check
+  check (octet_length(data::text) < 3000000);
+
 -- 2) Uloženie (prepísanie) mojej zálohy. Max ~3 MB.
 create or replace function public.save_my_backup(backup jsonb)
 returns timestamptz
@@ -22,7 +27,7 @@ as $$
   select auth.uid(), backup, now()
   where auth.role() = 'authenticated'
     and auth.uid() is not null
-    and octet_length(backup::text) < 3000000
+    and coalesce((auth.jwt()->>'is_anonymous')::boolean, false) = false
   on conflict (user_id) do update
     set data = excluded.data, updated_at = now()
   returning updated_at;
@@ -40,5 +45,6 @@ as $$
   from public.player_backups b
   where auth.role() = 'authenticated'
     and auth.uid() is not null
+    and coalesce((auth.jwt()->>'is_anonymous')::boolean, false) = false
     and b.user_id = auth.uid();
 $$;

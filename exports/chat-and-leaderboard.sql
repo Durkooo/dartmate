@@ -24,13 +24,22 @@ alter table public.direct_typing enable row level security;
 create or replace function public.mark_conversation_read(peer uuid, up_to bigint)
 returns void language sql security definer set search_path = '' as $$
   insert into public.direct_message_reads (reader_id, peer_id, last_read_id, read_at)
-  select auth.uid(), peer, up_to, now()
+  select auth.uid(), peer, coalesce(max(m.id), 0), now()
+  from public.direct_messages m
   where auth.uid() is not null and auth.role() = 'authenticated'
     and coalesce((auth.jwt()->>'is_anonymous')::boolean, false) = false
-    and peer is not null and up_to >= 0
+    and peer <> auth.uid() and up_to >= 0 and m.id <= up_to
+    and ((m.sender_id = auth.uid() and m.recipient_id = peer)
+      or (m.sender_id = peer and m.recipient_id = auth.uid()))
+  having count(*) > 0
   on conflict (reader_id, peer_id) do update
-    set last_read_id = greatest(public.direct_message_reads.last_read_id, excluded.last_read_id),
-        read_at = now();
+    set last_read_id = greatest(
+      least(public.direct_message_reads.last_read_id,
+        coalesce((select max(dm.id) from public.direct_messages dm
+          where (dm.sender_id = auth.uid() and dm.recipient_id = peer)
+             or (dm.sender_id = peer and dm.recipient_id = auth.uid())), 0)),
+      excluded.last_read_id),
+      read_at = now();
 $$;
 
 create or replace function public.set_typing(peer uuid)
