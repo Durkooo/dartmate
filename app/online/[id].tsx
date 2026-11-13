@@ -13,11 +13,9 @@ import { feedback, palette, validScore, canFinish, validCheckout, topScores } fr
 import { playerError, usePlayers } from '@/lib/players';
 import { loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import { ShareResult } from '@/components/ShareResult';
-import { formatResult } from '@/lib/matchResult';
-import { onlineVisits, renderResultImage, x01Rows, x01Stats } from '@/lib/resultImage';
+import { onlineMatchShare } from '@/lib/shareGame';
 import {
   appIsActive,
-  computeMatchStats,
   loadMatch,
   opponentId,
   opponentName,
@@ -612,56 +610,8 @@ export default function OnlineGame() {
           <View className="items-center gap-3 py-4">
             <Trophy size={32} strokeWidth={1.8} color={palette.ink} />
             <Txt>Výsledok a štatistiky sú uložené.</Txt>
-            {!!userId && (
-              <ShareResult
-                peerId={peerId}
-                peerName={peerName}
-                body={formatResult({
-                  me: myNick ?? '',
-                  opponent: peerName,
-                  score:
-                    m.legs_to_win > 1
-                      ? m.host_id === userId
-                        ? [m.host_legs, m.guest_legs]
-                        : [m.guest_legs, m.host_legs]
-                      : m.winner_id === userId
-                        ? [1, 0]
-                        : [0, 1],
-                  won: m.winner_id === userId,
-                  starting: m.starting,
-                  doubleOut: m.double_out,
-                  avg: [
-                    computeMatchStats(turns, userId).avg3,
-                    computeMatchStats(turns, peerId).avg3,
-                  ],
-                })}
-                image={() => {
-                  const mineLegs = m.host_id === userId ? m.host_legs : m.guest_legs;
-                  const theirLegs = m.host_id === userId ? m.guest_legs : m.host_legs;
-                  return renderResultImage({
-                    subtitle: `Online ${m.starting}${m.double_out ? ' · double out' : ''}${m.legs_to_win > 1 ? ` · na ${m.legs_to_win} legy` : ''}`,
-                    players: [
-                      {
-                        name: `@${myNick ?? ''}`,
-                        score: String(
-                          m.legs_to_win > 1 ? mineLegs : m.winner_id === userId ? 1 : 0,
-                        ),
-                      },
-                      {
-                        name: `@${peerName}`,
-                        score: String(
-                          m.legs_to_win > 1 ? theirLegs : m.winner_id === userId ? 0 : 1,
-                        ),
-                      },
-                    ],
-                    winner: m.winner_id === userId ? 0 : m.winner_id ? 1 : null,
-                    rows: x01Rows([
-                      x01Stats(onlineVisits(turns, userId)),
-                      x01Stats(onlineVisits(turns, peerId)),
-                    ]),
-                  });
-                }}
-              />
+            {!!userId && !!myNick && (
+              <ShareResult {...onlineMatchShare(m, turns, userId, myNick)} />
             )}
             <Button onPress={() => router.push('/statistics')}>
               <Button.Label>Moje štatistiky</Button.Label>

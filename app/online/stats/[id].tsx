@@ -12,6 +12,8 @@ import {
   type MatchPlayerStats,
 } from '@/lib/online';
 import { usePlayers } from '@/lib/players';
+import { ShareResult } from '@/components/ShareResult';
+import { onlineMatchShare } from '@/lib/shareGame';
 
 const STAT_LABELS: { key: keyof MatchPlayerStats; label: string }[] = [
   { key: 'tons80', label: '80+' },
@@ -62,6 +64,7 @@ function StatRow({
 export default function MatchStats() {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const userId = usePlayers((s) => s.session?.user.id);
+  const myNick = usePlayers((s) => s.profile?.nickname);
   const query = useOnlineQuery(
     userId ? `matchstats:${userId}:${id}` : null,
     useCallback(() => loadMatch(id), [id]),
@@ -122,6 +125,11 @@ export default function MatchStats() {
                 Priemer ráta aj pokazené hody.
               </Txt>
               <View className="mt-6 gap-1">
+                {match.status === 'finished' && !!userId && !!myNick && (
+                  <View className="mb-3">
+                    <ShareResult {...onlineMatchShare(match, turns, userId, myNick)} />
+                  </View>
+                )}
                 <Button variant="ghost" onPress={() => router.dismissTo('/statistics')}>
                   <Button.Label>Späť na štatistiky</Button.Label>
                 </Button>

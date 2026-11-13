@@ -1,8 +1,10 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, FlatList } from 'react-native';
-import { Button } from 'heroui-native';
+import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
-import { Trophy } from 'lucide-react-native';
+import { Send, Trophy } from 'lucide-react-native';
+import { ShareResult } from '@/components/ShareResult';
+import { localGameShare } from '@/lib/shareGame';
 import { Heading, Txt, Empty, LoadingRows, StorageNotice } from '@/components/DartsUI';
 import { OnlineError, MatchRow } from '@/components/OnlineUI';
 import { palette, useDarts, type Game } from '@/lib/darts';
@@ -18,20 +20,37 @@ import {
 } from '@/lib/statistics';
 
 function OfflineMatchRow({ game }: { game: Game }) {
+  const myNick = usePlayers((s) => s.profile?.nickname);
+  const friends = usePlayers((s) => s.friends);
+  const [open, setOpen] = useState(false);
   return (
-    <View className="border-border flex-row items-center gap-3 border-b py-4">
-      <Trophy size={22} color={palette.ink} strokeWidth={1.8} />
-      <View className="flex-1 gap-1">
-        <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>
-          {game.solo
-            ? 'Sólo hra'
-            : `${game.winner === 0 ? 'Výhra' : 'Prehra'} proti ${game.opponentName}`}
-        </Txt>
-        <Txt className="text-muted text-[13px]">
-          {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'} ·{' '}
-          {new Date(game.date).toLocaleDateString('sk-SK')} · Offline
-        </Txt>
-      </View>
+    <View className="border-border border-b">
+      <PressableFeedback
+        className="flex-row items-center gap-3 py-4"
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityHint="Ťukni pre poslanie výsledku priateľovi"
+      >
+        <Trophy size={22} color={palette.ink} strokeWidth={1.8} />
+        <View className="flex-1 gap-1">
+          <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>
+            {game.solo
+              ? 'Sólo hra'
+              : `${game.winner === 0 ? 'Výhra' : 'Prehra'} proti ${game.opponentName}`}
+          </Txt>
+          <Txt className="text-muted text-[13px]">
+            {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'} ·{' '}
+            {new Date(game.date).toLocaleDateString('sk-SK')} · Offline
+          </Txt>
+        </View>
+        {myNick ? <Send size={18} color={palette.muted} strokeWidth={1.8} /> : null}
+      </PressableFeedback>
+      {open && !!myNick && (
+        <View className="pb-4">
+          <ShareResult {...localGameShare(game, myNick, friends)} />
+        </View>
+      )}
     </View>
   );
 }

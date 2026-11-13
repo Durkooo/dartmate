@@ -7,8 +7,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { generateBotTurn } from '@/lib/bots';
 import { ShareResult } from '@/components/ShareResult';
-import { formatResult, formatSoloResult } from '@/lib/matchResult';
-import { renderResultImage, x01Rows, x01Stats } from '@/lib/resultImage';
+import { localGameShare } from '@/lib/shareGame';
 import { usePlayers } from '@/lib/players';
 import {
   palette,
@@ -241,89 +240,7 @@ export default function Match() {
                     Legy {game.legs[0]}:{game.legs[1]}
                   </Txt>
                 )}
-                {!!myNick &&
-                  (() => {
-                    // Súper-priateľ z appky → pošle sa rovno jemu; bot, sólo alebo
-                    // dočasný súper → vyberieš priateľa zo zoznamu.
-                    const friendOpponent =
-                      !game.solo && !game.bot && friends.some((f) => f.id === game.opponentId);
-                    const myDarts = game.turns
-                      .filter((t) => t.player === 0 && !t.undone)
-                      .reduce((sum, t) => sum + (t.darts ?? 3), 0);
-                    const body = game.solo
-                      ? formatSoloResult({
-                          me: myNick,
-                          starting: game.starting,
-                          doubleOut: game.doubleOut,
-                          legs: game.legs[0],
-                          darts: myDarts,
-                          avg: Number.parseFloat(average(game, 0)) || null,
-                        })
-                      : formatResult({
-                          me: myNick,
-                          opponent: game.opponentName,
-                          opponentTagged: friendOpponent,
-                          score:
-                            game.legsToWin > 1
-                              ? [game.legs[0], game.legs[1]]
-                              : game.winner === 0
-                                ? [1, 0]
-                                : [0, 1],
-                          won: game.winner === 0,
-                          starting: game.starting,
-                          doubleOut: game.doubleOut,
-                          avg: [
-                            Number.parseFloat(average(game, 0)) || null,
-                            Number.parseFloat(average(game, 1)) || null,
-                          ],
-                        });
-                    // Obrázok tabuľky: 100+, 140+, 180, priemery, najlepší leg, zatvorenie.
-                    const image = () => {
-                      const sides = game.solo ? ([0] as const) : ([0, 1] as const);
-                      const stats = sides.map((p) =>
-                        x01Stats(
-                          game.turns
-                            .filter((t) => t.player === p && !t.undone)
-                            .map((t) => ({
-                              points: t.score,
-                              darts: t.darts ?? 3,
-                              remaining: t.remaining,
-                              bust: t.bust,
-                              leg: t.leg,
-                            })),
-                        ),
-                      );
-                      return renderResultImage({
-                        subtitle: `${game.starting}${game.doubleOut ? ' · double out' : ''}${game.legsToWin > 1 ? ` · na ${game.legsToWin} legy` : ''}`,
-                        players: game.solo
-                          ? [{ name: `@${myNick}`, score: `${myDarts} šípok` }]
-                          : [
-                              {
-                                name: `@${myNick}`,
-                                score: String(
-                                  game.legsToWin > 1 ? game.legs[0] : game.winner === 0 ? 1 : 0,
-                                ),
-                              },
-                              {
-                                name: friendOpponent ? `@${game.opponentName}` : game.opponentName,
-                                score: String(
-                                  game.legsToWin > 1 ? game.legs[1] : game.winner === 1 ? 1 : 0,
-                                ),
-                              },
-                            ],
-                        winner: game.solo ? null : game.winner,
-                        rows: x01Rows(stats),
-                      });
-                    };
-                    return (
-                      <ShareResult
-                        peerId={friendOpponent ? game.opponentId : undefined}
-                        peerName={friendOpponent ? game.opponentName : undefined}
-                        body={body}
-                        image={image}
-                      />
-                    );
-                  })()}
+                {!!myNick && <ShareResult {...localGameShare(game, myNick, friends)} />}
                 <Button
                   size="lg"
                   className="w-full"
