@@ -12,8 +12,11 @@ import { bilt } from '@/lib/bilt';
 import { feedback, palette, validScore, canFinish, validCheckout, topScores } from '@/lib/darts';
 import { playerError, usePlayers } from '@/lib/players';
 import { loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
+import { ShareResult } from '@/components/ShareResult';
+import { formatResult } from '@/lib/matchResult';
 import {
   appIsActive,
+  computeMatchStats,
   loadMatch,
   opponentId,
   opponentName,
@@ -26,6 +29,7 @@ import {
 export default function OnlineGame() {
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const userId = usePlayers((s) => s.session?.user.id);
+  const myNick = usePlayers((s) => s.profile?.nickname);
   const query = useOnlineQuery(
     userId ? `match:${userId}:${id}` : null,
     useCallback(() => loadMatch(id), [id]),
@@ -607,6 +611,31 @@ export default function OnlineGame() {
           <View className="items-center gap-3 py-4">
             <Trophy size={32} strokeWidth={1.8} color={palette.ink} />
             <Txt>Výsledok a štatistiky sú uložené.</Txt>
+            {!!userId && (
+              <ShareResult
+                peerId={peerId}
+                peerName={peerName}
+                body={formatResult({
+                  me: myNick ?? '',
+                  opponent: peerName,
+                  score:
+                    m.legs_to_win > 1
+                      ? m.host_id === userId
+                        ? [m.host_legs, m.guest_legs]
+                        : [m.guest_legs, m.host_legs]
+                      : m.winner_id === userId
+                        ? [1, 0]
+                        : [0, 1],
+                  won: m.winner_id === userId,
+                  starting: m.starting,
+                  doubleOut: m.double_out,
+                  avg: [
+                    computeMatchStats(turns, userId).avg3,
+                    computeMatchStats(turns, peerId).avg3,
+                  ],
+                })}
+              />
+            )}
             <Button onPress={() => router.push('/statistics')}>
               <Button.Label>Moje štatistiky</Button.Label>
             </Button>

@@ -6,6 +6,9 @@ import { Delete, Undo2, Check, Trophy } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { generateBotTurn } from '@/lib/bots';
+import { ShareResult } from '@/components/ShareResult';
+import { formatResult } from '@/lib/matchResult';
+import { usePlayers } from '@/lib/players';
 import {
   palette,
   feedback,
@@ -23,6 +26,8 @@ import {
 
 export default function Match() {
   const game = useDarts((s) => s.game);
+  const friends = usePlayers((s) => s.friends);
+  const myNick = usePlayers((s) => s.profile?.nickname);
   const hydrated = useDarts((s) => s.hydrated);
   const submitTurn = useDarts((s) => s.submitTurn);
   const undo = useDarts((s) => s.undo);
@@ -235,6 +240,32 @@ export default function Match() {
                     Legy {game.legs[0]}:{game.legs[1]}
                   </Txt>
                 )}
+                {!game.solo &&
+                  !game.bot &&
+                  !!myNick &&
+                  friends.some((f) => f.id === game.opponentId) && (
+                    <ShareResult
+                      peerId={game.opponentId}
+                      peerName={game.opponentName}
+                      body={formatResult({
+                        me: myNick,
+                        opponent: game.opponentName,
+                        score:
+                          game.legsToWin > 1
+                            ? [game.legs[0], game.legs[1]]
+                            : game.winner === 0
+                              ? [1, 0]
+                              : [0, 1],
+                        won: game.winner === 0,
+                        starting: game.starting,
+                        doubleOut: game.doubleOut,
+                        avg: [
+                          Number.parseFloat(average(game, 0)) || null,
+                          Number.parseFloat(average(game, 1)) || null,
+                        ],
+                      })}
+                    />
+                  )}
                 <Button
                   size="lg"
                   className="w-full"

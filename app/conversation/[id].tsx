@@ -36,6 +36,7 @@ import VideoCall from '@/components/VideoCall';
 import { getCallCredentials, loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import { notifyRecipient } from '@/lib/sendPush';
 import { closeCallNotifications } from '@/lib/callNotifications';
+import { RESULT_HEADER, isResultMessage, resultLines } from '@/lib/matchResult';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
@@ -310,7 +311,8 @@ function ConversationContent({
   }, [query.data, older, key]);
   // Upraviť ide len vlastnú poslednú textovú správu (podržanie prsta).
   const newestMineId = messages.find(
-    (m) => m.sender_id === userId && !m.image_path && !isCallMessage(m.body),
+    (m) =>
+      m.sender_id === userId && !m.image_path && !isCallMessage(m.body) && !isResultMessage(m.body),
   )?.id;
   // Príchod zo zvoniaceho prehľadu (notifikácia): čakajúcu pozvánku prijmem rovno.
   const autoJoined = useRef<string | undefined>(undefined);
@@ -696,7 +698,35 @@ function ConversationContent({
                     style={item.image_path ? { width: 232, maxWidth: '100%' } : undefined}
                   >
                     {item.image_path && <MessagePhoto path={item.image_path} mine={mine} />}
-                    <Txt className={mine ? 'leading-6 text-white' : 'leading-6'}>{item.body}</Txt>
+                    {isResultMessage(item.body) ? (
+                      // Výsledok zápasu ako karta: prvý riadok (skóre) zvýraznený.
+                      <View className="gap-1">
+                        <Txt
+                          className={mine ? 'text-on-ink text-[12px]' : 'text-muted text-[12px]'}
+                        >
+                          {RESULT_HEADER}
+                        </Txt>
+                        {resultLines(item.body).map((line, i) => (
+                          <Txt
+                            key={line}
+                            className={mine ? 'text-white' : undefined}
+                            style={
+                              i === 0
+                                ? {
+                                    fontFamily: 'Inter_700Bold',
+                                    fontSize: 18,
+                                    fontVariant: ['tabular-nums'],
+                                  }
+                                : { fontSize: 13 }
+                            }
+                          >
+                            {line}
+                          </Txt>
+                        ))}
+                      </View>
+                    ) : (
+                      <Txt className={mine ? 'leading-6 text-white' : 'leading-6'}>{item.body}</Txt>
+                    )}
                     <Txt
                       className={
                         mine
