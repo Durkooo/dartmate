@@ -187,7 +187,7 @@ export default function Home() {
         </View>
         {/* Prechod do tmavomodrej, aby texty a tlačidlá ostali čitateľné. */}
         <LinearGradient
-          colors={[palette.ink, 'rgba(25,36,56,0.92)', 'rgba(25,36,56,0.15)']}
+          colors={[palette.ink, 'rgba(33,48,73,0.92)', 'rgba(33,48,73,0.15)']}
           locations={[0, 0.55, 1]}
           start={{ x: 0.5, y: 1 }}
           end={{ x: 0.85, y: 0 }}

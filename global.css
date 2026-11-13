@@ -7,51 +7,51 @@
 @layer theme {
   :root {
     @variant light {
-      --background: #C9CFDA;
-      --foreground: oklch(0.259 0.04 260);
+      --background: #D2D7E0;
+      --foreground: #213049;
       --surface: #E9ECF1;
-      --surface-foreground: oklch(0.259 0.04 260);
+      --surface-foreground: #213049;
       --overlay: #E9ECF1;
-      --overlay-foreground: oklch(0.259 0.04 260);
+      --overlay-foreground: #213049;
       --accent: oklch(0.867 0.154 91);
-      --accent-foreground: oklch(0.259 0.04 260);
+      --accent-foreground: #213049;
       --default: oklch(0.934 0.009 270);
-      --default-foreground: oklch(0.259 0.04 260);
-      --muted: #525D71;
+      --default-foreground: #213049;
+      --muted: #5B6679;
       --border: oklch(0.907 0.013 264);
       --separator: oklch(0.907 0.013 264);
       --field-background: #E9ECF1;
-      --field-foreground: oklch(0.259 0.04 260);
+      --field-foreground: #213049;
       --field-placeholder: oklch(0.546 0.032 260);
       --focus: oklch(0.546 0.032 260);
       --danger: oklch(0.521 0.165 15);
       --success: oklch(0.495 0.09 157);
-      --color-accent-soft-foreground: oklch(0.259 0.04 260);
-      --color-ink: oklch(0.259 0.04 260);
+      --color-accent-soft-foreground: #213049;
+      --color-ink: #213049;
       --color-on-ink: oklch(0.827 0.03 264);
     }
     @variant dark {
-      --background: #C9CFDA;
-      --foreground: oklch(0.259 0.04 260);
+      --background: #D2D7E0;
+      --foreground: #213049;
       --surface: #E9ECF1;
-      --surface-foreground: oklch(0.259 0.04 260);
+      --surface-foreground: #213049;
       --overlay: #E9ECF1;
-      --overlay-foreground: oklch(0.259 0.04 260);
+      --overlay-foreground: #213049;
       --accent: oklch(0.867 0.154 91);
-      --accent-foreground: oklch(0.259 0.04 260);
+      --accent-foreground: #213049;
       --default: oklch(0.934 0.009 270);
-      --default-foreground: oklch(0.259 0.04 260);
-      --muted: #525D71;
+      --default-foreground: #213049;
+      --muted: #5B6679;
       --border: oklch(0.907 0.013 264);
       --separator: oklch(0.907 0.013 264);
       --field-background: #E9ECF1;
-      --field-foreground: oklch(0.259 0.04 260);
+      --field-foreground: #213049;
       --field-placeholder: oklch(0.546 0.032 260);
       --focus: oklch(0.546 0.032 260);
       --danger: oklch(0.521 0.165 15);
       --success: oklch(0.495 0.09 157);
-      --color-accent-soft-foreground: oklch(0.259 0.04 260);
-      --color-ink: oklch(0.259 0.04 260);
+      --color-accent-soft-foreground: #213049;
+      --color-ink: #213049;
       --color-on-ink: oklch(0.827 0.03 264);
     }
   }
@@ -62,7 +62,7 @@
  * aby prebili predvolené farby HeroUI aj triedy ako bg-surface. */
 /* Tmavomodrá na tlačidlách je o dva odtiene svetlejšia než písmo a skóre box. */
 .button__root--variant-secondary {
-  background-color: #2e4166;
+  background-color: #384d78;
 }
 .button__label--variant-secondary {
   color: var(--color-accent);

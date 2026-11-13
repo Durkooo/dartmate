@@ -32,7 +32,7 @@ const TONES = {
   board: {
     base: palette.ink,
     edge: 'rgba(189,200,219,0.35)',
-    light: '#223250',
+    light: '#2B3C5C',
     dark: palette.ink,
     ringA: palette.yellow,
     ringB: 'rgba(189,200,219,0.55)',
