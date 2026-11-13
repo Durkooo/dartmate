@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, PressableFeedback, Switch } from 'heroui-native';
+import { Button, PressableFeedback } from 'heroui-native';
 import { Check } from 'lucide-react-native';
 import { Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { LegPicker } from '@/components/LegPicker';
@@ -46,9 +46,12 @@ export default function NewOnlineMatch() {
       router.replace({ pathname: '/online/[id]', params: { id: match.id } });
     } catch (e) {
       setError(
-        playerError({
-          message: e instanceof Error ? e.message : 'Pozvánku sa nepodarilo odoslať.',
-        }),
+        legsToWin > 9 &&
+          /leg|invalid|range|between|check|poč/i.test(e instanceof Error ? e.message : '')
+          ? 'Server zatiaľ povoľuje najviac 9 víťazných legov — zvoľ menej, kým sa limit nezvýši.'
+          : playerError({
+              message: e instanceof Error ? e.message : 'Pozvánku sa nepodarilo odoslať.',
+            }),
       );
       feedback.error();
     } finally {
@@ -65,12 +68,13 @@ export default function NewOnlineMatch() {
             contentContainerStyle={{ padding: 20, paddingBottom: 24, flexGrow: 1 }}
             ListHeaderComponent={
               <View>
-                <Heading className="mb-4">Hra</Heading>
+                {/* Rovnaký výber ako pri offline zápase (bez Cricketu). */}
+                <Heading className="mb-4 text-[20px]">Hra</Heading>
                 <View className="flex-row gap-3">
-                  {[301, 501].map((n) => (
+                  {([301, 501] as const).map((n) => (
                     <Button
                       key={n}
-                      className="flex-1"
+                      className="h-16 flex-1 rounded-xl"
                       variant={starting === n ? 'secondary' : 'tertiary'}
                       isDisabled={pending}
                       onPress={() => {
@@ -80,31 +84,43 @@ export default function NewOnlineMatch() {
                         }
                       }}
                     >
-                      <Button.Label>{n}</Button.Label>
+                      <Button.Label className="text-[24px]" style={{ fontFamily: 'Inter_700Bold' }}>
+                        {n}
+                      </Button.Label>
                     </Button>
                   ))}
                 </View>
-                <View className="mt-5 flex-row items-center justify-between gap-3">
-                  <Txt className="flex-1">Ukončenie double out</Txt>
-                  <Switch
-                    isSelected={doubleOut}
-                    isDisabled={pending}
-                    onSelectedChange={(v) => {
-                      setDoubleOut(v);
-                      feedback.selection();
-                    }}
-                  />
+                <Heading className="mt-7 mb-4 text-[20px]">Na koľko víťazných legov?</Heading>
+                <LegPicker value={legsToWin} onChange={setLegsToWin} disabled={pending} />
+                <Heading className="mt-7 mb-4 text-[20px]">Ukončenie hry</Heading>
+                <View className="flex-row gap-3">
+                  {[true, false].map((d) => (
+                    <Button
+                      key={String(d)}
+                      className="flex-1 rounded-xl"
+                      variant={doubleOut === d ? 'secondary' : 'tertiary'}
+                      isDisabled={pending}
+                      onPress={() => {
+                        if (doubleOut !== d) {
+                          setDoubleOut(d);
+                          feedback.selection();
+                        }
+                      }}
+                    >
+                      <Button.Label numberOfLines={1}>
+                        {d ? 'Double out' : 'Straight out'}
+                      </Button.Label>
+                    </Button>
+                  ))}
                 </View>
-                <Txt className="text-muted mt-5 text-[13px] leading-5">
+                <Txt className="text-muted mt-3 text-[13px]">
+                  {doubleOut
+                    ? 'Posledná šípka musí trafiť double alebo bull za 50.'
+                    : 'Na výhru stačí znížiť skóre presne na nulu.'}
+                </Txt>
+                <Txt className="text-muted mt-3 text-[13px] leading-5">
                   Kamera je voliteľná. Zapneš ju až v prijatom zápase.
                 </Txt>
-                <Heading className="mt-8 mb-3 text-[20px]">Na koľko víťazných legov?</Heading>
-                <LegPicker
-                  value={legsToWin}
-                  onChange={setLegsToWin}
-                  disabled={pending}
-                  maxLegs={9}
-                />
                 <Heading className="mt-8 mb-3 text-[20px]">Koho vyzveš?</Heading>
                 <OnlineError error={query.error} retry={() => void query.refresh()} />
               </View>
