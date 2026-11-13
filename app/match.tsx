@@ -85,9 +85,13 @@ export default function Match() {
     ...history.flatMap((g) =>
       g.solo && player !== 0
         ? []
-        : (g.turns ?? []).filter((t) => t.player === player && !t.bust).map((t) => t.score),
+        : (g.turns ?? [])
+            .filter((t) => t.player === player && !t.bust && !t.undone)
+            .map((t) => t.score),
     ),
-    ...game.turns.filter((t) => t.player === player && !t.bust).map((t) => t.score),
+    ...game.turns
+      .filter((t) => t.player === player && !t.bust && !t.undone)
+      .map((t) => t.score),
   ]);
   const score = Number(input);
   const checkout =
@@ -147,7 +151,7 @@ export default function Match() {
     }
     saveWith(3, n);
   };
-  const lastTurn = game.turns.at(-1);
+  const lastTurn = [...game.turns].reverse().find((t) => !t.undone);
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title: 'Zápas' }} />
@@ -476,8 +480,21 @@ export default function Match() {
             <Txt className="flex-1 text-[14px]" numberOfLines={1}>
               {item.player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
             </Txt>
-            <Txt className={item.bust ? 'text-danger text-[14px]' : 'text-[14px]'}>
-              {item.bust ? `Prehodené (${item.score})` : item.score}
+            <Txt
+              className={
+                item.undone
+                  ? 'text-muted text-[14px]'
+                  : item.bust
+                    ? 'text-danger text-[14px]'
+                    : 'text-[14px]'
+              }
+              style={item.undone ? { textDecorationLine: 'line-through' } : undefined}
+            >
+              {item.undone
+                ? item.score
+                : item.bust
+                  ? `Prehodené (${item.score})`
+                  : item.score}
             </Txt>
             <Txt
               className="w-12 text-right text-[14px]"
