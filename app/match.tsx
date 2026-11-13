@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Button, Spinner } from 'heroui-native';
-import { Delete, Undo2, Check, Trophy } from 'lucide-react-native';
+import { Delete, Undo2, Check, Trophy, RotateCcw } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { generateBotTurn } from '@/lib/bots';
@@ -35,6 +35,7 @@ export default function Match() {
   const undo = useDarts((s) => s.undo);
   const startNextLeg = useDarts((s) => s.startNextLeg);
   const archiveGame = useDarts((s) => s.archiveGame);
+  const startGame = useDarts((s) => s.startGame);
   const discardGame = useDarts((s) => s.discardGame);
   const history = useDarts((s) => s.history);
   const [input, setInput] = useState('');
@@ -259,8 +260,38 @@ export default function Match() {
                   </Txt>
                 )}
                 {!!myNick && <ShareResult {...localGameShare(game, myNick, friends)} />}
+                {/* Odveta: uloží výsledok a hneď začne nový zápas s rovnakým súperom a nastaveniami. */}
                 <Button
                   size="lg"
+                  className="w-full"
+                  onPress={() => {
+                    const g = game;
+                    archiveGame();
+                    startGame(
+                      {
+                        id: g.opponentId,
+                        name: g.opponentName,
+                        handle: g.opponentName,
+                        color: 'blue',
+                        demo: false,
+                      },
+                      g.starting,
+                      g.doubleOut,
+                      g.legsToWin,
+                      !!g.solo,
+                      g.bot,
+                    );
+                    setInput('');
+                    setError('');
+                    feedback.success();
+                  }}
+                >
+                  <RotateCcw size={20} color={palette.navy} strokeWidth={1.8} />
+                  <Button.Label>Odveta</Button.Label>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="tertiary"
                   className="w-full"
                   onPress={() => {
                     archiveGame();

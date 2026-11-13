@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Trophy, Undo2 } from 'lucide-react-native';
+import { RotateCcw, Trophy, Undo2 } from 'lucide-react-native';
 import { Heading, Txt, LoadingRows, Empty } from '@/components/DartsUI';
 import { PadButton, ScoreBoard } from '@/components/GameBoard';
 import { feedback, palette } from '@/lib/darts';
@@ -15,6 +15,7 @@ import {
   cricketDart,
   cricketEndTurn,
   cricketUndo,
+  newCricket,
   useExtraGames,
 } from '@/lib/games';
 
@@ -168,6 +169,21 @@ export default function Cricket() {
               })()}
             <Button
               size="lg"
+              className="w-full"
+              onPress={() => {
+                const players = game.players;
+                const opponentId = game.opponentId;
+                finish('cricket');
+                setGame(newCricket(players, opponentId));
+                feedback.success();
+              }}
+            >
+              <RotateCcw size={20} color={palette.navy} strokeWidth={1.8} />
+              <Button.Label>Odveta</Button.Label>
+            </Button>
+            <Button
+              size="lg"
+              variant="tertiary"
               className="w-full"
               onPress={() => {
                 finish('cricket');

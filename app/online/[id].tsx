@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'rea
 import { AppState, View, ScrollView, KeyboardAvoidingView, Modal, Platform } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Video, Trophy } from 'lucide-react-native';
+import { RotateCcw, Video, Trophy } from 'lucide-react-native';
 import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError } from '@/components/OnlineUI';
 import VideoCall from '@/components/VideoCall';
@@ -16,8 +16,10 @@ import { playerError, usePlayers } from '@/lib/players';
 import { loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import { ShareResult } from '@/components/ShareResult';
 import { onlineMatchShare } from '@/lib/shareGame';
+import { notifyRecipient } from '@/lib/sendPush';
 import {
   appIsActive,
+  inviteMatch,
   loadMatch,
   opponentId,
   opponentName,
@@ -61,6 +63,7 @@ export default function OnlineGame() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
+  const [rematchPending, setRematchPending] = useState(false);
   // Hlásenie skóre hlasom (počas celého zápasu) a Bluetooth klávesnica.
   const [voiceOn, setVoiceOn] = useVoiceMode(`online:${id}`);
   const hardwareKeyboard = useInputSettings((s) => s.hardwareKeyboard);
@@ -646,7 +649,41 @@ export default function OnlineGame() {
             {!!userId && !!myNick && (
               <ShareResult {...onlineMatchShare(m, turns, userId, myNick)} />
             )}
-            <Button onPress={() => router.push('/statistics')}>
+            {/* Odveta: nová pozvánka rovnakému súperovi s rovnakými nastaveniami. */}
+            <Button
+              size="lg"
+              className="w-full"
+              isDisabled={rematchPending}
+              onPress={() => {
+                setRematchPending(true);
+                setError('');
+                void inviteMatch(peerId, m.starting, m.double_out, m.legs_to_win)
+                  .then((next) => {
+                    feedback.success();
+                    if (myNick)
+                      notifyRecipient(
+                        peerId,
+                        `@${myNick}`,
+                        `Chce odvetu: ${m.starting}${m.legs_to_win > 1 ? ` na ${m.legs_to_win} víťazné legy` : ''}`,
+                        `/conversation/${userId}`,
+                      );
+                    router.replace({ pathname: '/online/[id]', params: { id: next.id } });
+                  })
+                  .catch((e: unknown) => {
+                    setError(
+                      playerError({
+                        message: e instanceof Error ? e.message : 'Odvetu sa nepodarilo poslať.',
+                      }),
+                    );
+                    feedback.error();
+                  })
+                  .finally(() => setRematchPending(false));
+              }}
+            >
+              <RotateCcw size={20} color={palette.navy} strokeWidth={1.8} />
+              <Button.Label>{rematchPending ? 'Posielam…' : `Odveta s @${peerName}`}</Button.Label>
+            </Button>
+            <Button variant="tertiary" onPress={() => router.push('/statistics')}>
               <Button.Label>Moje štatistiky</Button.Label>
             </Button>
           </View>
