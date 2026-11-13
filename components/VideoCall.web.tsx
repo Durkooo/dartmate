@@ -6,7 +6,6 @@ import {
   Track,
   LocalVideoTrack,
   RemoteTrackPublication,
-  type TrackPublication,
   VideoPresets,
   ConnectionQuality,
   type Participant,
@@ -39,32 +38,6 @@ function peerStatus(room: Room, tracks: MediaTrack[]): string | null {
   if (!pub) return 'Súper je pripojený, kameru nevysiela';
   if (pub.isMuted) return 'Súper má vypnutú kameru';
   return !pub.isSubscribed ? 'Čakám na súperov obraz…' : 'Súperov obraz sa načítava…';
-}
-/** DOČASNÁ diagnostika hovoru (malý riadok pod hovorom) — ukáže, čo vidí každý
- *  telefón: moje zverejnené stopy a stopy súpera. Po vyriešení kamery odstrániť. */
-function pubInfo(p: TrackPublication | undefined): string {
-  if (!p) return '–';
-  let out = p.trackSid ? 'ok' : 'čaká';
-  if (p.isMuted) out += ',mute';
-  if (p instanceof RemoteTrackPublication) out += p.isSubscribed ? ',sub' : ',nesub';
-  if (p.track?.mediaStreamTrack) out += `,${p.track.mediaStreamTrack.readyState}`;
-  if (p.mimeType) out += `,${p.mimeType.replace(/^video\/|^audio\//, '')}`;
-  return out;
-}
-function diagnostics(room: Room, camErrors: string[], sender: string): string {
-  const me = room.localParticipant;
-  const parts = [
-    `ja cam:${pubInfo(me.getTrackPublication(Track.Source.Camera))} mic:${pubInfo(me.getTrackPublication(Track.Source.Microphone))}`,
-  ];
-  const remotes = [...room.remoteParticipants.values()];
-  parts.push(`súperi:${remotes.length}`);
-  for (const p of remotes)
-    parts.push(
-      `${p.identity.slice(0, 6)} cam:${pubInfo(p.getTrackPublication(Track.Source.Camera))} mic:${pubInfo(p.getTrackPublication(Track.Source.Microphone))} stôp:${p.trackPublications.size}`,
-    );
-  if (sender) parts.push(sender);
-  if (camErrors.length) parts.push(`chyba:${camErrors.at(-1)}`);
-  return parts.join(' | ');
 }
 /** Náhradné vysielanie kamery cez plátno: niektoré Androidy ukážu obraz kamery
  *  v náhľade, ale do odosielania nepustia ani snímku (kam:0). Obraz sa preto
@@ -115,6 +88,23 @@ function createCanvasRelay(source: MediaStreamTrack) {
     },
   };
 }
+/** Tento telefón už raz potreboval kameru cez plátno → pri ďalších hovoroch ju
+ *  zapneme hneď (bez čakania na zistenie, že z kamery nechodia snímky). */
+const RELAY_KEY = 'dartmate:camera-relay';
+function relayRemembered(): boolean {
+  try {
+    return localStorage.getItem(RELAY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function rememberRelay() {
+  try {
+    localStorage.setItem(RELAY_KEY, '1');
+  } catch {
+    // Len sa nezapamätá — nabudúce sa to zistí znova.
+  }
+}
 function snapshotTracks(room: Room): MediaTrack[] {
   const tracks: MediaTrack[] = [
     { track: room.localParticipant.getTrackPublication(Track.Source.Camera)?.track, local: true },
@@ -154,7 +144,6 @@ export default function VideoCall({
   const [request, setRequest] = useState({ matchId });
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [peerInfo, setPeerInfo] = useState<string | null>(null);
-  const [diag, setDiag] = useState('');
   const camErrors = useRef<string[]>([]);
   const senderInfo = useRef('');
   /** Kamera ide cez plátno — reštart kamery (kvalita, otočenie) by ho zrušil. */
@@ -226,7 +215,6 @@ export default function VideoCall({
         // Text stavu súpera počítame tu (mení sa aj bez zmeny stôp — napr. zverejnená,
         // ale ešte neodobratá kamera); rovnaký reťazec React neprekreslí.
         setPeerInfo(peerStatus(session, next));
-        setDiag(diagnostics(session, camErrors.current, senderInfo.current));
         // Rovnaké stopy v rovnakom stave → bez prekreslenia (pravidelná obnova).
         setTracks((prev) =>
           prev.length === next.length &&
@@ -291,6 +279,24 @@ export default function VideoCall({
       { label: 'kodek VP9', codec: 'vp9' },
     ] as const;
     let checking = false;
+    /** Prepne zverejnenú kameru na vysielanie cez plátno. */
+    const startRelay = async (track: LocalVideoTrack) => {
+      if (relay) return;
+      const source = track.mediaStreamTrack;
+      await session.localParticipant.unpublishTrack(track, false);
+      if (!active) {
+        source.stop();
+        return;
+      }
+      relay = createCanvasRelay(source);
+      relayActive.current = true;
+      rememberRelay();
+      await session.localParticipant.publishTrack(relay.track, {
+        source: Track.Source.Camera,
+        simulcast: false,
+        videoCodec: 'vp8',
+      });
+    };
     const checkSender = async () => {
       if (checking || !active) return;
       checking = true;
@@ -348,25 +354,14 @@ export default function VideoCall({
           return;
         }
         zeroSince ??= Date.now();
-        if (Date.now() - zeroSince < 8000) return;
+        // Z kamery nejdú snímky → stačia 3 s; inak (kodek) čakáme 8 s.
+        if (Date.now() - zeroSince < (sourceFrames === 0 ? 3000 : 8000)) return;
         // Z kamery nepríde do odosielania ani snímka → iný kodek nepomôže,
         // pošleme obraz cez plátno (z náhľadu, ktorý funguje).
         if (sourceFrames === 0 && !relay) {
           zeroSince = undefined;
           camErrors.current.push('kam:0 → kamera cez plátno');
-          const source = track.mediaStreamTrack;
-          await session.localParticipant.unpublishTrack(track, false);
-          if (!active) {
-            source.stop();
-            return;
-          }
-          relay = createCanvasRelay(source);
-          relayActive.current = true;
-          await session.localParticipant.publishTrack(relay.track, {
-            source: Track.Source.Camera,
-            simulcast: false,
-            videoCodec: 'vp8',
-          });
+          await startRelay(track);
           return;
         }
         if (relay || fallbackStage >= FALLBACKS.length) return;
@@ -483,6 +478,10 @@ export default function VideoCall({
               }
             }
           }
+          // Telefón, ktorý už raz potreboval plátno, ho dostane hneď.
+          const cam = session.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+          if (active && relayRemembered() && cam instanceof LocalVideoTrack)
+            await startRelay(cam).catch((e: unknown) => note(e));
         }
         try {
           if (!active) {
@@ -916,11 +915,6 @@ export default function VideoCall({
       {!!error && (
         <Txt className="text-danger mt-2 text-[12px]" accessibilityRole="alert">
           {error}
-        </Txt>
-      )}
-      {!!diag && !audioOnly && (
-        <Txt className="text-muted mt-2 text-[10px]" selectable>
-          {diag}
         </Txt>
       )}
       <VideoControls
