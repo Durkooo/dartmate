@@ -48,6 +48,18 @@ export default function Highscore() {
       done={!!game?.done}
       result={`Spolu ${total} bodov`}
       onFinish={() => finish('highscore')}
+      stats={
+        game
+          ? [
+              { label: 'Súčet', value: String(total) },
+              { label: 'Priemer na 3 šípky', value: avg },
+              { label: 'Najvyššie kolo', value: String(Math.max(0, ...game.scores)) },
+              { label: '100+', value: String(game.scores.filter((x) => x >= 100).length) },
+              { label: '140+', value: String(game.scores.filter((x) => x >= 140).length) },
+              { label: '180', value: String(game.scores.filter((x) => x === 180).length) },
+            ]
+          : []
+      }
       onUndo={() => game && setGame(highscoreUndo(game))}
       canUndo={!!game?.scores.length}
       hideUndo

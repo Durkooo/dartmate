@@ -4,6 +4,8 @@ import { PadButton } from '@/components/GameBoard';
 import { feedback } from '@/lib/darts';
 import { clockDart, clockLabel, clockUndo, newClock, useExtraGames } from '@/lib/games';
 
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : '–');
+
 export default function AroundTheClock() {
   const hydrated = useExtraGames((s) => s.hydrated);
   const game = useExtraGames((s) => s.clock);
@@ -24,6 +26,20 @@ export default function AroundTheClock() {
       done={!!game?.done}
       result={game ? `Hotovo za ${game.darts} šípok` : ''}
       onFinish={() => finish('clock')}
+      shareScore={game ? `${game.darts} šípok` : ''}
+      stats={
+        game
+          ? [
+              { label: 'Šípky spolu', value: String(game.darts) },
+              { label: 'Trafené čísla', value: `${Math.min(game.target, 22) - 1} z 21` },
+              { label: 'Úspešnosť zásahov', value: pct(Math.min(game.target, 22) - 1, game.darts) },
+              {
+                label: 'Šípky na jedno číslo',
+                value: (game.darts / Math.max(1, Math.min(game.target, 22) - 1)).toFixed(1),
+              },
+            ]
+          : []
+      }
       onUndo={() => game && setGame(clockUndo(game))}
       canUndo={!!game?.past.length}
       onCancel={() => setGame(null)}

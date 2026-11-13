@@ -13,6 +13,8 @@ import {
   useExtraGames,
 } from '@/lib/games';
 
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : '–');
+
 export default function Finishing50() {
   const hydrated = useExtraGames((s) => s.hydrated);
   const game = useExtraGames((s) => s.finishing);
@@ -41,6 +43,28 @@ export default function Finishing50() {
       done={!!game?.done}
       result={`${total} bodov · zatvorené ${closed} z ${FINISH_ROUNDS}`}
       onFinish={() => finish('finishing')}
+      shareScore={`${total} b.`}
+      stats={
+        game
+          ? [
+              { label: 'Body', value: `${total} z ${FINISH_ROUNDS * 3}` },
+              { label: 'Zatvorené', value: `${closed} z ${FINISH_ROUNDS}` },
+              { label: 'Úspešnosť zatvorenia', value: pct(closed, FINISH_ROUNDS) },
+              {
+                label: 'Zatvorené 1. šípkou',
+                value: String(game.results.filter((r) => r === 3).length),
+              },
+              {
+                label: 'Priemer šípok na zatvorenie',
+                value: closed
+                  ? (
+                      game.results.filter((r) => r > 0).reduce((a, r) => a + (4 - r), 0) / closed
+                    ).toFixed(1)
+                  : '–',
+              },
+            ]
+          : []
+      }
       onUndo={() => game && setGame(finishUndo(game))}
       canUndo={!!game?.results.length}
       onCancel={() => setGame(null)}

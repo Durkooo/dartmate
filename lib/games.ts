@@ -141,34 +141,50 @@ export function bobsUndo(g: BobsGame): BobsGame {
 }
 
 // ───────────────────────── 121 ─────────────────────────
-/** 10 pokusov po 9 šípok (3 kolá) na zatvorenie. Zatvorené = cieľ +1, inak ostáva. */
+/** 10 pokusov na zatvorenie s vybraným počtom šípok (3/6/9/12). Zatvorené =
+ *  ďalší cieľ o 1 vyšší, nezatvorené = späť na 121. */
+export const C121_ATTEMPTS = 10;
+export const C121_START = 121;
+export const C121_DART_OPTIONS = [3, 6, 9, 12] as const;
+export type C121Darts = (typeof C121_DART_OPTIONS)[number];
 export type C121Game = {
   target: number;
   attempt: number;
   successes: number;
   best: number;
   done: boolean;
+  /** Šípky na jeden pokus (staršie uložené hry = 9). */
+  darts?: C121Darts;
+  /** Najdlhšia séria zatvorení po sebe. */
+  bestStreak?: number;
+  streak?: number;
   past: Omit<C121Game, 'past'>[];
 };
-export const C121_ATTEMPTS = 10;
-export const newC121 = (): C121Game => ({
-  target: 121,
+export const newC121 = (darts: C121Darts = 9): C121Game => ({
+  target: C121_START,
   attempt: 0,
   successes: 0,
   best: 0,
   done: false,
+  darts,
+  bestStreak: 0,
+  streak: 0,
   past: [],
 });
 export function c121Attempt(g: C121Game, success: boolean): C121Game {
   if (g.done) return g;
   const { past, ...prev } = g;
   const attempt = g.attempt + 1;
+  const streak = success ? (g.streak ?? 0) + 1 : 0;
   return {
-    target: success ? g.target + 1 : g.target,
+    target: success ? g.target + 1 : C121_START,
     attempt,
     successes: g.successes + (success ? 1 : 0),
     best: success ? Math.max(g.best, g.target) : g.best,
     done: attempt >= C121_ATTEMPTS,
+    darts: g.darts ?? 9,
+    streak,
+    bestStreak: Math.max(g.bestStreak ?? 0, streak),
     past: [...past, prev],
   };
 }

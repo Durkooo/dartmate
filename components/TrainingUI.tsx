@@ -6,6 +6,12 @@ import { Target, Trophy, Undo2 } from 'lucide-react-native';
 import { Heading, Txt, LoadingRows } from '@/components/DartsUI';
 import { PadButton, ScoreBoard } from '@/components/GameBoard';
 import { palette } from '@/lib/darts';
+import { ShareResult } from '@/components/ShareResult';
+import { formatTrainingResult } from '@/lib/matchResult';
+import { usePlayers } from '@/lib/players';
+import { renderResultImage } from '@/lib/resultImage';
+
+export type TrainingStat = { label: string; value: string };
 
 /** Spoločný rámec tréningov vo vzhľade zápasu 301/501: úvod → hra → výsledok. */
 export function TrainingScreen({
@@ -24,6 +30,9 @@ export function TrainingScreen({
   onUndo,
   canUndo,
   hideUndo = false,
+  introExtra,
+  stats = [],
+  shareScore,
   onCancel,
   children,
 }: {
@@ -46,10 +55,17 @@ export function TrainingScreen({
   canUndo: boolean;
   /** Vlastné tlačidlo späť (napr. v číselnej klávesnici). */
   hideUndo?: boolean;
+  /** Nastavenia pred začatím (napr. počet šípok). */
+  introExtra?: ReactNode;
+  /** Štatistiky na konci tréningu (ukážu sa a dajú sa poslať priateľovi). */
+  stats?: TrainingStat[];
+  /** Veľké číslo na obrázku (predvolene `big`). */
+  shareScore?: string;
   onCancel: () => void;
   /** Riadky klávesnice (len počas hry). */
   children: ReactNode;
 }) {
+  const myNick = usePlayers((s) => s.profile?.nickname);
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title }} />
@@ -69,6 +85,7 @@ export function TrainingScreen({
           <View className="mt-3 gap-4">
             <Heading>{title}</Heading>
             <Txt className="text-muted text-[14px] leading-6">{intro}</Txt>
+            {introExtra}
             <Button size="lg" onPress={onStart}>
               <Target size={20} color={palette.ink} strokeWidth={1.8} />
               <Button.Label>Začať tréning</Button.Label>
@@ -89,6 +106,36 @@ export function TrainingScreen({
               <View className="items-center gap-4 py-6">
                 <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
                 <Heading>{result}</Heading>
+                {stats.length > 0 && (
+                  <View className="bg-surface w-full rounded-xl px-4 py-2">
+                    {stats.map((st) => (
+                      <View
+                        key={st.label}
+                        className="border-border flex-row justify-between gap-4 border-b py-2"
+                      >
+                        <Txt className="text-muted flex-1">{st.label}</Txt>
+                        <Txt
+                          style={{ fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] }}
+                        >
+                          {st.value}
+                        </Txt>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {!!myNick && (
+                  <ShareResult
+                    body={formatTrainingResult({ me: myNick, title, result, stats })}
+                    image={() =>
+                      renderResultImage({
+                        subtitle: `Tréning · ${title}`,
+                        players: [{ name: `@${myNick}`, score: shareScore ?? big }],
+                        winner: null,
+                        rows: stats.map((st) => ({ label: st.label, values: [st.value] })),
+                      })
+                    }
+                  />
+                )}
                 <Button
                   size="lg"
                   className="w-full"

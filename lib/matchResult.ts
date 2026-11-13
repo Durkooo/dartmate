@@ -33,6 +33,21 @@ export function formatSoloResult(r: {
   ].join('\n');
 }
 
+/** Tréning: hlavný výsledok a pár štatistík (karta v chate). */
+export function formatTrainingResult(r: {
+  me: string;
+  title: string;
+  result: string;
+  stats: { label: string; value: string }[];
+}): string {
+  return [
+    RESULT_HEADER,
+    `@${r.me} · tréning ${r.title}`,
+    r.result,
+    ...r.stats.slice(0, 4).map((st) => `${st.label}: ${st.value}`),
+  ].join('\n');
+}
+
 /** Cricket: body a šípky oboch hráčov. */
 export function formatCricketResult(r: {
   me: string;

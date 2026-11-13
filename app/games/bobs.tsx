@@ -13,6 +13,8 @@ import {
   useExtraGames,
 } from '@/lib/games';
 
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : '–');
+
 export default function Bobs27() {
   const hydrated = useExtraGames((s) => s.hydrated);
   const game = useExtraGames((s) => s.bobs);
@@ -46,6 +48,25 @@ export default function Bobs27() {
           : ''
       }
       onFinish={() => finish('bobs')}
+      stats={
+        game
+          ? (() => {
+              // Zásahy po kolách z uložených medzistavov.
+              const totals = [...game.past.map((p) => p.hits), game.hits];
+              const perRound = totals.slice(1).map((h, i) => h - totals[i]);
+              return [
+                { label: 'Skóre', value: String(game.score) },
+                { label: 'Odohrané kolá', value: `${game.round} z ${BOBS_ROUNDS}` },
+                { label: 'Zásahy doublov', value: `${game.hits} z ${game.round * 3}` },
+                { label: 'Úspešnosť na double', value: pct(game.hits, game.round * 3) },
+                {
+                  label: 'Kolá s aspoň 1 zásahom',
+                  value: `${perRound.filter((h) => h > 0).length} z ${game.round}`,
+                },
+              ];
+            })()
+          : []
+      }
       onUndo={() => game && setGame(bobsUndo(game))}
       canUndo={!!game?.past.length}
       onCancel={() => setGame(null)}

@@ -69,7 +69,7 @@ export default function Games() {
           />
           <GameRow
             title="121"
-            detail="Zatváranie od 121, 10 pokusov po 9 šípok"
+            detail="Zatváranie od 121, 10 pokusov po 3, 6, 9 alebo 12 šípok"
             record={r.c121Best !== null ? `Rekord: zatvorené ${r.c121Best}` : undefined}
             href="/games/c121"
             running={!!s.c121}
