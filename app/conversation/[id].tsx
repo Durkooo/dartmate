@@ -35,6 +35,7 @@ import { bilt } from '@/lib/bilt';
 import VideoCall from '@/components/VideoCall';
 import { getCallCredentials, loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import { notifyRecipient } from '@/lib/sendPush';
+import { closeCallNotifications } from '@/lib/callNotifications';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
@@ -153,6 +154,28 @@ function ConversationContent({
     }, []),
   );
   const [micWanted, setMicWanted] = useState(true);
+  // Môj odchádzajúci hovor: ak ho položím skôr, než sa priateľ pripojí,
+  // pošleme mu „Zmeškaný hovor“ (nahradí zvoniace upozornenie).
+  const outgoing = useRef<{ id: number; kind: CallKind; peerJoined: boolean } | null>(null);
+  const endOutgoing = useCallback(() => {
+    const call = outgoing.current;
+    outgoing.current = null;
+    if (!call || call.peerJoined || !userId) return;
+    const nick = usePlayers.getState().profile?.nickname;
+    if (!nick) return;
+    notifyRecipient(
+      id,
+      `@${nick}`,
+      call.kind === 'audio' ? 'Zmeškaný hlasový hovor' : 'Zmeškaný videohovor',
+      `/conversation/${userId}?missedCall=${call.id}${call.kind === 'audio' ? '&kind=audio' : ''}`,
+    );
+  }, [id, userId]);
+  // Odchod z obrazovky počas čakania na priateľa = tiež zmeškaný hovor.
+  const endOutgoingRef = useRef(endOutgoing);
+  useEffect(() => {
+    endOutgoingRef.current = endOutgoing;
+  }, [endOutgoing]);
+  useEffect(() => () => endOutgoingRef.current(), []);
   // Credentials pre súkromnú miestnosť dvojice (stabilné počas konverzácie).
   const loadCallCredentials = useCallback(() => getCallCredentials(id), [id]);
   const { error: callQueryError, refresh: refreshCallQuery } = query;
@@ -183,8 +206,10 @@ function ConversationContent({
             id,
             `@${invitingNick}`,
             nextKind === 'audio' ? 'Prichádzajúci hlasový hovor' : 'Prichádzajúci videohovor',
-            `/conversation/${userId}?incomingCall=${data[0].id}`,
+            // autoJoin: ťuknutie na upozornenie otvorí appku rovno v hovore.
+            `/conversation/${userId}?autoJoin=${data[0].id}${nextKind === 'audio' ? '&kind=audio' : ''}`,
           );
+        outgoing.current = { id: data[0].id, kind: nextKind, peerJoined: false };
         await refreshCallQuery();
       } catch (e) {
         if (usePlayers.getState().session?.user.id === userId) {
@@ -211,6 +236,7 @@ function ConversationContent({
     (nextKind: CallKind) => {
       if (nextKind === 'video')
         void warmUpCamera(camPrefs.call, camPrefs.callDeviceId).catch(() => undefined);
+      closeCallNotifications(id);
       setKind(nextKind);
       setMicWanted(true);
       void markCallJoined(id);
@@ -233,6 +259,7 @@ function ConversationContent({
   );
   /** Odmietnutie prichádzajúcej pozvánky — karta ostane ako zmeškaná (bez tlačidla). */
   const declineCall = useCallback(() => {
+    closeCallNotifications(id);
     void markCallJoined(id);
     setJoined((j) => ({ ...j, [id]: Date.now() }));
     feedback.selection();
@@ -560,7 +587,13 @@ function ConversationContent({
                 key={kind}
                 audioOnly={kind === 'audio'}
                 matchId={`dm:${userId}:${id}`}
-                onLeave={() => setCallOpen(false)}
+                onLeave={() => {
+                  endOutgoing();
+                  setCallOpen(false);
+                }}
+                onPeerJoined={() => {
+                  if (outgoing.current) outgoing.current.peerJoined = true;
+                }}
                 large
                 micWanted={micWanted}
                 onMicChange={setMicWanted}

@@ -20,6 +20,8 @@ export type VideoCallProps = {
   initialDeviceId?: string;
   /** Chat-hovor: keď priateľ hovor položí, ukončí sa aj u mňa (zápasové video nie). */
   endWhenPeerLeaves?: boolean;
+  /** Zavolá sa, keď sa do hovoru pripojí druhá strana. */
+  onPeerJoined?: () => void;
 };
 
 const expoGoError =

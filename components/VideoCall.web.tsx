@@ -98,6 +98,7 @@ export default function VideoCall({
   initialFacing,
   initialDeviceId,
   endWhenPeerLeaves = false,
+  onPeerJoined,
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
@@ -133,10 +134,12 @@ export default function VideoCall({
   // Najnovšie onLeave / endWhenPeerLeaves pre udalosti miestnosti (bez reštartu efektu).
   const leaveRef = useRef(onLeave);
   const endRef = useRef(endWhenPeerLeaves);
+  const joinedRef = useRef(onPeerJoined);
   useEffect(() => {
     leaveRef.current = onLeave;
     endRef.current = endWhenPeerLeaves;
-  }, [onLeave, endWhenPeerLeaves]);
+    joinedRef.current = onPeerJoined;
+  }, [onLeave, endWhenPeerLeaves, onPeerJoined]);
   // Vlastné credentials (chat) cez refku, aby sa efekt nespúšťal dookola.
   const credsRef = useRef(getCredentials);
   useEffect(() => {
@@ -279,6 +282,7 @@ export default function VideoCall({
       .on(RoomEvent.ParticipantConnected, () => {
         peerSeen = true;
         clearTimeout(leaveTimer);
+        joinedRef.current?.();
       })
       .on(RoomEvent.ParticipantDisconnected, () => {
         if (!endRef.current || !peerSeen || session.remoteParticipants.size > 0) return;
@@ -297,7 +301,10 @@ export default function VideoCall({
           : getVideoCredentials(request.matchId));
         if (!active) return;
         await session.connect(credentials.url, credentials.token);
-        if (session.remoteParticipants.size > 0) peerSeen = true;
+        if (session.remoteParticipants.size > 0) {
+          peerSeen = true;
+          joinedRef.current?.();
+        }
         if (!active) {
           await session.disconnect();
           return;
