@@ -24,6 +24,7 @@ function sortedContacts(
     nickname: string | null;
     online: boolean | null;
     in_match?: boolean | null;
+    training?: boolean;
     last_sender_id?: string | null;
     last_message_at?: string | null;
   }[],
@@ -141,6 +142,7 @@ export default function Home() {
                 inline
                 online={!!contact.online}
                 playing={!!contact.in_match}
+                training={!!contact.training}
                 unknown={!!social.error}
               />
             </PressableFeedback>

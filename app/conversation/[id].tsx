@@ -537,6 +537,7 @@ function ConversationContent({
                 <Presence
                   online={!!contact.online}
                   playing={!!contact.in_match}
+                  training={!!contact.training}
                   unknown={!!query.error}
                 />
                 <View className="flex-row flex-wrap items-center gap-2">

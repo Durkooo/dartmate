@@ -182,12 +182,62 @@ export async function markCallJoined(peerId: string): Promise<void> {
     // Ignoruj — zmeškanosť sa len nezapamätá.
   }
 }
-export async function loadContacts(): Promise<SocialContactRow[]> {
-  const { data, error } = await bilt.rpc('list_social_contacts');
+export async function loadContacts(): Promise<SocialContact[]> {
+  const [{ data, error }, training] = await Promise.all([
+    bilt.rpc('list_social_contacts'),
+    loadTrainingPlayers(),
+  ]);
   if (error) throw new Error(error.message);
   const raw: unknown = data;
   const rows = Array.isArray(raw) ? raw.filter(isContactRow) : [];
-  return rows.filter((c) => !!c.user_id && !!c.nickname);
+  return rows
+    .filter((c) => !!c.user_id && !!c.nickname)
+    .map((c) => ({ ...c, training: !!c.user_id && training.has(c.user_id) }));
+}
+/** Kto z kontaktov práve trénuje. Kým server funkciu nemá, prázdne (bez chyby). */
+let trainingUnavailable = false;
+async function loadTrainingPlayers(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  if (trainingUnavailable) return ids;
+  try {
+    const { data, error } = await bilt.rpc('list_training_players');
+    if (error) {
+      if (/function|schema cache|not find|does not exist/i.test(error.message))
+        trainingUnavailable = true;
+      return ids;
+    }
+    for (const r of (Array.isArray(data) ? data : []) as unknown[]) {
+      const id: unknown = typeof r === 'object' && r !== null ? Reflect.get(r, 'user_id') : null;
+      if (typeof id === 'string') ids.add(id);
+    }
+  } catch {
+    // Bez stavu „trénuje“.
+  }
+  return ids;
+}
+/** Počas otvoreného tréningu hlási serveru „trénujem“ (každých 20 s), po odchode zruší. */
+export function useTrainingPresence(active: boolean) {
+  const userId = usePlayers((s) => s.session?.user.id);
+  useEffect(() => {
+    if (!userId || !active) return undefined;
+    let stopped = false;
+    const send = (on: boolean) => {
+      void Promise.resolve(bilt.rpc('set_training', { active: on }))
+        .then((res: { error?: { message: string } | null } | null) => {
+          if (res?.error && !stopped)
+            stopped = /function|schema cache|not find/i.test(res.error.message);
+        })
+        .catch(() => undefined);
+    };
+    send(true);
+    const timer = setInterval(() => {
+      if (!stopped && appIsActive()) send(true);
+    }, 20000);
+    return () => {
+      clearInterval(timer);
+      send(false);
+    };
+  }, [userId, active]);
 }
 /** Po pridaní priateľa mu pošle oznam „X si ťa pridal“ + push notifikáciu.
  * Vráti true pri úspechu; chyba oznam len preskočí (pridanie už prebehlo). */
@@ -246,7 +296,10 @@ type SocialContactRow = Database['public']['Functions']['list_social_contacts'][
 function isContactRow(value: unknown): value is SocialContactRow {
   return typeof value === 'object' && value !== null && 'user_id' in value && 'nickname' in value;
 }
-export type SocialContact = SocialContactRow;
+export type SocialContact = SocialContactRow & {
+  /** Práve robí tréning (modrý stav „Trénuje“). */
+  training?: boolean;
+};
 export async function loadOpenMatches() {
   const { data, error } = await bilt
     .from('online_matches')

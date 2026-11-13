@@ -64,7 +64,10 @@ export function Presence({
   inline = false,
   playing = false,
   lastSeen = null,
+  training = false,
 }: {
+  /** Práve trénuje — modrá bodka a text „Trénuje“. */
+  training?: boolean;
   online: boolean;
   unknown?: boolean;
   inline?: boolean;
@@ -77,7 +80,7 @@ export function Presence({
   // Hodnota vznikne raz pri prvom vykreslení (inicializátor useState).
   const [blink] = useState(() => new Animated.Value(1));
   useEffect(() => {
-    if ((!online && !playing) || unknown) {
+    if ((!online && !playing && !training) || unknown) {
       blink.setValue(1);
       return undefined;
     }
@@ -89,14 +92,16 @@ export function Presence({
     );
     loop.start();
     return () => loop.stop();
-  }, [online, playing, unknown, blink]);
+  }, [online, playing, training, unknown, blink]);
   const color = unknown
     ? palette.muted
     : playing
       ? palette.playing
-      : online
-        ? palette.success
-        : palette.danger;
+      : training
+        ? palette.training
+        : online
+          ? palette.success
+          : palette.danger;
   return (
     <View
       style={inline ? styles.inlineRow : undefined}
@@ -106,7 +111,13 @@ export function Presence({
         style={[
           styles.dot,
           {
-            backgroundColor: unknown ? palette.muted : online ? palette.success : color,
+            backgroundColor: unknown
+              ? palette.muted
+              : training
+                ? color
+                : online
+                  ? palette.success
+                  : color,
             opacity: blink,
           },
         ]}
@@ -120,11 +131,13 @@ export function Presence({
           ? 'Stav neznámy'
           : playing
             ? 'Práve hrá'
-            : online
-              ? 'Online'
-              : lastSeen
-                ? `Offline · naposledy ${formatLastSeen(lastSeen)}`
-                : 'Offline'}
+            : training
+              ? 'Trénuje'
+              : online
+                ? 'Online'
+                : lastSeen
+                  ? `Offline · naposledy ${formatLastSeen(lastSeen)}`
+                  : 'Offline'}
       </Txt>
     </View>
   );

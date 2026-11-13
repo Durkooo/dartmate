@@ -129,6 +129,7 @@ export default function NewOnlineMatch() {
                   <Presence
                     online={!!item.online}
                     playing={!!item.in_match}
+                    training={!!item.training}
                     unknown={!!query.error}
                   />
                 </View>

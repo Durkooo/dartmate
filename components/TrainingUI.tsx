@@ -9,6 +9,7 @@ import { palette } from '@/lib/darts';
 import { ShareResult } from '@/components/ShareResult';
 import { formatTrainingResult } from '@/lib/matchResult';
 import { usePlayers } from '@/lib/players';
+import { useTrainingPresence } from '@/lib/online';
 import { renderResultImage } from '@/lib/resultImage';
 
 export type TrainingStat = { label: string; value: string };
@@ -105,6 +106,8 @@ export function TrainingScreen({
   children: ReactNode;
 }) {
   const myNick = usePlayers((s) => s.profile?.nickname);
+  // Priatelia uvidia „Trénuje“, kým je tréning rozohraný a obrazovka otvorená.
+  useTrainingPresence(running && !done);
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ title }} />

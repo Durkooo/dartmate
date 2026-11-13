@@ -122,6 +122,7 @@ function OnlineMessages({ userId }: { userId: string }) {
                     inline
                     online={!!item.online}
                     playing={!!item.in_match}
+                    training={!!item.training}
                     unknown={!!query.error}
                   />
                   {item.last_message_at && (

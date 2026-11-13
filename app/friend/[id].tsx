@@ -90,6 +90,7 @@ export default function PlayerFriend() {
           <Presence
             online={!!social.data?.find((c: any) => c.user_id === id)?.online}
             playing={!!social.data?.find((c: any) => c.user_id === id)?.in_match}
+            training={!!social.data?.find((c: any) => c.user_id === id)?.training}
             unknown={social.loading || !!social.error}
             lastSeen={social.data?.find((c: any) => c.user_id === id)?.last_seen ?? null}
           />

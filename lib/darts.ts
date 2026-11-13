@@ -18,6 +18,8 @@ export const palette = {
   danger: '#B63044',
   success: '#28714E',
   playing: '#E8850C',
+  /** Stav „Trénuje“ pri priateľoch. */
+  training: '#2F6FED',
 };
 /** Biela dlaždica (riadky zoznamov) s tmavomodrým písmom. */
 export const CARD_ROW = 'bg-surface mb-2 flex-row items-center gap-3 rounded-2xl px-4 py-3';

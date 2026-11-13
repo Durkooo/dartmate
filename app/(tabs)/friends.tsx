@@ -291,6 +291,7 @@ export default function Friends() {
                       <Presence
                         online={!!contact?.online}
                         playing={!!contact?.in_match}
+                        training={!!contact?.training}
                         unknown={social.loading || !!social.error}
                         lastSeen={contact?.last_seen ?? null}
                       />
@@ -402,6 +403,7 @@ export default function Friends() {
                             <Presence
                               online={!!c.online}
                               playing={!!c.in_match}
+                              training={!!c.training}
                               lastSeen={c.last_seen ?? null}
                             />
                           </View>
