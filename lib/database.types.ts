@@ -91,19 +91,19 @@ declare module '@biltme/backend' {
           Row: {
             message_id: number
             user_id: string
-            emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥'
+            emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥' | '🖕'
             created_at: string
           }
           Insert: {
             message_id: number
             user_id: string
-            emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥'
+            emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥' | '🖕'
             created_at?: string
           }
           Update: {
             message_id?: number
             user_id?: string
-            emoji?: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥'
+            emoji?: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥' | '🖕'
             created_at?: string
           }
           Relationships: [
