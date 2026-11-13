@@ -7,6 +7,27 @@ declare module '@biltme/backend' {
   interface Database {
     public: {
       Tables: {
+        direct_message_reads: {
+          Row: {
+            reader_id: string
+            peer_id: string
+            last_read_id: number
+            read_at: string
+          }
+          Insert: {
+            reader_id: string
+            peer_id: string
+            last_read_id?: number
+            read_at?: string
+          }
+          Update: {
+            reader_id?: string
+            peer_id?: string
+            last_read_id?: number
+            read_at?: string
+          }
+          Relationships: []
+        }
         direct_messages: {
           Row: {
             id: number
@@ -16,6 +37,7 @@ declare module '@biltme/backend' {
             body: string
             created_at: string
             image_path: string | null
+            reply_to: number | null
           }
           Insert: {
             id?: number
@@ -25,6 +47,7 @@ declare module '@biltme/backend' {
             body: string
             created_at?: string
             image_path?: string | null
+            reply_to?: number | null
           }
           Update: {
             id?: number
@@ -34,8 +57,64 @@ declare module '@biltme/backend' {
             body?: string
             created_at?: string
             image_path?: string | null
+            reply_to?: number | null
+          }
+          Relationships: [
+            {
+              foreignKeyName: 'direct_messages_reply_to_fkey'
+              columns: ['reply_to']
+              isOneToOne: false
+              referencedRelation: 'direct_messages'
+              referencedColumns: ['id']
+            },
+          ]
+        }
+        direct_typing: {
+          Row: {
+            user_id: string
+            peer_id: string
+            typing_at: string
+          }
+          Insert: {
+            user_id: string
+            peer_id: string
+            typing_at?: string
+          }
+          Update: {
+            user_id?: string
+            peer_id?: string
+            typing_at?: string
           }
           Relationships: []
+        }
+        message_reactions: {
+          Row: {
+            message_id: number
+            user_id: string
+            emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥'
+            created_at: string
+          }
+          Insert: {
+            message_id: number
+            user_id: string
+            emoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥'
+            created_at?: string
+          }
+          Update: {
+            message_id?: number
+            user_id?: string
+            emoji?: '👍' | '❤️' | '😂' | '😮' | '😢' | '🎯' | '🔥'
+            created_at?: string
+          }
+          Relationships: [
+            {
+              foreignKeyName: 'message_reactions_message_id_fkey'
+              columns: ['message_id']
+              isOneToOne: false
+              referencedRelation: 'direct_messages'
+              referencedColumns: ['id']
+            },
+          ]
         }
         online_matches: {
           Row: {
@@ -263,6 +342,15 @@ declare module '@biltme/backend' {
           }
           Returns: boolean
         }
+        conversation_state: {
+          Args: {
+            peer: string
+          }
+          Returns: {
+            peer_last_read_id: number | null
+            peer_typing: boolean | null
+          }[]
+        }
         edit_direct_message: {
           Args: {
             message_id: number
@@ -285,6 +373,19 @@ declare module '@biltme/backend' {
             nickname: string | null
           }[]
         }
+        friends_leaderboard: {
+          Args: {
+            since?: string
+          }
+          Returns: {
+            user_id: string | null
+            nickname: string | null
+            matches: number | null
+            wins: number | null
+            points: number | null
+            darts: number | null
+          }[]
+        }
         invite_online_match: {
           Args: {
             peer: string
@@ -299,6 +400,12 @@ declare module '@biltme/backend' {
             isOneToOne: false
             isSetofReturn: true
           }
+        }
+        is_direct_message_participant: {
+          Args: {
+            target: number
+          }
+          Returns: boolean
         }
         is_match_player: {
           Args: {
@@ -343,6 +450,13 @@ declare module '@biltme/backend' {
             avg: number | null
           }[]
         }
+        mark_conversation_read: {
+          Args: {
+            peer: string
+            up_to: number
+          }
+          Returns: undefined
+        }
         my_online_statistics: {
           Args: Record<PropertyKey, never>
           Returns: {
@@ -370,6 +484,13 @@ declare module '@biltme/backend' {
             finished_double: boolean
           }
           Returns: boolean
+        }
+        react_to_message: {
+          Args: {
+            target: number
+            reaction: string
+          }
+          Returns: undefined
         }
         respond_online_match: {
           Args: {
@@ -413,9 +534,22 @@ declare module '@biltme/backend' {
             isSetofReturn: true
           }
         }
+        set_message_reply: {
+          Args: {
+            target: number
+            original: number
+          }
+          Returns: undefined
+        }
         set_my_avatar: {
           Args: {
             new_path: string
+          }
+          Returns: undefined
+        }
+        set_typing: {
+          Args: {
+            peer: string
           }
           Returns: undefined
         }
