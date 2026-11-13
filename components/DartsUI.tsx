@@ -1,4 +1,11 @@
-import { View, KeyboardAvoidingView, Platform, ScrollView, type TextProps } from 'react-native';
+import {
+  View,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  type TextProps,
+} from 'react-native';
 import { Typography, Button, PressableFeedback, Skeleton } from 'heroui-native';
 import { ChevronRight, MessageCircle, Target, AlertCircle } from 'lucide-react-native';
 import type { ReactNode } from 'react';
@@ -64,7 +71,30 @@ export function Page({
     </KeyboardAvoidingView>
   );
 }
-export function Avatar({ friend, size = 48 }: { friend: Friend; size?: number }) {
+export function Avatar({
+  friend,
+  size = 48,
+}: {
+  friend: Pick<Friend, 'name' | 'color' | 'avatarUrl'>;
+  size?: number;
+}) {
+  // Fotka, ktorá sa nenačítala (vypršaný odkaz, výpadok), sa vráti na písmená.
+  const [failedUrl, setFailedUrl] = useState<string | undefined>();
+  if (friend.avatarUrl && friend.avatarUrl !== failedUrl)
+    return (
+      <Image
+        source={{ uri: friend.avatarUrl }}
+        resizeMode="cover"
+        onError={() => setFailedUrl(friend.avatarUrl)}
+        accessibilityLabel={friend.name}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: palette[friend.color],
+        }}
+      />
+    );
   const initials = friend.name
     .split(' ')
     .filter(Boolean)

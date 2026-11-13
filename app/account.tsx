@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Button, Input, Label, TextField } from 'heroui-native';
-import { Page, Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { Button, Input, Label, PressableFeedback, TextField } from 'heroui-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Plus } from 'lucide-react-native';
+import { Page, Heading, Txt, LoadingRows, Avatar } from '@/components/DartsUI';
 import { CameraPreview } from '@/components/CameraPreview';
 import { FunctionsHttpError } from '@biltme/backend';
 import { bilt } from '@/lib/bilt';
-import { feedback } from '@/lib/darts';
+import { feedback, palette } from '@/lib/darts';
+import { removeAvatar, uploadAvatar } from '@/lib/avatars';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   loadCameraPrefs,
@@ -82,10 +85,107 @@ function FacingPicker({
   );
 }
 
+/** Krúžok s fotkou (alebo písmenami) a plusom — ťuknutím si vyberieš fotku z galérie. */
+function ProfilePhoto({
+  nickname,
+  userId,
+  path,
+  url,
+  onChanged,
+  onError,
+}: {
+  nickname: string;
+  userId: string;
+  path: string | null | undefined;
+  url: string | undefined;
+  onChanged: () => Promise<void>;
+  onError: (message: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const size = 72;
+  const pick = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        allowsMultipleSelection: false,
+      });
+      const asset = !result.canceled ? result.assets[0] : undefined;
+      if (!asset) return;
+      await uploadAvatar(asset, userId, path);
+      await onChanged();
+      feedback.success();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Fotku sa nepodarilo nahrať.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await removeAvatar(path);
+      await onChanged();
+      feedback.selection();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Fotku sa nepodarilo odstrániť.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View className="flex-row items-center gap-4">
+      <PressableFeedback
+        onPress={() => void pick()}
+        isDisabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel={url ? 'Zmeniť profilovú fotku' : 'Pridať profilovú fotku'}
+        style={{ width: size, height: size, opacity: busy ? 0.5 : 1 }}
+      >
+        <Avatar friend={{ name: nickname, color: 'blue', avatarUrl: url }} size={size} />
+        <View
+          style={{
+            position: 'absolute',
+            right: -2,
+            bottom: -2,
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: palette.ink,
+            borderWidth: 2,
+            borderColor: palette.white,
+          }}
+          className="items-center justify-center"
+        >
+          <Plus size={14} strokeWidth={3} color={palette.white} />
+        </View>
+      </PressableFeedback>
+      <View className="flex-1 gap-1">
+        <Heading>@{nickname}</Heading>
+        {busy ? (
+          <Txt className="text-muted text-[13px]">Ukladám fotku…</Txt>
+        ) : url ? (
+          <Button variant="ghost" size="sm" className="self-start" onPress={() => void remove()}>
+            <Button.Label>Odstrániť fotku</Button.Label>
+          </Button>
+        ) : (
+          <Txt className="text-muted text-[13px]">Ťukni na krúžok a pridaj si fotku.</Txt>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function Account() {
   const ready = usePlayers((s) => s.ready);
   const session = usePlayers((s) => s.session);
   const profile = usePlayers((s) => s.profile);
+  const myAvatarUrl = usePlayers((s) => s.myAvatarUrl);
   const loading = usePlayers((s) => s.loading);
   const remoteError = usePlayers((s) => s.error);
   const refresh = usePlayers((s) => s.refresh);
@@ -205,9 +305,18 @@ export default function Account() {
         <LoadingRows />
       ) : (
         <View className="mt-3 gap-5">
-          <Heading>
-            {profile ? `@${profile.nickname}` : session ? 'Vyber si nick' : 'Prihlás sa'}
-          </Heading>
+          {profile && session ? (
+            <ProfilePhoto
+              nickname={profile.nickname}
+              userId={session.user.id}
+              path={profile.avatar_path}
+              url={myAvatarUrl}
+              onChanged={refresh}
+              onError={fail}
+            />
+          ) : (
+            <Heading>{session ? 'Vyber si nick' : 'Prihlás sa'}</Heading>
+          )}
           {!session ? (
             sentEmail ? (
               <>
@@ -447,6 +556,9 @@ export default function Account() {
                     isDisabled={pending}
                     onPress={() =>
                       run(async () => {
+                        // Najprv profilovú fotku (pravidlá úložiska ju dovolia zmazať len majiteľovi).
+                        if (profile?.avatar_path)
+                          await removeAvatar(profile.avatar_path).catch(() => undefined);
                         // Mazanie beží ako Edge Function (vie zmazať aj auth účet).
                         const { error: e } = await bilt.functions.invoke('delete-own-account');
                         if (e) {
