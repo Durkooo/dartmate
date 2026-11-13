@@ -20,6 +20,7 @@ import {
   respondMatch,
   undoOnlineTurn,
   useOnlineQuery,
+  type OnlineTurn,
 } from '@/lib/online';
 
 export default function OnlineGame() {
@@ -124,11 +125,17 @@ export default function OnlineGame() {
   /** Šípka pri prázdnom vstupe: vráti môj posledný ťah (ak súper ešte nehodil). */
   const undoTurn = async () => {
     if (!m || pending || !mine) return;
+    // Snímka najnovších ťahov pred vrátením — ktoré zmiznú, tie ukážeme prečiarknuté.
+    const before = turns.slice(0, 2);
     setPending(true);
     setError('');
     try {
       await undoOnlineTurn(id);
       await query.refresh();
+      setVoided((v) => {
+        const keys = new Set(v.map((t) => `${t.leg_number}:${t.turn_number}`));
+        return [...before.filter((t) => !keys.has(`${t.leg_number}:${t.turn_number}`)), ...v];
+      });
       setInput('');
       feedback.success();
     } catch (e) {
@@ -222,6 +229,23 @@ export default function OnlineGame() {
   const contactOnline = !!contact?.online && !query.error;
   const disabled = pending || !!query.error || !mine;
   const turns = query.data?.turns ?? [];
+  // Vrátené ťahy server zmaže — na zobrazenie prečiarknutých si držíme ich snímky.
+  // Vidno len tie, ktoré server medzitým nenahradil novým hodom (rovnaké leg + číslo).
+  const [voided, setVoided] = useState<OnlineTurn[]>([]);
+  const [voidedMatch, setVoidedMatch] = useState('');
+  if (voidedMatch !== id) {
+    setVoidedMatch(id);
+    setVoided([]);
+  }
+  const extraVoided = voided.filter(
+    (v) => !turns.some((t) => t.leg_number === v.leg_number && t.turn_number === v.turn_number),
+  );
+  const voidedKeys = new Set(
+    extraVoided.map((v) => `${v.leg_number}:${v.turn_number}`),
+  );
+  const shownTurns = [...turns, ...extraVoided].sort(
+    (a, b) => b.leg_number - a.leg_number || b.turn_number - a.turn_number,
+  );
   // Najčastejšie súčty mojich hodov v tomto zápase (bez prehodených) — rýchle tipy nad klávesnicu.
   const frequent = topScores(
     turns.filter((t) => t.player_id === userId && !t.bust).map((t) => t.score),
@@ -602,14 +626,16 @@ export default function OnlineGame() {
         {/* História ťahov (zbaliteľná) */}
         <Button variant="ghost" onPress={() => setShowTurns((s) => !s)}>
           <Button.Label>
-            {showTurns ? 'Skryť ťahy' : `Zobraziť ťahy (${turns.length})`}
+            {showTurns ? 'Skryť ťahy' : `Zobraziť ťahy (${shownTurns.length})`}
           </Button.Label>
         </Button>
         {showTurns &&
-          (turns.length === 0 ? (
+          (shownTurns.length === 0 ? (
             <Txt className="text-muted text-[13px]">Zatiaľ bez hodov.</Txt>
           ) : (
-            turns.map((item) => (
+            shownTurns.map((item) => {
+              const voidedTurn = voidedKeys.has(`${item.leg_number}:${item.turn_number}`);
+              return (
               <View
                 key={item.turn_number}
                 className="border-border flex-row justify-between gap-3 border-b py-2"
@@ -621,13 +647,17 @@ export default function OnlineGame() {
                   </Txt>
                 </View>
                 <Txt
-                  style={{ fontFamily: 'Inter_600SemiBold' }}
-                  className={item.bust ? 'text-danger' : ''}
+                  style={{
+                    fontFamily: 'Inter_600SemiBold',
+                    textDecorationLine: voidedTurn ? 'line-through' : 'none',
+                  }}
+                  className={item.bust && !voidedTurn ? 'text-danger' : voidedTurn ? 'text-muted' : ''}
                 >
-                  {item.bust ? 'Prehodené' : item.score} → {item.remaining}
+                  {item.bust && !voidedTurn ? 'Prehodené' : item.score} → {item.remaining}
                 </Txt>
               </View>
-            ))
+              );
+            })
           ))}
 
         {m.status === 'active' &&
