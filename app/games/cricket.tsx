@@ -49,7 +49,6 @@ export default function Cricket() {
     );
   const p = game.turn;
   const finished = game.winner !== null;
-  const round = Math.floor((game.totalDarts[0] + game.totalDarts[1]) / 6) + 1;
   const dart = (target: number | null) => {
     const next = cricketDart(game, target, target === 6 && mult === 3 ? 2 : mult);
     setGame(next);
@@ -71,7 +70,6 @@ export default function Cricket() {
         }}
       >
         <ScoreBoard
-          top={finished ? 'Hra dohraná' : `Kolo ${round}`}
           players={game.players.map((name, i) => ({
             // Prvý hráč je majiteľ účtu.
             name: i === 0 && myNick ? myNick : name,

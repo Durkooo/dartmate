@@ -23,7 +23,6 @@ import {
   canFinish,
   validCheckout,
   currentLeg,
-  legTurns,
   topScores,
 } from '@/lib/darts';
 
@@ -194,15 +193,8 @@ export default function Match() {
           <View>
             <StorageNotice />
             <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
-              <View className="flex-row items-center justify-center gap-2 pt-2">
-                <View className="bg-accent h-1.5 w-1.5 rounded-full" />
-                <Txt className="text-on-ink text-[15px]">
-                  {finished
-                    ? 'Zápas dohraný'
-                    : `Kolo ${Math.floor(legTurns(game).length / 2) + 1}${game.legsToWin > 1 ? ` · leg ${legNo}` : ''}`}
-                </Txt>
-              </View>
-              <View className="flex-row px-3 py-1.5">
+              {/* Kolo/leg tu nie je — legy sú v žltom páse, miesto dostalo väčšie skóre. */}
+              <View className="flex-row px-3 pt-3 pb-1.5">
                 {(game.solo ? ([0] as const) : ([0, 1] as const)).map((p) => (
                   <View
                     key={p}
@@ -212,7 +204,7 @@ export default function Match() {
                       {p === 0 ? me : practice ? 'Hráč 2' : opponentFirst}
                     </Txt>
                     <Txt
-                      className={`text-[66px] leading-[78px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
+                      className={`${game.solo ? 'text-[96px] leading-[108px]' : 'text-[74px] leading-[88px]'} ${!finished && player === p ? 'text-accent' : 'text-white'}`}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                       minimumFontScale={0.8}

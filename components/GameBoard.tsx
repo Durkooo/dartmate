@@ -15,8 +15,8 @@ export function ScoreBoard({
   bottomLeft,
   bottomRight,
 }: {
-  /** Malý text hore (kolo, stav). */
-  top: string;
+  /** Malý text hore (kolo, stav). Prázdny = nezobrazí sa a skóre je väčšie. */
+  top?: string;
   players: { name: string; value: string; sub?: string }[];
   /** Index hráča na ťahu (zvýraznený žltou), null = nikto. */
   active: number | null;
@@ -28,11 +28,13 @@ export function ScoreBoard({
 }) {
   return (
     <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
-      <View className="flex-row items-center justify-center gap-2 pt-2">
-        <View className="bg-accent h-1.5 w-1.5 rounded-full" />
-        <Txt className="text-on-ink text-[15px]">{top}</Txt>
-      </View>
-      <View className="flex-row px-3 py-1.5">
+      {top ? (
+        <View className="flex-row items-center justify-center gap-2 pt-2">
+          <View className="bg-accent h-1.5 w-1.5 rounded-full" />
+          <Txt className="text-on-ink text-[15px]">{top}</Txt>
+        </View>
+      ) : null}
+      <View className={`flex-row px-3 ${top ? 'py-1.5' : 'pt-3 pb-1.5'}`}>
         {players.map((p, i) => (
           <View
             key={`${p.name}-${String(i)}`}
@@ -42,7 +44,7 @@ export function ScoreBoard({
               {p.name}
             </Txt>
             <Txt
-              className={`text-[66px] leading-[78px] ${active === i ? 'text-accent' : 'text-white'}`}
+              className={`${top ? 'text-[66px] leading-[78px]' : players.length > 1 ? 'text-[74px] leading-[88px]' : 'text-[96px] leading-[108px]'} ${active === i ? 'text-accent' : 'text-white'}`}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.8}
