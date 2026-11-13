@@ -257,16 +257,19 @@ declare module '@biltme/backend' {
             user_id: string
             last_seen: string
             is_active: boolean
+            training_until: string | null
           }
           Insert: {
             user_id: string
             last_seen?: string
             is_active?: boolean
+            training_until?: string | null
           }
           Update: {
             user_id?: string
             last_seen?: string
             is_active?: boolean
+            training_until?: string | null
           }
           Relationships: []
         }
@@ -450,6 +453,10 @@ declare module '@biltme/backend' {
             avg: number | null
           }[]
         }
+        list_training_players: {
+          Args: Record<PropertyKey, never>
+          Returns: string[]
+        }
         mark_conversation_read: {
           Args: {
             peer: string
@@ -544,6 +551,12 @@ declare module '@biltme/backend' {
         set_my_avatar: {
           Args: {
             new_path: string
+          }
+          Returns: undefined
+        }
+        set_training: {
+          Args: {
+            active: boolean
           }
           Returns: undefined
         }
