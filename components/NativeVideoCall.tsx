@@ -22,6 +22,7 @@ import {
   useParticipants,
 } from '@livekit/react-native';
 import { Txt } from '@/components/DartsUI';
+import { Button } from 'heroui-native';
 import { VideoControls, VideoNotice } from '@/components/VideoUI';
 import {
   getVideoCredentials,
@@ -82,6 +83,9 @@ function RoomContent({
   // Diagnostika súperovho obrazu (vidí ju aj hráč — podľa nej spoznáme, kde to viazne).
   const peer = participants.find((p) => !p.isLocal);
   const peerPub = peer?.getTrackPublication(Track.Source.Camera);
+  const peerVideoShowing = shownTracks.some(
+    (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
+  );
   const peerStatus = !peer
     ? 'Súper sa ešte nepripojil'
     : !peerPub
@@ -205,9 +209,7 @@ function RoomContent({
   };
   return (
     <View className="bg-surface rounded-xl p-3">
-      {!shownTracks.some(
-        (t) => !t.participant.isLocal && isTrackReference(t) && !t.publication.isMuted,
-      ) && (
+      {!peerVideoShowing && (
         <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
           {peerStatus}
         </Txt>
@@ -264,6 +266,37 @@ function RoomContent({
           </View>
         );
       })}
+      {/* Obnova zaseknutého odberu: krátko odhlási a znova prihlási súperov obraz.
+          Zdravý prenos to len žmurkne, zaseknutý sa tým často preberie. */}
+      {large && !!peer && !peerVideoShowing && !!peerPub && !peerPub.isMuted && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-2"
+          accessibilityLabel="Obnoviť obraz súpera"
+          onPress={() => {
+            const pub = peerPub;
+            void (async () => {
+              try {
+                await pub.setSubscribed(false);
+              } catch {
+                // Odhlásenie nemusí prejsť — skúsime aspoň prihlásenie.
+              }
+              await new Promise((r) => setTimeout(r, 400));
+              try {
+                await pub.setSubscribed(true);
+              } catch {
+                setError('Obraz sa nepodarilo obnoviť. Skús vypnúť a zapnúť kameru.');
+                feedback.error();
+                return;
+              }
+              feedback.selection();
+            })();
+          }}
+        >
+          <Button.Label>Obnoviť obraz súpera</Button.Label>
+        </Button>
+      )}
       {large && participants.length < 2 && (
         <Txt className="text-muted text-[12px]">Súper sa ešte nepripojil k videohovoru.</Txt>
       )}
