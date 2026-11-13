@@ -329,7 +329,7 @@ export default function OnlineGame() {
         <View className="bg-ink overflow-hidden rounded-[22px]">
           {legsToWin > 1 && (
             <View className="flex-row items-center justify-center gap-2 px-4 pt-1">
-              <Trophy size={14} strokeWidth={1.8} color={palette.ink} />
+              <Trophy size={14} strokeWidth={1.8} color={palette.yellow} />
               <Txt className="text-on-ink text-[12px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {m?.status === 'finished'
                   ? 'Zápas dohraný'
@@ -362,15 +362,15 @@ export default function OnlineGame() {
                       borderRadius: 3.5,
                     }}
                   />
-                  <Txt className="text-on-ink text-[13px]" numberOfLines={1}>
+                  <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
                     {p.name}
                   </Txt>
                 </View>
                 <Txt
                   className={
                     p.active
-                      ? 'text-accent text-[30px] leading-[38px]'
-                      : 'text-[30px] leading-[38px] text-white'
+                      ? 'text-accent text-[33px] leading-[42px]'
+                      : 'text-[33px] leading-[42px] text-white'
                   }
                   adjustsFontSizeToFit
                   numberOfLines={1}
@@ -413,8 +413,8 @@ export default function OnlineGame() {
                 {frequent.map((n) => (
                   <Button
                     key={n}
-                    variant="secondary"
-                    className="h-14 flex-1 rounded-xl"
+                    variant="tertiary"
+                    className="border-accent h-14 flex-1 rounded-xl border-2"
                     onPress={() => quickSubmit(n)}
                   >
                     <Button.Label className="text-[22px]" style={{ fontFamily: 'Inter_700Bold' }}>
@@ -473,7 +473,8 @@ export default function OnlineGame() {
                 ) : null}
               </View>
             )}
-            {/* Hlas až pod Zapísať — aby sa pri ťukaní čísel nezapol omylom. */}
+            {/* Hlas až pod Zapísať (s medzerou) — aby sa pri ťukaní čísel nezapol omylom. */}
+            <View className="h-2" />
             <VoiceScore
               on={voiceOn}
               setOn={setVoiceOn}
