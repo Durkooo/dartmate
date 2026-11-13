@@ -528,12 +528,13 @@ function ConversationContent({
     >
       <Stack.Screen options={{ title: contact?.nickname ? `@${contact.nickname}` : 'Správy' }} />
       <View className="w-full max-w-xl flex-1 self-center">
-        <View className="px-5 pt-3">
+        <View className="px-5 pt-0">
           <OnlineGate>
             {query.loading ? (
               <LoadingRows />
             ) : contact ? (
-              <View className="flex-row flex-wrap items-center justify-between gap-3">
+              // Stav a tlačidlá bližšie k hlavičke, s medzerou nad oknom správ.
+              <View className="-mt-1 mb-4 flex-row flex-wrap items-center justify-between gap-3">
                 <Presence
                   online={!!contact.online}
                   playing={!!contact.in_match}
