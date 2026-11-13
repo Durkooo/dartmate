@@ -271,7 +271,7 @@ export default function NewMatch() {
                 <Button
                   key={n}
                   className="h-16 flex-1 rounded-xl"
-                  variant={mode === 'x01' && starting === n ? 'primary' : 'secondary'}
+                  variant={mode === 'x01' && starting === n ? 'secondary' : 'tertiary'}
                   onPress={() => {
                     if (mode !== 'x01' || starting !== n) {
                       setMode('x01');
@@ -287,7 +287,7 @@ export default function NewMatch() {
               ))}
               <Button
                 className="h-16 flex-1 rounded-xl"
-                variant={mode === 'cricket' ? 'primary' : 'secondary'}
+                variant={mode === 'cricket' ? 'secondary' : 'tertiary'}
                 onPress={() => {
                   if (mode !== 'cricket') {
                     setMode('cricket');
@@ -325,7 +325,7 @@ export default function NewMatch() {
                     <Button
                       key={String(d)}
                       className="flex-1 rounded-xl"
-                      variant={doubleOut === d ? 'primary' : 'secondary'}
+                      variant={doubleOut === d ? 'secondary' : 'tertiary'}
                       onPress={() => {
                         if (doubleOut !== d) {
                           setDoubleOut(d);

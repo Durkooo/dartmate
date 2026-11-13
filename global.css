@@ -7,7 +7,7 @@
 @layer theme {
   :root {
     @variant light {
-      --background: #E6E8ED;
+      --background: #C9CFDA;
       --foreground: oklch(0.259 0.04 260);
       --surface: oklch(1 0 0);
       --surface-foreground: oklch(0.259 0.04 260);
@@ -17,7 +17,7 @@
       --accent-foreground: oklch(0.259 0.04 260);
       --default: oklch(0.934 0.009 270);
       --default-foreground: oklch(0.259 0.04 260);
-      --muted: oklch(0.546 0.032 260);
+      --muted: #525D71;
       --border: oklch(0.907 0.013 264);
       --separator: oklch(0.907 0.013 264);
       --field-background: oklch(1 0 0);
@@ -31,7 +31,7 @@
       --color-on-ink: oklch(0.827 0.03 264);
     }
     @variant dark {
-      --background: #E6E8ED;
+      --background: #C9CFDA;
       --foreground: oklch(0.259 0.04 260);
       --surface: oklch(1 0 0);
       --surface-foreground: oklch(0.259 0.04 260);
@@ -41,7 +41,7 @@
       --accent-foreground: oklch(0.259 0.04 260);
       --default: oklch(0.934 0.009 270);
       --default-foreground: oklch(0.259 0.04 260);
-      --muted: oklch(0.546 0.032 260);
+      --muted: #525D71;
       --border: oklch(0.907 0.013 264);
       --separator: oklch(0.907 0.013 264);
       --field-background: oklch(1 0 0);
@@ -65,4 +65,13 @@
 }
 .button__label--variant-secondary {
   color: var(--color-accent);
+}
+
+/* Výbery (301/501/Cricket, legy, kolá…): aktívna voľba je tmavomodrá (secondary),
+ * neaktívna biela s tmavomodrým písmom (tertiary). */
+.button__root--variant-tertiary {
+  background-color: var(--color-surface);
+}
+.button__label--variant-tertiary {
+  color: var(--color-ink);
 }

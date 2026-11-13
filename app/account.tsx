@@ -33,7 +33,7 @@ function DevicePicker({
     <View className="flex-row flex-wrap gap-2">
       <Button
         size="sm"
-        variant={!value ? 'primary' : 'secondary'}
+        variant={!value ? 'secondary' : 'tertiary'}
         onPress={() => onChange(undefined)}
       >
         <Button.Label>Automatická</Button.Label>
@@ -42,7 +42,7 @@ function DevicePicker({
         <Button
           key={d.deviceId}
           size="sm"
-          variant={value === d.deviceId ? 'primary' : 'secondary'}
+          variant={value === d.deviceId ? 'secondary' : 'tertiary'}
           onPress={() => onChange(d)}
         >
           <Button.Label numberOfLines={1}>{d.label}</Button.Label>
@@ -74,7 +74,7 @@ function FacingPicker({
           <Button
             key={f}
             className="flex-1"
-            variant={value === f ? 'primary' : 'secondary'}
+            variant={value === f ? 'secondary' : 'tertiary'}
             onPress={() => onChange(f)}
           >
             <Button.Label>{name}</Button.Label>
@@ -452,7 +452,7 @@ export default function Account() {
                         key={f}
                         size="sm"
                         className="flex-1"
-                        variant={previewFacing === f && !previewDevice ? 'primary' : 'secondary'}
+                        variant={previewFacing === f && !previewDevice ? 'secondary' : 'tertiary'}
                         onPress={() => {
                           setPreviewFacing(f);
                           setPreviewDevice(undefined);
@@ -468,7 +468,7 @@ export default function Account() {
                         <Button
                           key={d.deviceId}
                           size="sm"
-                          variant={previewDevice === d.deviceId ? 'primary' : 'secondary'}
+                          variant={previewDevice === d.deviceId ? 'secondary' : 'tertiary'}
                           onPress={() => {
                             setPreviewDevice(d.deviceId);
                             setPreviewFacing(d.facing);

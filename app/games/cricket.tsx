@@ -190,6 +190,7 @@ export default function Cricket() {
                   key={m}
                   label={m === 1 ? 'Single' : m === 2 ? 'Double' : 'Triple'}
                   selected={mult === m}
+                  toggle
                   onPress={() => {
                     setMult(m);
                     feedback.selection();

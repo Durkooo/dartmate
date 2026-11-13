@@ -71,7 +71,7 @@ export default function NewOnlineMatch() {
                     <Button
                       key={n}
                       className="flex-1"
-                      variant={starting === n ? 'primary' : 'secondary'}
+                      variant={starting === n ? 'secondary' : 'tertiary'}
                       isDisabled={pending}
                       onPress={() => {
                         if (starting !== n) {

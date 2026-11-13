@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import { Button } from 'heroui-native';
 import { Page, Heading, Txt, LoadingRows, Avatar } from '@/components/DartsUI';
 import { OnlineError, OnlineGate } from '@/components/OnlineUI';
-import { palette } from '@/lib/darts';
+import { palette, CARD_ROW } from '@/lib/darts';
 import { useOnlineQuery } from '@/lib/online';
 import { usePlayers } from '@/lib/players';
 import { loadLeaderboard, type LeaderRow } from '@/lib/statistics';
@@ -53,7 +53,7 @@ export default function Leaderboard() {
                 key={p}
                 size="sm"
                 className="flex-1"
-                variant={period === p ? 'primary' : 'secondary'}
+                variant={period === p ? 'secondary' : 'tertiary'}
                 onPress={() => setPeriod(p)}
               >
                 <Button.Label>{label}</Button.Label>
@@ -99,8 +99,8 @@ export default function Leaderboard() {
                 return (
                   <View
                     key={r.userId}
-                    className="border-border flex-row items-center gap-3 border-b py-3"
-                    style={me ? { backgroundColor: palette.paper } : undefined}
+                    className={CARD_ROW}
+                    style={me ? { borderWidth: 2, borderColor: palette.ink } : undefined}
                   >
                     <Txt
                       className="w-7 text-center"

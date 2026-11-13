@@ -67,6 +67,7 @@ export function PadButton({
   label,
   onPress,
   selected = false,
+  toggle = false,
   disabled = false,
   accessibilityLabel,
   children,
@@ -74,14 +75,16 @@ export function PadButton({
   label?: string;
   onPress: () => void;
   selected?: boolean;
+  /** Výber z možností: aktívna voľba tmavomodrá, ostatné biele. */
+  toggle?: boolean;
   disabled?: boolean;
   accessibilityLabel?: string;
   children?: ReactNode;
 }) {
   return (
     <Button
-      variant={selected ? 'primary' : 'secondary'}
-      className={`h-12 flex-1 rounded-xl ${selected ? '' : 'bg-surface'}`}
+      variant={toggle ? (selected ? 'secondary' : 'tertiary') : selected ? 'primary' : 'secondary'}
+      className="h-12 flex-1 rounded-xl"
       isDisabled={disabled}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}

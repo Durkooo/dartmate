@@ -5,7 +5,7 @@ import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
 import { ChevronRight, Mail, Swords, Wifi, WifiOff } from 'lucide-react-native';
 import { Empty, Heading, LoadingRows, Txt } from '@/components/DartsUI';
-import { feedback, palette } from '@/lib/darts';
+import { feedback, palette, CARD_ROW } from '@/lib/darts';
 import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
 import { playerError, usePlayers } from '@/lib/players';
 
@@ -205,7 +205,7 @@ export function MatchRow({
             : { pathname: '/online/[id]', params: { id: match.id } },
         )
       }
-      className="border-border flex-row items-center gap-3 border-b py-4"
+      className={CARD_ROW}
     >
       <View className="flex-1 gap-1">
         <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>

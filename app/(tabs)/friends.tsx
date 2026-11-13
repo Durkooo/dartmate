@@ -14,7 +14,7 @@ import {
   LoadingRows,
   StorageNotice,
 } from '@/components/DartsUI';
-import { palette, useDarts, feedback, type Friend } from '@/lib/darts';
+import { palette, useDarts, feedback, type Friend, CARD_ROW } from '@/lib/darts';
 import { bilt } from '@/lib/bilt';
 import { usePlayers } from '@/lib/players';
 import {
@@ -265,7 +265,7 @@ export default function Friends() {
               {session ? (
                 <PressableFeedback
                   onPress={() => router.push({ pathname: '/friend/[id]', params: { id: item.id } })}
-                  className="flex-row items-center gap-3 py-3"
+                  className={CARD_ROW}
                 >
                   <Avatar friend={item} />
                   <View className="flex-1">

@@ -6,9 +6,9 @@ import type { BotConfig } from '@/lib/bots';
 
 export const palette = {
   ink: '#192438',
-  paper: '#E6E8ED', // pozadie appky (o kúsok tmavšia sivá)
+  paper: '#C9CFDA', // pozadie appky: svetlejší odtieň poľa 25 z terča
   white: '#FFFFFF',
-  muted: '#687184',
+  muted: '#525D71', // farba poľa 25 — čitateľná na pozadí aj na bielom
   yellow: '#F7CF46',
   line: '#DEE2EA',
   onInk: '#BDC8DB',
@@ -19,6 +19,8 @@ export const palette = {
   success: '#28714E',
   playing: '#E8850C',
 };
+/** Biela dlaždica (riadky zoznamov) s tmavomodrým písmom. */
+export const CARD_ROW = 'bg-surface mb-2 flex-row items-center gap-3 rounded-2xl px-4 py-3';
 export const feedback = {
   selection: () => {
     void Haptics.selectionAsync().catch(() => undefined);

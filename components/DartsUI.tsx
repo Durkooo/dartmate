@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { palette, useDarts, type Friend } from '@/lib/darts';
+import { palette, useDarts, type Friend, CARD_ROW } from '@/lib/darts';
 
 export function Txt({ className = '', style, ...props }: TextProps & { className?: string }) {
   return (
@@ -136,7 +136,7 @@ export function FriendRow({
             : { pathname: '/new-match', params: { friendId: friend.id } },
         )
       }
-      className="border-border flex-row items-center gap-3 border-b py-4"
+      className={CARD_ROW}
     >
       <Avatar friend={friend} />
       <View className="flex-1 gap-1">

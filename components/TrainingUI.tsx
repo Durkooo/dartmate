@@ -37,6 +37,7 @@ export function OptionPicker<T>({
             label={format(o)}
             accessibilityLabel={`${label} ${format(o) === '∞' ? 'nekonečno' : format(o)}`}
             selected={o === value}
+            toggle
             onPress={() => onChange(o)}
           />
         ))}

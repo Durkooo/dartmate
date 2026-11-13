@@ -214,7 +214,7 @@ function LocalMessages() {
         renderItem={({ item }) => (
           <PressableFeedback
             onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.friend.id } })}
-            className="flex-row gap-3 py-3"
+            className="bg-surface mb-2 flex-row gap-3 rounded-2xl p-4"
           >
             <Avatar friend={item.friend} size={52} />
             <View className="flex-1 gap-2">

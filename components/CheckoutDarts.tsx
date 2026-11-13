@@ -19,7 +19,7 @@ export function CheckoutDarts({
         {([1, 2, 3] as const).map((n) => (
           <Button
             key={n}
-            variant={value === n ? 'primary' : 'secondary'}
+            variant={value === n ? 'secondary' : 'tertiary'}
             className="flex-1"
             isDisabled={disabled}
             accessibilityLabel={`Zatvorenie ${n}. šípkou`}
