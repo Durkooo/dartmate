@@ -10,6 +10,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 export const CRICKET_TARGETS = [20, 19, 18, 17, 16, 15, 25] as const;
 export type CricketCore = {
   players: [string, string];
+  /** Id súpera (priateľ z appky → výsledok sa pošle rovno jemu). */
+  opponentId?: string;
   /** Zásahy (0–3) pre každé číslo, [hráč][číslo]. */
   marks: [number[], number[]];
   points: [number, number];
@@ -21,9 +23,10 @@ export type CricketCore = {
 };
 export type CricketGame = CricketCore & { past: CricketCore[] };
 
-export function newCricket(players: [string, string]): CricketGame {
+export function newCricket(players: [string, string], opponentId?: string): CricketGame {
   return {
     players,
+    opponentId,
     marks: [CRICKET_TARGETS.map(() => 0), CRICKET_TARGETS.map(() => 0)],
     points: [0, 0],
     turn: 0,

@@ -6,6 +6,9 @@ import { Trophy, Undo2 } from 'lucide-react-native';
 import { Heading, Txt, LoadingRows, Empty } from '@/components/DartsUI';
 import { PadButton, ScoreBoard } from '@/components/GameBoard';
 import { feedback, palette } from '@/lib/darts';
+import { ShareResult } from '@/components/ShareResult';
+import { formatCricketResult } from '@/lib/matchResult';
+import { usePlayers } from '@/lib/players';
 import {
   CRICKET_TARGETS,
   cricketDart,
@@ -23,6 +26,8 @@ export default function Cricket() {
   const setGame = useExtraGames((s) => s.setCricket);
   const finish = useExtraGames((s) => s.finish);
   const [mult, setMult] = useState<1 | 2 | 3>(1);
+  const friends = usePlayers((s) => s.friends);
+  const myNick = usePlayers((s) => s.profile?.nickname);
   if (!hydrated)
     return (
       <View className="bg-background flex-1 p-5">
@@ -118,6 +123,24 @@ export default function Cricket() {
           <View className="items-center gap-4 py-6">
             <Trophy size={36} color={palette.ink} strokeWidth={1.8} />
             <Heading>{game.winner === 0 ? 'Dobrý zásah.' : 'Čas na odvetu.'}</Heading>
+            {!!myNick &&
+              (() => {
+                const friend = friends.find((f) => !f.demo && f.id === game.opponentId);
+                return (
+                  <ShareResult
+                    peerId={friend?.id}
+                    peerName={friend?.handle}
+                    body={formatCricketResult({
+                      me: myNick,
+                      opponent: game.players[1],
+                      opponentTagged: !!friend,
+                      points: game.points,
+                      darts: game.totalDarts,
+                      won: game.winner === 0,
+                    })}
+                  />
+                );
+              })()}
             <Button
               size="lg"
               className="w-full"

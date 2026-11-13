@@ -12,9 +12,49 @@ export function isResultMessage(body: string | null | undefined): boolean {
 
 const avg = (n: number | null) => (n === null ? '–' : n.toFixed(1));
 
+/** Súper ako text na karte: hráč z appky s @, bot / dočasný súper bez neho. */
+const who = (name: string, tagged: boolean) => (tagged ? `@${name}` : name);
+
+/** Sólo hra (hráč sám) 301/501. */
+export function formatSoloResult(r: {
+  me: string;
+  starting: number;
+  doubleOut: boolean;
+  legs: number;
+  darts: number;
+  avg: number | null;
+}): string {
+  return [
+    RESULT_HEADER,
+    `@${r.me} · sólo ${r.starting}`,
+    `${r.legs > 1 ? `${r.legs} legy` : 'Dohrané'} za ${r.darts} šípok${r.doubleOut ? ' · double out' : ''}`,
+    `Priemer ${avg(r.avg)}`,
+  ].join('\n');
+}
+
+/** Cricket: body a šípky oboch hráčov. */
+export function formatCricketResult(r: {
+  me: string;
+  opponent: string;
+  opponentTagged: boolean;
+  points: [number, number];
+  darts: [number, number];
+  won: boolean;
+}): string {
+  const opp = who(r.opponent, r.opponentTagged);
+  return [
+    RESULT_HEADER,
+    `@${r.me} ${r.points[0]} : ${r.points[1]} ${opp}`,
+    `Cricket · vyhral ${r.won ? `@${r.me}` : opp}`,
+    `Šípky ${r.darts[0]} : ${r.darts[1]}`,
+  ].join('\n');
+}
+
 export function formatResult(r: {
   me: string;
   opponent: string;
+  /** false = bot alebo dočasný súper (bez @). */
+  opponentTagged?: boolean;
   /** Legy (alebo 1:0 pri jednom legu) [ja, súper]. */
   score: [number, number];
   won: boolean;
@@ -22,10 +62,11 @@ export function formatResult(r: {
   doubleOut: boolean;
   avg: [number | null, number | null];
 }): string {
+  const opp = who(r.opponent, r.opponentTagged ?? true);
   return [
     RESULT_HEADER,
-    `@${r.me} ${r.score[0]} : ${r.score[1]} @${r.opponent}`,
-    `${r.starting}${r.doubleOut ? ' · double out' : ''} · vyhral @${r.won ? r.me : r.opponent}`,
+    `@${r.me} ${r.score[0]} : ${r.score[1]} ${opp}`,
+    `${r.starting}${r.doubleOut ? ' · double out' : ''} · vyhral ${r.won ? `@${r.me}` : opp}`,
     `Priemer ${avg(r.avg[0])} : ${avg(r.avg[1])}`,
   ].join('\n');
 }

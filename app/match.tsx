@@ -7,7 +7,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { generateBotTurn } from '@/lib/bots';
 import { ShareResult } from '@/components/ShareResult';
-import { formatResult } from '@/lib/matchResult';
+import { formatResult, formatSoloResult } from '@/lib/matchResult';
 import { usePlayers } from '@/lib/players';
 import {
   palette,
@@ -240,32 +240,50 @@ export default function Match() {
                     Legy {game.legs[0]}:{game.legs[1]}
                   </Txt>
                 )}
-                {!game.solo &&
-                  !game.bot &&
-                  !!myNick &&
-                  friends.some((f) => f.id === game.opponentId) && (
-                    <ShareResult
-                      peerId={game.opponentId}
-                      peerName={game.opponentName}
-                      body={formatResult({
-                        me: myNick,
-                        opponent: game.opponentName,
-                        score:
-                          game.legsToWin > 1
-                            ? [game.legs[0], game.legs[1]]
-                            : game.winner === 0
-                              ? [1, 0]
-                              : [0, 1],
-                        won: game.winner === 0,
-                        starting: game.starting,
-                        doubleOut: game.doubleOut,
-                        avg: [
-                          Number.parseFloat(average(game, 0)) || null,
-                          Number.parseFloat(average(game, 1)) || null,
-                        ],
-                      })}
-                    />
-                  )}
+                {!!myNick &&
+                  (() => {
+                    // Súper-priateľ z appky → pošle sa rovno jemu; bot, sólo alebo
+                    // dočasný súper → vyberieš priateľa zo zoznamu.
+                    const friendOpponent =
+                      !game.solo && !game.bot && friends.some((f) => f.id === game.opponentId);
+                    const myDarts = game.turns
+                      .filter((t) => t.player === 0 && !t.undone)
+                      .reduce((sum, t) => sum + (t.darts ?? 3), 0);
+                    const body = game.solo
+                      ? formatSoloResult({
+                          me: myNick,
+                          starting: game.starting,
+                          doubleOut: game.doubleOut,
+                          legs: game.legs[0],
+                          darts: myDarts,
+                          avg: Number.parseFloat(average(game, 0)) || null,
+                        })
+                      : formatResult({
+                          me: myNick,
+                          opponent: game.opponentName,
+                          opponentTagged: friendOpponent,
+                          score:
+                            game.legsToWin > 1
+                              ? [game.legs[0], game.legs[1]]
+                              : game.winner === 0
+                                ? [1, 0]
+                                : [0, 1],
+                          won: game.winner === 0,
+                          starting: game.starting,
+                          doubleOut: game.doubleOut,
+                          avg: [
+                            Number.parseFloat(average(game, 0)) || null,
+                            Number.parseFloat(average(game, 1)) || null,
+                          ],
+                        });
+                    return (
+                      <ShareResult
+                        peerId={friendOpponent ? game.opponentId : undefined}
+                        peerName={friendOpponent ? game.opponentName : undefined}
+                        body={body}
+                      />
+                    );
+                  })()}
                 <Button
                   size="lg"
                   className="w-full"

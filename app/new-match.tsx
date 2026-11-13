@@ -310,7 +310,7 @@ export default function NewMatch() {
                 twoPlayers={selected !== 'solo' && selected !== 'bot'}
                 running={!!cricketGame}
                 onStart={() => {
-                  setCricket(newCricket(['Ty', opponent.name]));
+                  setCricket(newCricket(['Ty', opponent.name], opponent.id));
                   feedback.success();
                   router.replace('/games/cricket');
                 }}
