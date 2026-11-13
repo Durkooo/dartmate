@@ -77,12 +77,22 @@ function createCanvasRelay(source: MediaStreamTrack) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }, 33);
   const track = canvas.captureStream(30).getVideoTracks()[0];
+  let current = source;
   return {
     track,
+    /** Výmena kamery (otočenie): starú zastaví — Android nevie otvoriť dve naraz —,
+     *  otvorí novú a plátno ďalej kreslí z nej. Stopa v hovore ostáva tá istá. */
+    replaceSource: async (open: () => Promise<MediaStreamTrack>) => {
+      current.stop();
+      const next = await open();
+      current = next;
+      video.srcObject = new MediaStream([next]);
+      void video.play().catch(() => undefined);
+    },
     stop: () => {
       clearInterval(timer);
       track.stop();
-      source.stop();
+      current.stop();
       video.srcObject = null;
       video.remove();
     },
@@ -148,6 +158,7 @@ export default function VideoCall({
   const senderInfo = useRef('');
   /** Kamera ide cez plátno — reštart kamery (kvalita, otočenie) by ho zrušil. */
   const relayActive = useRef(false);
+  const relayRef = useRef<ReturnType<typeof createCanvasRelay> | null>(null);
   const [pending, setPending] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const micRef = useRef(micWanted);
@@ -290,6 +301,7 @@ export default function VideoCall({
       }
       relay = createCanvasRelay(source);
       relayActive.current = true;
+      relayRef.current = relay;
       rememberRelay();
       await session.localParticipant.publishTrack(relay.track, {
         source: Track.Source.Camera,
@@ -354,8 +366,8 @@ export default function VideoCall({
           return;
         }
         zeroSince ??= Date.now();
-        // Z kamery nejdú snímky → stačia 3 s; inak (kodek) čakáme 8 s.
-        if (Date.now() - zeroSince < (sourceFrames === 0 ? 3000 : 8000)) return;
+        // Z kamery nejdú snímky → stačí 1,5 s; inak (kodek) čakáme 8 s.
+        if (Date.now() - zeroSince < (sourceFrames === 0 ? 1500 : 8000)) return;
         // Z kamery nepríde do odosielania ani snímka → iný kodek nepomôže,
         // pošleme obraz cez plátno (z náhľadu, ktorý funguje).
         if (sourceFrames === 0 && !relay) {
@@ -387,10 +399,14 @@ export default function VideoCall({
         checking = false;
       }
     };
-    const refresh = setInterval(() => {
-      void checkSender();
-      update();
-    }, 2000);
+    const refresh = setInterval(update, 2000);
+    // Kontrola vysielania kamery: prvých 30 s každých 0,5 s (rýchle prepnutie
+    // na plátno), potom už len každé 2 s.
+    let senderTicks = 0;
+    const senderCheck = setInterval(() => {
+      senderTicks += 1;
+      if (senderTicks <= 60 || senderTicks % 4 === 0) void checkSender();
+    }, 500);
     // Chat-hovor: keď priateľ hovor položí (odíde z miestnosti), ukončíme ho aj tu.
     // Krátka pauza, aby krátky výpadok siete hovor hneď neukončil.
     let peerSeen = false;
@@ -509,8 +525,10 @@ export default function VideoCall({
       active = false;
       currentRoom.current = null;
       clearInterval(refresh);
+      clearInterval(senderCheck);
       relay?.stop();
       relay = null;
+      relayRef.current = null;
       relayActive.current = false;
       clearTimeout(leaveTimer);
       session.removeAllListeners();
@@ -944,8 +962,34 @@ export default function VideoCall({
         onFlip={() =>
           void control(async () => {
             const next = facing === 'user' ? 'environment' : 'user';
-            if (relayActive.current)
-              throw new Error('Pri náhradnom vysielaní kamery sa kamera nedá otočiť.');
+            const relay = relayRef.current;
+            if (relay) {
+              // Kamera ide cez plátno: vymeníme len zdroj obrazu.
+              const res = VIDEO_PRESETS[videoTier.current].resolution;
+              const open = (mode: 'user' | 'environment') => () =>
+                withCameraRetry(async () => {
+                  const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                      facingMode: { ideal: mode },
+                      width: { ideal: res.width },
+                      height: { ideal: res.height },
+                      frameRate: { ideal: 30 },
+                    },
+                  });
+                  return stream.getVideoTracks()[0];
+                });
+              try {
+                await relay.replaceSource(open(next));
+              } catch (e) {
+                // Druhá kamera sa neotvorila → vrátime pôvodnú, nech obraz nezhasne.
+                await relay.replaceSource(open(facing)).catch(() => undefined);
+                throw e;
+              }
+              setFacing(next);
+              setDeviceId(undefined);
+              return;
+            }
             const track = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
