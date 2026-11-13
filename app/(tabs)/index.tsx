@@ -41,13 +41,37 @@ function sortedContacts(
   });
 }
 
+/** Smery posunu čiernych kópií nápisu (obrys). */
+const OUTLINE = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+] as const;
+
 export default function Home() {
   const compact = useWindowDimensions().width < 360;
-  const cardWidth = useWindowDimensions().width - 40;
+  // Karta je široká ako obsah stránky (max-w-xl = 576 px), na tablete nerastie ďalej.
+  const cardWidth = Math.min(useWindowDimensions().width - 40, 576);
   const boardSize = cardWidth * 1.8;
+  // Karta je o niečo vyššia, aby sa zmestili tlačidlá nad aj pod nápisom.
+  const cardHeight = cardWidth * 1.15;
   // Šírka miesta pre nápis — písmo sa jej prispôsobí (na výšku menšie, na šírku väčšie).
   const [titleWidth, setTitleWidth] = useState(0);
   const titleFont = titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
+  // Hrúbka obrysu nápisu a písmo tlačidiel podľa veľkosti displeja.
+  const outline = Math.max(2, Math.round(titleFont / 28));
+  const buttonFont = cardWidth < 300 ? 14 : cardWidth > 500 ? 18 : 16;
+  const titleStyle = {
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -4,
+    fontSize: titleFont,
+    lineHeight: Math.round(titleFont * 1.12),
+  } as const;
   const friends = useDarts((s) => s.friends);
   const game = useDarts((s) => s.game);
   const cricketRunning = useExtraGames((s) => !!s.cricket);
@@ -146,14 +170,14 @@ export default function Home() {
       )}
       {/* 3) RÁMIK pod pozvánkami — terč na celej ploche */}
       <View className="bg-ink mt-4 overflow-hidden rounded-[24px]">
-        <View style={{ height: cardWidth * 1.08 }} className="relative w-full">
+        <View style={{ height: cardHeight }} className="relative w-full">
           <View
             className="absolute"
             style={{
               width: boardSize,
               height: boardSize,
               left: (cardWidth - boardSize) / 2,
-              top: (cardWidth * 1.08 - boardSize) / 2,
+              top: (cardHeight - boardSize) / 2,
             }}
           >
             <Dartboard dart={false} size={boardSize} />
@@ -175,55 +199,75 @@ export default function Home() {
               Terč doma.{'\n'}Súper kdekoľvek.
             </Txt>
             <View>
-              <View
-                onLayout={(e) => {
-                  const w = e.nativeEvent.layout.width;
-                  if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
-                }}
-              >
-                <Txt
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.6}
-                  className="text-accent"
-                  style={{
-                    fontFamily: 'Inter_700Bold',
-                    letterSpacing: -4,
-                    fontSize: titleFont,
-                    lineHeight: Math.round(titleFont * 1.12),
-                  }}
-                >
-                  DartMate
-                </Txt>
-              </View>
-              {/* Tri rovnaké tlačidlá: online, offline (301/501 a Cricket), tréning. */}
-              <View className="mt-3 flex-row gap-2">
+              {/* Online a offline hra nad nápisom, každé na polovicu šírky. */}
+              <View className="mb-3 flex-row gap-2">
                 {(
                   [
                     ['Hrať online', '/online'],
                     ['Hrať offline', '/new-match'],
-                    ['Tréning', '/games'],
                   ] as const
                 ).map(([text, href]) => (
                   <Button
                     key={href}
-                    size="md"
+                    size="lg"
                     onPress={() => router.push(href)}
-                    className="flex-1 rounded-xl px-1"
+                    className="flex-1 rounded-xl px-2"
                   >
                     <Button.Label
                       numberOfLines={1}
-                      style={{
-                        fontFamily: 'Inter_600SemiBold',
-                        // Tri tlačidlá vedľa seba: menšie písmo, keď je karta úzka.
-                        fontSize: cardWidth < 300 ? 11.5 : cardWidth < 340 ? 14 : 15,
-                      }}
+                      style={{ fontFamily: 'Inter_600SemiBold', fontSize: buttonFont }}
                     >
                       {text}
                     </Button.Label>
                   </Button>
                 ))}
               </View>
+              <View
+                onLayout={(e) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
+                }}
+              >
+                {/* Nápis s hrubým čiernym obrysom: čierne kópie posunuté do 8 smerov
+                    pod žltým textom (funguje na webe aj v mobile). */}
+                <View style={{ position: 'relative' }}>
+                  {OUTLINE.map(([dx, dy]) => (
+                    <Txt
+                      key={`${dx}:${dy}`}
+                      aria-hidden
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      numberOfLines={1}
+                      style={{
+                        ...titleStyle,
+                        position: 'absolute',
+                        left: dx * outline,
+                        top: dy * outline,
+                        color: '#000',
+                      }}
+                    >
+                      DartMate
+                    </Txt>
+                  ))}
+                  <Txt numberOfLines={1} className="text-accent" style={titleStyle}>
+                    DartMate
+                  </Txt>
+                </View>
+              </View>
+              {/* Tréning pod nápisom, cca 3/4 šírky karty. */}
+              <Button
+                size="lg"
+                onPress={() => router.push('/games')}
+                className="mt-3 self-center rounded-xl"
+                style={{ width: '75%' }}
+              >
+                <Button.Label
+                  numberOfLines={1}
+                  style={{ fontFamily: 'Inter_600SemiBold', fontSize: buttonFont }}
+                >
+                  Tréning
+                </Button.Label>
+              </Button>
             </View>
           </View>
         </View>
