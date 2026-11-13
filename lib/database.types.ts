@@ -196,16 +196,19 @@ declare module '@biltme/backend' {
             user_id: string
             nickname: string
             created_at: string
+            avatar_path: string | null
           }
           Insert: {
             user_id: string
             nickname: string
             created_at?: string
+            avatar_path?: string | null
           }
           Update: {
             user_id?: string
             nickname?: string
             created_at?: string
+            avatar_path?: string | null
           }
           Relationships: []
         }
@@ -239,6 +242,12 @@ declare module '@biltme/backend' {
         can_contact_player: {
           Args: {
             peer: string
+          }
+          Returns: boolean
+        }
+        can_read_avatar: {
+          Args: {
+            object_name: string
           }
           Returns: boolean
         }
@@ -296,6 +305,13 @@ declare module '@biltme/backend' {
             mid: string
           }
           Returns: boolean
+        }
+        list_friend_avatars: {
+          Args: Record<PropertyKey, never>
+          Returns: {
+            user_id: string | null
+            avatar_path: string | null
+          }[]
         }
         list_incoming_friends: {
           Args: Record<PropertyKey, never>
@@ -396,6 +412,12 @@ declare module '@biltme/backend' {
             isOneToOne: false
             isSetofReturn: true
           }
+        }
+        set_my_avatar: {
+          Args: {
+            new_path: string
+          }
+          Returns: undefined
         }
         submit_online_turn: {
           Args: {
