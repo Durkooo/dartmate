@@ -187,6 +187,7 @@ export default function RootLayout() {
           <Stack.Screen name="friend/new" options={{ title: 'Pridať priateľa' }} />
           <Stack.Screen name="friend/[id]" options={{ title: 'Priateľ' }} />
           <Stack.Screen name="account" options={{ title: 'Môj účet' }} />
+          <Stack.Screen name="settings" options={{ title: 'Nastavenia' }} />
           <Stack.Screen name="online/index" options={{ title: 'Online zápasy' }} />
           <Stack.Screen name="online/new" options={{ title: 'Pozvať na zápas' }} />
           <Stack.Screen name="online/[id]" options={{ title: 'Online zápas' }} />
