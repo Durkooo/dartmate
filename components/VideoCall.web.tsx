@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import {
   Room,
   RoomEvent,
@@ -10,7 +10,14 @@ import {
   ConnectionQuality,
   type Participant,
 } from 'livekit-client';
-import { trackOptions, singleShotFocus, VIDEO_PRESETS } from '@/lib/video';
+import {
+  trackOptions,
+  singleShotFocus,
+  VIDEO_PRESETS,
+  isCameraBusy,
+  waitForCameraWarmUp,
+  withCameraRetry,
+} from '@/lib/video';
 import { Button } from 'heroui-native';
 import { Phone } from 'lucide-react-native';
 import { Txt } from '@/components/DartsUI';
@@ -171,10 +178,14 @@ export default function VideoCall({
         if (!audioOnly) {
           const facingMode = initialFacing ?? 'user';
           const enableCam = (cameraDeviceId?: string) =>
-            session.localParticipant.setCameraEnabled(true, {
-              resolution: VideoPresets.h720,
-              ...(cameraDeviceId ? { deviceId: { exact: cameraDeviceId } } : { facingMode }),
-            });
+            withCameraRetry(() =>
+              session.localParticipant.setCameraEnabled(true, {
+                resolution: VideoPresets.h720,
+                ...(cameraDeviceId ? { deviceId: { exact: cameraDeviceId } } : { facingMode }),
+              }),
+            );
+          // „Prebudenie“ kamery z ťuknutia ešte môže kameru držať (Android).
+          await waitForCameraWarmUp();
           try {
             await enableCam(initialDeviceId);
           } catch {
@@ -189,7 +200,9 @@ export default function VideoCall({
                 setError(
                   blocked
                     ? 'Kamera je zablokovaná — povoľ ju v prehliadači a zapni ju tlačidlom nižšie.'
-                    : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
+                    : isCameraBusy(e)
+                      ? 'Kameru drží iná aplikácia alebo karta. Zavri ju a zapni kameru tlačidlom nižšie.'
+                      : 'Kameru sa nepodarilo zapnúť. Skús ju zapnúť tlačidlom nižšie.',
                 );
               }
             }
@@ -246,11 +259,12 @@ export default function VideoCall({
       )
         return;
       cooling = true;
-      void track
-        .restartTrack({
+      void withCameraRetry(() =>
+        track.restartTrack({
           resolution: VIDEO_PRESETS[tier].resolution,
           ...trackOptions(facing, deviceId),
-        })
+        }),
+      )
         .then(() => {
           if (!active) return;
           videoTier.current = tier;
@@ -260,17 +274,21 @@ export default function VideoCall({
           // restartTrack najprv zastaví starú kameru — po zlyhaní by ostala mŕtva
           // (súper vidí čierne okno). Vrátime predošlú kvalitu, inak kameru znova zapneme.
           try {
-            await track.restartTrack({
-              resolution: VIDEO_PRESETS[videoTier.current].resolution,
-              ...trackOptions(facing, deviceId),
-            });
+            await withCameraRetry(() =>
+              track.restartTrack({
+                resolution: VIDEO_PRESETS[videoTier.current].resolution,
+                ...trackOptions(facing, deviceId),
+              }),
+            );
           } catch {
             try {
               await room.localParticipant.setCameraEnabled(false);
-              await room.localParticipant.setCameraEnabled(true, {
-                resolution: VIDEO_PRESETS[videoTier.current].resolution,
-                ...trackOptions(facing, deviceId),
-              });
+              await withCameraRetry(() =>
+                room.localParticipant.setCameraEnabled(true, {
+                  resolution: VIDEO_PRESETS[videoTier.current].resolution,
+                  ...trackOptions(facing, deviceId),
+                }),
+              );
             } catch {
               if (active) setError('Kamera sa zasekla. Vypni ju a znova zapni tlačidlom nižšie.');
             }
@@ -330,7 +348,11 @@ export default function VideoCall({
       active = false;
     };
   }, [micWanted, room]);
-  const remoteHeight = large ? 440 : 160; // veľké okno súpera, keď čakám
+  // Výšky podľa obrazovky: na iPhone sa celý hovor aj s ovládaním zmestí na displej
+  // (pevných 440 px + vlastná kamera + tlačidlá vytlačilo ovládanie mimo obrazovky).
+  const { height: windowHeight } = useWindowDimensions();
+  const remoteHeight = large ? Math.round(Math.min(440, Math.max(200, windowHeight * 0.34))) : 160;
+  const localHeight = Math.round(Math.min(140, Math.max(90, windowHeight * 0.15)));
   // Pripojené prvky <video>/<audio> podľa stopy. Držíme ich medzi rendermi:
   // predtým sa pri každej udalosti (odber mikrofónu, zmena stavu…) zničili a
   // vytvorili nanovo — iOS Safari potom nový prvok často nespustil (čierne okno).
@@ -380,13 +402,13 @@ export default function VideoCall({
       }
       if (entry.element instanceof HTMLVideoElement) {
         entry.element.style.width = '100%';
-        entry.element.style.height = local ? '150px' : `${remoteHeight}px`;
+        entry.element.style.height = `${local ? localHeight : remoteHeight}px`;
         entry.element.style.objectFit = 'contain';
         entry.element.style.display = 'block';
       }
     }
     return undefined;
-  }, [room, tracks, large, remoteHeight]);
+  }, [room, tracks, large, remoteHeight, localHeight]);
   // Pri odchode z hovoru / novej miestnosti uprac všetky prvky.
   useEffect(() => {
     if (!room) return undefined;
@@ -458,7 +480,13 @@ export default function VideoCall({
       );
       feedback.selection();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kamera alebo mikrofón nie sú dostupné.');
+      setError(
+        isCameraBusy(e)
+          ? 'Kameru drží iná aplikácia alebo karta. Zavri ju a skús kameru zapnúť znova.'
+          : e instanceof Error
+            ? e.message
+            : 'Kamera alebo mikrofón nie sú dostupné.',
+      );
       feedback.error();
     } finally {
       setPending(false);
@@ -548,7 +576,7 @@ export default function VideoCall({
                   <div
                     ref={localHost}
                     style={{
-                      minHeight: 140,
+                      minHeight: localHeight,
                       backgroundColor: palette.ink,
                       borderRadius: 10,
                       overflow: 'hidden',
@@ -602,10 +630,12 @@ export default function VideoCall({
         pending={pending}
         onCamera={() =>
           void control(() =>
-            room.localParticipant.setCameraEnabled(!camera, {
-              resolution: VIDEO_PRESETS[videoTier.current].resolution,
-              ...trackOptions(facing, deviceId),
-            }),
+            withCameraRetry(() =>
+              room.localParticipant.setCameraEnabled(!camera, {
+                resolution: VIDEO_PRESETS[videoTier.current].resolution,
+                ...trackOptions(facing, deviceId),
+              }),
+            ),
           )
         }
         onMicrophone={() =>
@@ -624,10 +654,12 @@ export default function VideoCall({
             if (!(track instanceof LocalVideoTrack)) throw new Error('Najprv zapni kameru.');
             // Rozlíšenie drží aktuálne pásmo (auto-kvalita), nie pevných 720p.
             const res = VIDEO_PRESETS[videoTier.current].resolution;
-            await track.restartTrack({
-              facingMode: next,
-              resolution: { width: res.width, height: res.height, frameRate: 30 },
-            });
+            await withCameraRetry(() =>
+              track.restartTrack({
+                facingMode: next,
+                resolution: { width: res.width, height: res.height, frameRate: 30 },
+              }),
+            );
             setFacing(next);
             setDeviceId(undefined);
           })

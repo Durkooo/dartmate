@@ -100,13 +100,47 @@ export function trackOptions(facing: Facing, deviceId?: string) {
 }
 /** Rýchle „prebudenie“ kamery v ťuknutí prstom — iOS povolí kameru len z gesta.
  *  Vytvorí a hneď zruší stopu, aby pri pripojení už bolo povolenie dané. */
-export async function warmUpCamera(facing: Facing, deviceId?: string): Promise<boolean> {
-  try {
-    const track = await createPreferredTrack(facing, deviceId);
-    track.stop();
-    return true;
-  } catch {
-    return false;
+let warmUpInFlight: Promise<boolean> | null = null;
+export function warmUpCamera(facing: Facing, deviceId?: string): Promise<boolean> {
+  const run = (async () => {
+    try {
+      const track = await createPreferredTrack(facing, deviceId);
+      track.stop();
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  warmUpInFlight = run;
+  void run.finally(() => {
+    if (warmUpInFlight === run) warmUpInFlight = null;
+  });
+  return run;
+}
+/** Počká, kým dobehne „prebudenie“ kamery. Android Chrome nevie otvoriť kameru
+ *  dvakrát naraz — súbežné zapnutie v hovore by skončilo chybou
+ *  „Zdroj videa sa nepodarilo spustiť“ (NotReadableError). */
+export async function waitForCameraWarmUp(): Promise<void> {
+  await warmUpInFlight?.catch(() => undefined);
+}
+/** Kamera je ešte obsadená (iná stopa ju práve uvoľňuje) — oplatí sa skúsiť znova. */
+export function isCameraBusy(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  return /NotReadable|TrackStart|AbortError|could not start|zdroj videa|in use/i.test(
+    `${e.name} ${e.message}`,
+  );
+}
+/** Spustí akciu s kamerou; ak je kamera ešte obsadená, skúsi to znova o chvíľu.
+ *  Android po zastavení stopy uvoľňuje kameru so zdržaním (stovky ms). */
+export async function withCameraRetry<T>(action: () => Promise<T>): Promise<T> {
+  const delays = [400, 1000, 2000];
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await action();
+    } catch (e) {
+      if (attempt >= delays.length || !isCameraBusy(e)) throw e;
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+    }
   }
 }
 /** Android: explicitne vyžiada povolenia systému (iOS/web si povolenie pýta samo
