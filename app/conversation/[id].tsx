@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Modal,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -37,6 +38,17 @@ import { getCallCredentials, loadCameraPrefs, warmUpCamera, type CameraPrefs } f
 import { notifyRecipient } from '@/lib/sendPush';
 import { closeCallNotifications } from '@/lib/callNotifications';
 import { RESULT_HEADER, isResultMessage, resultLines } from '@/lib/matchResult';
+import {
+  REACTIONS,
+  loadChatState,
+  loadReactions,
+  markRead,
+  react,
+  replyOf,
+  sendTyping,
+  setReply,
+  snippet,
+} from '@/lib/chatExtras';
 import { playerError, usePlayers } from '@/lib/players';
 import {
   loadContacts,
@@ -97,8 +109,15 @@ function ConversationContent({
     ]);
     if (result.error) throw new Error(result.error.message);
     const messages: DirectMessage[] = result.data ?? [];
+    // Doplnky (prečítané, píše…, reakcie) — bez nového backendu sú prázdne.
+    const [chat, reactions] = await Promise.all([
+      loadChatState(id),
+      loadReactions(messages.map((m) => m.id)),
+    ]);
     return {
       messages,
+      chat,
+      reactions,
       handledCalls,
       contact: contacts.find((c: any) => c.user_id === id),
       matches: matches.filter((m: any) => m.host_id === id || m.guest_id === id),
@@ -111,6 +130,9 @@ function ConversationContent({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  // Podržaná správa (ponuka reakcií / odpovede / úpravy) a správa, na ktorú odpovedám.
+  const [menuFor, setMenuFor] = useState<DirectMessage | null>(null);
+  const [replyTo, setReplyTo] = useState<DirectMessage | null>(null);
   const clearPhoto = () => {
     const uploaded = uploadedPhoto.current;
     uploadedPhoto.current = null;
@@ -391,6 +413,8 @@ function ConversationContent({
   useEffect(() => {
     const newest = messages[0]?.created_at;
     if (newest) void markChatRead(id, newest);
+    // Priateľ uvidí „Prečítané“ pri svojich správach.
+    if (messages[0]) markRead(id, messages[0].id);
   }, [messages, id]);
   const send = async () => {
     const body = text.trim();
@@ -431,6 +455,10 @@ function ConversationContent({
       if (!data?.[0])
         throw new Error('Správu nemožno odoslať. Skontroluj, či ste stále priatelia.');
       if (usePlayers.getState().session?.user.id !== userId) return;
+      if (replyTo) {
+        setReply(data[0].id, replyTo.id);
+        setReplyTo(null);
+      }
       // Keep sent messages when they leave the latest page.
       setOlder((s) => ({
         key,
@@ -686,8 +714,12 @@ function ConversationContent({
                 style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '85%' }}
               >
                 <Pressable
-                  onLongPress={mine ? () => startEdit(item) : undefined}
+                  onLongPress={() => {
+                    setMenuFor(item);
+                    feedback.selection();
+                  }}
                   delayLongPress={400}
+                  accessibilityHint="Podrž pre reakciu alebo odpoveď"
                 >
                   <View
                     className={
@@ -697,6 +729,41 @@ function ConversationContent({
                     }
                     style={item.image_path ? { width: 232, maxWidth: '100%' } : undefined}
                   >
+                    {(() => {
+                      // Citácia správy, na ktorú táto odpovedá.
+                      const replyId = replyOf(item);
+                      if (replyId === null) return null;
+                      const original = messages.find((m) => m.id === replyId);
+                      return (
+                        <View
+                          className="mb-2 rounded-lg px-3 py-2"
+                          style={{
+                            borderLeftWidth: 3,
+                            borderLeftColor: palette.yellow,
+                            backgroundColor: mine ? 'rgba(255,255,255,0.08)' : palette.paper,
+                          }}
+                        >
+                          <Txt
+                            className={mine ? 'text-on-ink text-[12px]' : 'text-muted text-[12px]'}
+                            style={{ fontFamily: 'Inter_600SemiBold' }}
+                          >
+                            {original
+                              ? original.sender_id === userId
+                                ? 'Ty'
+                                : `@${contact?.nickname ?? ''}`
+                              : 'Odpoveď'}
+                          </Txt>
+                          <Txt
+                            numberOfLines={2}
+                            className={mine ? 'text-on-ink text-[13px]' : 'text-muted text-[13px]'}
+                          >
+                            {original
+                              ? snippet(original.body, !!original.image_path)
+                              : 'Staršia správa'}
+                          </Txt>
+                        </View>
+                      );
+                    })()}
                     {item.image_path && <MessagePhoto path={item.image_path} mine={mine} />}
                     {isResultMessage(item.body) ? (
                       // Výsledok zápasu ako karta: prvý riadok (skóre) zvýraznený.
@@ -736,9 +803,48 @@ function ConversationContent({
                     >
                       {new Date(item.created_at).toLocaleDateString('sk-SK')} ·{' '}
                       {timeLabel(item.created_at)}
-                      {mine ? ' · Odoslané' : ''}
+                      {mine
+                        ? (query.data?.chat?.peerLastReadId ?? 0) >= item.id
+                          ? ' · ✓✓ Prečítané'
+                          : ' · ✓ Odoslané'
+                        : ''}
                     </Txt>
                   </View>
+                  {(() => {
+                    // Reakcie pod bublinou (zoskupené, moja zvýraznená).
+                    const list = (query.data?.reactions ?? []).filter(
+                      (r) => r.messageId === item.id,
+                    );
+                    if (!list.length) return null;
+                    const groups = REACTIONS.map((emoji) => ({
+                      emoji,
+                      count: list.filter((r) => r.emoji === emoji).length,
+                      mineToo: list.some((r) => r.emoji === emoji && r.userId === userId),
+                    })).filter((g) => g.count > 0);
+                    return (
+                      <View
+                        className="-mt-2 flex-row gap-1"
+                        style={{ alignSelf: mine ? 'flex-end' : 'flex-start', marginHorizontal: 8 }}
+                      >
+                        {groups.map((g) => (
+                          <View
+                            key={g.emoji}
+                            className="flex-row items-center rounded-full px-2 py-0.5"
+                            style={{
+                              backgroundColor: palette.white,
+                              borderWidth: 1,
+                              borderColor: g.mineToo ? palette.ink : palette.line,
+                            }}
+                          >
+                            <Txt className="text-[13px]">
+                              {g.emoji}
+                              {g.count > 1 ? ` ${g.count}` : ''}
+                            </Txt>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })()}
                 </Pressable>
               </Animated.View>
             );
@@ -781,8 +887,45 @@ function ConversationContent({
               {error}
             </Txt>
           )}
+          {!!query.data?.chat?.peerTyping && (
+            <Txt className="text-muted mb-1 text-[12px]" accessibilityLiveRegion="polite">
+              @{contact?.nickname ?? ''} píše…
+            </Txt>
+          )}
           {contact && (
             <>
+              {replyTo && editingId === null && (
+                <View
+                  className="mb-2 flex-row items-center gap-2 rounded-lg px-3 py-2"
+                  style={{
+                    borderLeftWidth: 3,
+                    borderLeftColor: palette.yellow,
+                    backgroundColor: palette.paper,
+                  }}
+                >
+                  <View className="flex-1">
+                    <Txt
+                      className="text-muted text-[12px]"
+                      style={{ fontFamily: 'Inter_600SemiBold' }}
+                    >
+                      Odpovedáš{' '}
+                      {replyTo.sender_id === userId ? 'sebe' : `@${contact.nickname ?? ''}`}
+                    </Txt>
+                    <Txt numberOfLines={1} className="text-[13px]">
+                      {snippet(replyTo.body, !!replyTo.image_path)}
+                    </Txt>
+                  </View>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    isIconOnly
+                    accessibilityLabel="Zrušiť odpoveď"
+                    onPress={() => setReplyTo(null)}
+                  >
+                    <X size={16} strokeWidth={1.8} color={palette.muted} />
+                  </Button>
+                </View>
+              )}
               {editingId !== null && (
                 <View className="mb-2 flex-row items-center justify-between">
                   <Txt className="text-muted text-[13px]">Upravuješ svoju správu</Txt>
@@ -794,7 +937,10 @@ function ConversationContent({
               )}
               <MessageComposer
                 text={text}
-                onChangeText={setText}
+                onChangeText={(value) => {
+                  setText(value);
+                  if (value.trim() && editingId === null) sendTyping(id);
+                }}
                 photo={photo}
                 onSelectPhoto={selectPhoto}
                 onRemovePhoto={() => {
@@ -814,6 +960,93 @@ function ConversationContent({
           </Button>
         </View>
       </View>
+      {/* Ponuka po podržaní správy: reakcia, odpoveď, úprava. */}
+      <Modal
+        visible={!!menuFor}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuFor(null)}
+      >
+        <Pressable
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+          onPress={() => setMenuFor(null)}
+          accessibilityLabel="Zavrieť ponuku"
+        >
+          <Pressable
+            className="bg-surface gap-3 rounded-t-2xl p-5"
+            style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+            onPress={() => undefined}
+          >
+            <Txt numberOfLines={2} className="text-muted text-[13px]">
+              {menuFor ? snippet(menuFor.body, !!menuFor.image_path) : ''}
+            </Txt>
+            <View className="flex-row justify-between">
+              {REACTIONS.map((emoji) => {
+                const current = (query.data?.reactions ?? []).find(
+                  (r) => r.messageId === menuFor?.id && r.userId === userId,
+                )?.emoji;
+                return (
+                  <Pressable
+                    key={emoji}
+                    accessibilityLabel={`Reakcia ${emoji}`}
+                    onPress={() => {
+                      const target = menuFor;
+                      setMenuFor(null);
+                      if (!target) return;
+                      void react(target.id, current === emoji ? null : emoji)
+                        .then(() => {
+                          feedback.selection();
+                          return query.refresh();
+                        })
+                        .catch((e: unknown) => {
+                          setError(e instanceof Error ? e.message : 'Reakcia sa nepodarila.');
+                          feedback.error();
+                        });
+                    }}
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 21,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: current === emoji ? palette.yellow : palette.paper,
+                    }}
+                  >
+                    <Txt className="text-[22px]">{emoji}</Txt>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {menuFor && !isCallMessage(menuFor.body) && (
+              <Button
+                variant="secondary"
+                onPress={() => {
+                  setReplyTo(menuFor);
+                  setMenuFor(null);
+                }}
+              >
+                <Button.Label>Odpovedať</Button.Label>
+              </Button>
+            )}
+            {menuFor && menuFor.id === newestMineId && (
+              <Button
+                variant="secondary"
+                onPress={() => {
+                  const target = menuFor;
+                  setMenuFor(null);
+                  startEdit(target);
+                }}
+              >
+                <Button.Label>Upraviť správu</Button.Label>
+              </Button>
+            )}
+            <Button variant="ghost" onPress={() => setMenuFor(null)}>
+              <Button.Label>Zrušiť</Button.Label>
+            </Button>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
