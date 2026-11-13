@@ -4,6 +4,7 @@ import { Button, PressableFeedback } from 'heroui-native';
 import { Target, ChevronRight } from 'lucide-react-native';
 import { Page, Txt, Heading, FriendRow, StorageNotice, LoadingRows } from '@/components/DartsUI';
 import { Dartboard } from '@/components/Dartboard';
+import { LinearGradient } from 'expo-linear-gradient';
 import { palette, useDarts } from '@/lib/darts';
 import { useExtraGames } from '@/lib/games';
 import { useCallback, useMemo, useState } from 'react';
@@ -57,9 +58,9 @@ export default function Home() {
   const compact = useWindowDimensions().width < 360;
   // Karta je široká ako obsah stránky (max-w-xl = 576 px), na tablete nerastie ďalej.
   const cardWidth = Math.min(useWindowDimensions().width - 40, 576);
-  const boardSize = cardWidth * 1.8;
+  const boardSize = cardWidth * 1.0;
   // Karta je o niečo vyššia, aby sa zmestili tlačidlá nad aj pod nápisom.
-  const cardHeight = cardWidth * 1.15;
+  const cardHeight = cardWidth * 1.12;
   // Šírka miesta pre nápis — písmo sa jej prispôsobí (na výšku menšie, na šírku väčšie).
   const [titleWidth, setTitleWidth] = useState(0);
   const titleFont = titleWidth > 0 ? Math.round((titleWidth + 32) / 4.77) : compact ? 68 : 84;
@@ -168,109 +169,131 @@ export default function Home() {
       {social.data && session && (
         <OpenMatches matches={social.data.matches} userId={session.user.id} />
       )}
-      {/* 3) RÁMIK pod pozvánkami — terč na celej ploche */}
-      <View className="bg-ink mt-4 overflow-hidden rounded-[24px]">
-        <View style={{ height: cardHeight }} className="relative w-full">
-          <View
-            className="absolute"
-            style={{
-              width: boardSize,
-              height: boardSize,
-              left: (cardWidth - boardSize) / 2,
-              top: (cardHeight - boardSize) / 2,
-            }}
-          >
-            <Dartboard dart={false} size={boardSize} />
-          </View>
-          <View
-            className="absolute inset-0"
-            style={{ backgroundColor: palette.ink, opacity: 0.45 }}
-          />
-          <View className="absolute inset-0 justify-between p-5">
+      {/* 3) KARTA vo farbách skóre boxu zo zápasu: tmavomodrá, žltá, svetlomodrošedá.
+          Terč je dekorácia v pravom hornom rohu, texty a tlačidlá vľavo dole. */}
+      <View className="bg-ink mt-4 overflow-hidden rounded-[28px]" style={{ height: cardHeight }}>
+        <View
+          className="absolute"
+          style={{
+            width: boardSize,
+            height: boardSize,
+            right: -boardSize * 0.32,
+            top: -boardSize * 0.36,
+          }}
+        >
+          <Dartboard dart={false} tone="board" size={boardSize} />
+        </View>
+        {/* Prechod do tmavomodrej, aby texty a tlačidlá ostali čitateľné. */}
+        <LinearGradient
+          colors={[palette.ink, 'rgba(25,36,56,0.92)', 'rgba(25,36,56,0.15)']}
+          locations={[0, 0.55, 1]}
+          start={{ x: 0.5, y: 1 }}
+          end={{ x: 0.85, y: 0 }}
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+        />
+        <View className="absolute inset-0 justify-between p-5 pb-6">
+          <View className="gap-2">
+            <View className="flex-row items-center gap-2">
+              <View className="bg-accent h-1.5 w-1.5 rounded-full" />
+              <View className="bg-accent h-1.5 w-6 rounded-full" />
+            </View>
             <Txt
-              className="text-[28px] leading-[34px] text-white"
               style={{
                 fontFamily: 'Inter_700Bold',
                 letterSpacing: -0.8,
                 fontSize: compact ? 24 : 28,
                 lineHeight: compact ? 30 : 34,
+                color: palette.white,
               }}
             >
-              Terč doma.{'\n'}Súper kdekoľvek.
-            </Txt>
-            <View>
-              {/* Online a offline hra nad nápisom, každé na polovicu šírky. */}
-              <View className="mb-3 flex-row gap-2">
-                {(
-                  [
-                    ['Hrať online', '/online'],
-                    ['Hrať offline', '/new-match'],
-                  ] as const
-                ).map(([text, href]) => (
-                  <Button
-                    key={href}
-                    size="lg"
-                    onPress={() => router.push(href)}
-                    className="flex-1 rounded-xl px-2"
-                  >
-                    <Button.Label
-                      numberOfLines={1}
-                      style={{ fontFamily: 'Inter_600SemiBold', fontSize: buttonFont }}
-                    >
-                      {text}
-                    </Button.Label>
-                  </Button>
-                ))}
-              </View>
-              <View
-                onLayout={(e) => {
-                  const w = e.nativeEvent.layout.width;
-                  if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
+              Terč doma.{'\n'}
+              <Txt
+                style={{
+                  fontFamily: 'Inter_700Bold',
+                  letterSpacing: -0.8,
+                  fontSize: compact ? 24 : 28,
+                  lineHeight: compact ? 30 : 34,
+                  color: palette.yellow,
                 }}
               >
-                {/* Nápis s hrubým čiernym obrysom: čierne kópie posunuté do 8 smerov
-                    pod žltým textom (funguje na webe aj v mobile). */}
-                <View style={{ position: 'relative' }}>
-                  {OUTLINE.map(([dx, dy]) => (
-                    <Txt
-                      key={`${dx}:${dy}`}
-                      aria-hidden
-                      accessibilityElementsHidden
-                      importantForAccessibility="no-hide-descendants"
-                      numberOfLines={1}
-                      style={{
-                        ...titleStyle,
-                        position: 'absolute',
-                        left: dx * outline,
-                        top: dy * outline,
-                        color: '#000',
-                      }}
-                    >
-                      DartMate
-                    </Txt>
-                  ))}
-                  <Txt numberOfLines={1} className="text-accent" style={titleStyle}>
+                Súper kdekoľvek.
+              </Txt>
+            </Txt>
+          </View>
+          <View>
+            {/* Online a offline hra nad nápisom, každé na polovicu šírky. */}
+            <View className="mb-2 flex-row gap-2">
+              {(
+                [
+                  ['Hrať online', '/online'],
+                  ['Hrať offline', '/new-match'],
+                ] as const
+              ).map(([text, href]) => (
+                <Button
+                  key={href}
+                  size="lg"
+                  onPress={() => router.push(href)}
+                  className="flex-1 rounded-2xl px-2"
+                >
+                  <Button.Label
+                    numberOfLines={1}
+                    style={{ fontFamily: 'Inter_700Bold', fontSize: buttonFont }}
+                  >
+                    {text}
+                  </Button.Label>
+                </Button>
+              ))}
+            </View>
+            <View
+              onLayout={(e) => {
+                const w = e.nativeEvent.layout.width;
+                if (Math.abs(w - titleWidth) > 1) setTitleWidth(w);
+              }}
+            >
+              {/* Nápis s hrubým čiernym obrysom: čierne kópie posunuté do 8 smerov
+                  pod žltým textom (funguje na webe aj v mobile). */}
+              <View style={{ position: 'relative' }}>
+                {OUTLINE.map(([dx, dy]) => (
+                  <Txt
+                    key={`${dx}:${dy}`}
+                    aria-hidden
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                    numberOfLines={1}
+                    style={{
+                      ...titleStyle,
+                      position: 'absolute',
+                      left: dx * outline,
+                      top: dy * outline,
+                      color: '#000',
+                    }}
+                  >
                     DartMate
                   </Txt>
-                </View>
+                ))}
+                <Txt numberOfLines={1} className="text-accent" style={titleStyle}>
+                  DartMate
+                </Txt>
               </View>
-              {/* Tréning pod nápisom, cca 3/4 šírky karty. */}
-              <Button
-                size="lg"
-                onPress={() => router.push('/games')}
-                className="mt-3 self-center rounded-xl"
-                style={{ width: '75%' }}
-              >
-                <Button.Label
-                  numberOfLines={1}
-                  style={{ fontFamily: 'Inter_600SemiBold', fontSize: buttonFont }}
-                >
-                  Tréning
-                </Button.Label>
-              </Button>
             </View>
+            {/* Tréning pod nápisom, cca 3/4 šírky karty. */}
+            <Button
+              size="lg"
+              onPress={() => router.push('/games')}
+              className="mt-2 self-center rounded-2xl"
+              style={{ width: '75%' }}
+            >
+              <Button.Label
+                numberOfLines={1}
+                style={{ fontFamily: 'Inter_700Bold', fontSize: buttonFont }}
+              >
+                Tréning
+              </Button.Label>
+            </Button>
           </View>
         </View>
+        {/* Žltý pásik dole ako pri skóre boxe v zápase. */}
+        <View className="bg-accent absolute right-0 bottom-0 left-0" style={{ height: 6 }} />
       </View>
       {game && (
         <Button className="mt-5" variant="secondary" onPress={() => router.push('/match')}>
