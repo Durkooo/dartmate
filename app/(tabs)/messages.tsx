@@ -208,7 +208,7 @@ function LocalMessages() {
               <Button.Label>Prihlásiť sa pre skutočné správy</Button.Label>
             </Button>
             <Txt className="text-muted mt-3 text-[13px]">
-              Ukážkové konverzácie · správy ostávajú u teba
+              Lokálne konverzácie · správy ostávajú u teba
             </Txt>
           </View>
         }

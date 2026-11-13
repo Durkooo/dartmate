@@ -154,15 +154,19 @@ export default function Home() {
         )
       ) : (
         <>
-          <Txt className="text-muted mt-1 text-[12px]">
-            Ukážkoví hráči na vyskúšanie lokálneho zápasu
-          </Txt>
-          {hydrated ? (
-            friends
-              .slice(0, 3)
-              .map((friend) => <FriendRow key={friend.id} friend={friend} action="play" />)
-          ) : (
+          {!hydrated ? (
             <LoadingRows />
+          ) : friends.length ? (
+            <>
+              <Txt className="text-muted mt-1 text-[12px]">Lokálni hráči na tomto telefóne</Txt>
+              {friends.slice(0, 3).map((friend) => (
+                <FriendRow key={friend.id} friend={friend} action="play" />
+              ))}
+            </>
+          ) : (
+            <Button variant="secondary" className="mt-3" onPress={() => router.push('/account')}>
+              <Button.Label>Prihlásiť sa a nájsť priateľov</Button.Label>
+            </Button>
           )}
         </>
       )}

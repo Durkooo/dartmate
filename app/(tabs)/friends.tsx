@@ -231,7 +231,7 @@ export default function Friends() {
             />
             <View className="mt-7 mb-1 flex-row justify-between gap-2">
               <Txt className="text-muted text-[13px]">
-                {session ? 'Tvoja partia' : 'Ukážková partia'}
+                {session ? 'Tvoja partia' : 'Lokálni hráči'}
               </Txt>
               {!busy && (
                 <Txt className="text-muted text-[13px]">
@@ -300,12 +300,7 @@ export default function Friends() {
                   <ChevronRight size={20} color={palette.muted} strokeWidth={1.8} />
                 </PressableFeedback>
               ) : (
-                <FriendRow
-                  friend={item}
-                  detail={
-                    item.demo ? `@${item.handle} · ukážkový hráč` : `@${item.handle} · lokálny hráč`
-                  }
-                />
+                <FriendRow friend={item} detail={`@${item.handle} · lokálny hráč`} />
               )}
             </Animated.View>
           );

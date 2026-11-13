@@ -78,28 +78,8 @@ export type Game = {
   winner: 0 | 1 | null;
   date: string;
 };
-const sampleFriends: Friend[] = [
-  { id: 'martin', name: 'Martin Kováč', handle: 'martin.k', color: 'blue', demo: true },
-  { id: 'lucia', name: 'Lucia Novotná', handle: 'lucia.n', color: 'lavender', demo: true },
-  { id: 'peter', name: 'Peter Šimko', handle: 'peter.s', color: 'peach', demo: true },
-];
-const sampleMessages: Message[] = [
-  { id: 'sample-1', friendId: 'martin', text: 'Dáme večer jednu 501?', mine: false, time: '18:42' },
-  {
-    id: 'sample-2',
-    friendId: 'lucia',
-    text: 'Dnes mi to konečne lieta!',
-    mine: false,
-    time: '17:15',
-  },
-  {
-    id: 'sample-3',
-    friendId: 'peter',
-    text: 'Budúci týždeň si dáme odvetu. Dovtedy potrénujem double 16.',
-    mine: false,
-    time: '16:08',
-  },
-];
+/** Ukážkoví hráči z prvých verzií (Martin, Lucia, Peter) — pri načítaní sa zmažú. */
+const DEMO_FRIEND_IDS = new Set(['martin', 'lucia', 'peter']);
 export function scores(game: Game): [number, number] {
   const result: [number, number] = [game.starting, game.starting];
   for (const turn of game.turns) {
@@ -254,8 +234,8 @@ function fixGame(g: unknown): Record<string, unknown> {
 export const useDarts = create<DartsState>()(
   persist(
     (set, get) => ({
-      friends: sampleFriends,
-      messages: sampleMessages,
+      friends: [],
+      messages: [],
       game: null,
       history: [],
       hydrated: false,
@@ -417,6 +397,14 @@ export const useDarts = create<DartsState>()(
       },
       onRehydrateStorage: () => (restored, error) => {
         useDarts.setState({ hydrated: true, storageError: !!error });
+        // Ukážkových hráčov a ich ukážkové správy zo starších verzií odstránime.
+        const loaded = useDarts.getState();
+        const friends = loaded.friends.filter((f) => !f.demo && !DEMO_FRIEND_IDS.has(f.id));
+        const messages = loaded.messages.filter(
+          (m) => !DEMO_FRIEND_IDS.has(m.friendId) && !m.id.startsWith('sample-'),
+        );
+        if (friends.length !== loaded.friends.length || messages.length !== loaded.messages.length)
+          useDarts.setState({ friends, messages });
         if (error) feedback.error();
         // Nedokončený lokálny zápas starší než 3 dni sa automaticky zruší.
         const value: unknown = restored;
