@@ -8,6 +8,7 @@ import { feedback } from '@/lib/darts';
 import { useHardwareKeyboard, useInputSettings } from '@/lib/scoreInput';
 import { usePlayers } from '@/lib/players';
 import { getThemePref, setThemePref } from '@/lib/theme';
+import { backupNow, restoreBackup, useBackup } from '@/lib/backup';
 import {
   loadCameraPrefs,
   saveCameraPrefs,
@@ -173,6 +174,90 @@ function ThemeSettings() {
   );
 }
 
+/** Záloha: lokálne zápasy, tréningy a rekordy na serveri pri tvojom účte. */
+function BackupSettings() {
+  const session = usePlayers((s) => s.session);
+  const lastBackup = useBackup((s) => s.lastBackup);
+  const problem = useBackup((s) => s.problem);
+  const busy = useBackup((s) => s.busy);
+  const [note, setNote] = useState('');
+  return (
+    <View className="gap-3">
+      <Txt className="text-[17px]" style={{ fontFamily: 'Inter_700Bold' }}>
+        Záloha
+      </Txt>
+      {!session ? (
+        <Txt className="text-muted text-[13px] leading-5">
+          Prihlás sa a offline zápasy, tréningy aj rekordy sa budú samy zálohovať k tvojmu účtu.
+        </Txt>
+      ) : (
+        <>
+          <Txt className="text-muted text-[13px] leading-5">
+            Offline zápasy, história a rekordy tréningov, lokálni hráči a nastavenia sa samy
+            zálohujú k tvojmu účtu. Na novom telefóne sa po prihlásení samy obnovia — záloha sa
+            spojí s tým, čo je v telefóne, nič sa neprepíše.
+          </Txt>
+          <View className="bg-surface rounded-xl px-4 py-3">
+            <Txt className="text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+              {problem
+                ? problem
+                : lastBackup
+                  ? `Posledná záloha: ${new Date(lastBackup).toLocaleString('sk-SK', {
+                      day: 'numeric',
+                      month: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}`
+                  : 'Záloha ešte neprebehla.'}
+            </Txt>
+            {!!note && <Txt className="text-muted mt-1 text-[12px]">{note}</Txt>}
+          </View>
+          <View className="flex-row gap-2">
+            <Button
+              className="flex-1 px-1"
+              variant="secondary"
+              isDisabled={busy}
+              onPress={() => {
+                setNote('');
+                void backupNow().then((ok) => {
+                  if (ok) {
+                    setNote('Zálohované.');
+                    feedback.success();
+                  } else feedback.error();
+                });
+              }}
+            >
+              <Button.Label numberOfLines={1}>{busy ? 'Čakaj…' : 'Zálohovať teraz'}</Button.Label>
+            </Button>
+            <Button
+              className="flex-1 px-1"
+              variant="tertiary"
+              isDisabled={busy}
+              onPress={() => {
+                setNote('');
+                void restoreBackup().then((added) => {
+                  if (added === null) {
+                    feedback.error();
+                    return;
+                  }
+                  setNote(
+                    added
+                      ? `Obnovené zo zálohy: pribudlo ${added} zápasov/tréningov.`
+                      : 'Všetko zo zálohy už v telefóne je.',
+                  );
+                  feedback.success();
+                });
+              }}
+            >
+              <Button.Label numberOfLines={1}>Obnoviť zo zálohy</Button.Label>
+            </Button>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
 /** Nastavenia: všetko na jednom mieste (otvára sa z Môjho účtu). */
 export default function SettingsScreen() {
   const session = usePlayers((s) => s.session);
@@ -194,6 +279,7 @@ export default function SettingsScreen() {
       <View className="mt-3 gap-5">
         <Heading>Nastavenia</Heading>
         <ThemeSettings />
+        <BackupSettings />
         {!!session && (
           <View className="gap-4">
             <View>

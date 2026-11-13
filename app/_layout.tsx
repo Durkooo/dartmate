@@ -16,6 +16,7 @@ import * as DevClient from 'expo-dev-client';
 import { HeroUINativeProvider } from 'heroui-native';
 import { Uniwind } from 'uniwind';
 import { applyTheme } from '@/lib/theme';
+import { useAutoBackup } from '@/lib/backup';
 import {
   ErrorBoundary as ExpoErrorBoundary,
   type ErrorBoundaryProps,
@@ -79,6 +80,8 @@ function usePushRegistration() {
 export default function RootLayout() {
   usePlayerSession();
   useOnlinePresence();
+  // Záloha lokálnych dát k účtu (a spojenie so zálohou pri prihlásení).
+  useAutoBackup();
   usePushRegistration();
   const [loaded, error] = useFonts({
     Inter_400Regular,
