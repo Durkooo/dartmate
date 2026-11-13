@@ -18,6 +18,8 @@ export type VideoCallProps = {
   initialFacing?: 'user' | 'environment';
   /** Konkrétne zariadenie (id z výberu kamier); má prednosť pred stranou. */
   initialDeviceId?: string;
+  /** Chat-hovor: keď priateľ hovor položí, ukončí sa aj u mňa (zápasové video nie). */
+  endWhenPeerLeaves?: boolean;
 };
 
 const expoGoError =

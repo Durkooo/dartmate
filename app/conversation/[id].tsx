@@ -568,6 +568,7 @@ function ConversationContent({
                 peerName={contact?.nickname ?? undefined}
                 initialFacing={camPrefs.call}
                 initialDeviceId={camPrefs.callDeviceId}
+                endWhenPeerLeaves
               />
             </ScrollView>
           )}

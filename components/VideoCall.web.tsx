@@ -29,7 +29,9 @@ import type { VideoCallProps } from '@/components/VideoCall';
 type MediaTrack = { track: Track | undefined; local: boolean };
 /** Stav súperovho obrazu pre diagnostiku (null = video svieti, netreba nič). */
 function peerStatus(room: Room, tracks: MediaTrack[]): string | null {
-  if (tracks.some((t) => !t.local && t.track && !t.track.isMuted)) return null;
+  // Len video — súperov mikrofón neznamená, že vidno jeho obraz.
+  if (tracks.some((t) => !t.local && t.track?.kind === Track.Kind.Video && !t.track.isMuted))
+    return null;
   const peer = [...room.remoteParticipants.values()][0];
   if (!peer) return 'Súper sa ešte nepripojil';
   const pub = peer.getTrackPublication(Track.Source.Camera);
@@ -68,11 +70,13 @@ export default function VideoCall({
   peerName,
   initialFacing,
   initialDeviceId,
+  endWhenPeerLeaves = false,
 }: VideoCallProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState('');
   const [request, setRequest] = useState({ matchId });
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
+  const [peerInfo, setPeerInfo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const micRef = useRef(micWanted);
@@ -91,6 +95,13 @@ export default function VideoCall({
   const localHost = useRef<HTMLDivElement>(null);
   const remoteHost = useRef<HTMLDivElement>(null);
   const [previousSession, setPreviousSession] = useState(request);
+  // Najnovšie onLeave / endWhenPeerLeaves pre udalosti miestnosti (bez reštartu efektu).
+  const leaveRef = useRef(onLeave);
+  const endRef = useRef(endWhenPeerLeaves);
+  useEffect(() => {
+    leaveRef.current = onLeave;
+    endRef.current = endWhenPeerLeaves;
+  }, [onLeave, endWhenPeerLeaves]);
   // Vlastné credentials (chat) cez refku, aby sa efekt nespúšťal dookola.
   const credsRef = useRef(getCredentials);
   useEffect(() => {
@@ -117,10 +128,23 @@ export default function VideoCall({
     };
     const update = () => {
       if (active) {
-        setTracks(
-          snapshotTracks(session).filter(
-            ({ track }) => !audioOnly || track?.kind === Track.Kind.Audio,
-          ),
+        const next = snapshotTracks(session).filter(
+          ({ track }) => !audioOnly || track?.kind === Track.Kind.Audio,
+        );
+        // Text stavu súpera počítame tu (mení sa aj bez zmeny stôp — napr. zverejnená,
+        // ale ešte neodobratá kamera); rovnaký reťazec React neprekreslí.
+        setPeerInfo(peerStatus(session, next));
+        // Rovnaké stopy v rovnakom stave → bez prekreslenia (pravidelná obnova).
+        setTracks((prev) =>
+          prev.length === next.length &&
+          prev.every(
+            (t, i) =>
+              t.track === next[i].track &&
+              t.local === next[i].local &&
+              t.track?.isMuted === next[i].track?.isMuted,
+          )
+            ? prev
+            : next,
         );
         setAudioBlocked(!session.canPlaybackAudio);
         setCamera(session.localParticipant.isCameraEnabled);
@@ -150,7 +174,34 @@ export default function VideoCall({
       .on(RoomEvent.TrackMuted, update)
       .on(RoomEvent.TrackUnmuted, update)
       .on(RoomEvent.ParticipantConnected, update)
-      .on(RoomEvent.ParticipantDisconnected, update);
+      .on(RoomEvent.ParticipantDisconnected, update)
+      // Súper zapne kameru až po pripojení → bez týchto udalostí ostal na iPhone
+      // starý stav „kameru nevysiela“ a obraz sa nikdy nevykreslil.
+      .on(RoomEvent.TrackPublished, update)
+      .on(RoomEvent.TrackUnpublished, update)
+      .on(RoomEvent.TrackSubscriptionFailed, update)
+      .on(RoomEvent.TrackSubscriptionStatusChanged, update);
+    // Poistka: stav miestnosti obnovíme aj pravidelne (keby nejaká udalosť nedorazila).
+    const refresh = setInterval(update, 2000);
+    // Chat-hovor: keď priateľ hovor položí (odíde z miestnosti), ukončíme ho aj tu.
+    // Krátka pauza, aby krátky výpadok siete hovor hneď neukončil.
+    let peerSeen = false;
+    let leaveTimer: ReturnType<typeof setTimeout> | undefined;
+    session
+      .on(RoomEvent.ParticipantConnected, () => {
+        peerSeen = true;
+        clearTimeout(leaveTimer);
+      })
+      .on(RoomEvent.ParticipantDisconnected, () => {
+        if (!endRef.current || !peerSeen || session.remoteParticipants.size > 0) return;
+        clearTimeout(leaveTimer);
+        leaveTimer = setTimeout(() => {
+          if (active && session.remoteParticipants.size === 0) {
+            feedback.selection();
+            leaveRef.current();
+          }
+        }, 2500);
+      });
     void (async () => {
       try {
         const credentials = await (credsRef.current
@@ -158,6 +209,7 @@ export default function VideoCall({
           : getVideoCredentials(request.matchId));
         if (!active) return;
         await session.connect(credentials.url, credentials.token);
+        if (session.remoteParticipants.size > 0) peerSeen = true;
         if (!active) {
           await session.disconnect();
           return;
@@ -233,6 +285,8 @@ export default function VideoCall({
     return () => {
       active = false;
       currentRoom.current = null;
+      clearInterval(refresh);
+      clearTimeout(leaveTimer);
       session.removeAllListeners();
       void session.disconnect();
     };
@@ -433,6 +487,19 @@ export default function VideoCall({
         )
           remoteVideo = element;
       if (!remoteVideo) {
+        // Súper kameru vysiela, ale odber sa nerozbehol → požiadame oň znova.
+        const pub = [...room.remoteParticipants.values()]
+          .map((p) => p.getTrackPublication(Track.Source.Camera))
+          .find((p) => p instanceof RemoteTrackPublication && !p.isMuted && !p.isSubscribed);
+        if (pub instanceof RemoteTrackPublication) {
+          misses += 1;
+          if (misses === 2 || misses % 5 === 0) {
+            pub.setSubscribed(false);
+            setTimeout(() => pub.setSubscribed(true), 400);
+          }
+          if (misses >= 3) setRemoteStuck(true);
+          return;
+        }
         misses = 0;
         setRemoteStuck(false);
         return;
@@ -517,14 +584,11 @@ export default function VideoCall({
         </View>
       ) : (
         <>
-          {(() => {
-            const s = room ? peerStatus(room, tracks) : null;
-            return s ? (
-              <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
-                {s}
-              </Txt>
-            ) : null;
-          })()}
+          {!!peerInfo && (
+            <Txt className="text-muted mb-2 text-[12px]" numberOfLines={1}>
+              {peerInfo}
+            </Txt>
+          )}
           <View className="gap-3">
             <View>
               <Txt className="mb-1 text-[12px]" numberOfLines={1}>
