@@ -140,6 +140,19 @@ export function bobsUndo(g: BobsGame): BobsGame {
   return { round: g.round - 1, ...prev, over: false, past: g.past.slice(0, -1) };
 }
 
+// ───────────────────── Počet kôl (spoločné) ─────────────────────
+/** null = nekonečno (hrá sa, kým hráč tréning neukončí). */
+export type RoundsCount = number | null;
+export const ROUND_OPTIONS: RoundsCount[] = [5, 10, 15, 20, null];
+export const roundsLabel = (r: RoundsCount) => (r === null ? '∞' : String(r));
+/** „Kolo 3 z 10“ / „Kolo 3“ pri nekonečne. */
+export const roundOf = (current: number, total: RoundsCount) =>
+  total === null ? `Kolo ${current}` : `Kolo ${Math.min(current, total)} z ${total}`;
+/** Ukončenie tréningu s nekonečnom kôl (alebo skôr). */
+export function endTraining<T extends { done: boolean }>(g: T): T {
+  return { ...g, done: true };
+}
+
 // ───────────────────────── 121 ─────────────────────────
 /** 10 pokusov na zatvorenie s vybraným počtom šípok (3/6/9/12). Zatvorené =
  *  ďalší cieľ o 1 vyšší, nezatvorené = späť na 121. */
@@ -155,12 +168,15 @@ export type C121Game = {
   done: boolean;
   /** Šípky na jeden pokus (staršie uložené hry = 9). */
   darts?: C121Darts;
+  /** Počet pokusov (null = nekonečno; staršie hry = 10). */
+  rounds?: RoundsCount;
   /** Najdlhšia séria zatvorení po sebe. */
   bestStreak?: number;
   streak?: number;
   past: Omit<C121Game, 'past'>[];
 };
-export const newC121 = (darts: C121Darts = 9): C121Game => ({
+export const newC121 = (darts: C121Darts = 9, rounds: RoundsCount = 10): C121Game => ({
+  rounds,
   target: C121_START,
   attempt: 0,
   successes: 0,
@@ -181,8 +197,11 @@ export function c121Attempt(g: C121Game, success: boolean): C121Game {
     attempt,
     successes: g.successes + (success ? 1 : 0),
     best: success ? Math.max(g.best, g.target) : g.best,
-    done: attempt >= C121_ATTEMPTS,
+    done:
+      (g.rounds === undefined ? C121_ATTEMPTS : g.rounds) !== null &&
+      attempt >= (g.rounds ?? C121_ATTEMPTS),
     darts: g.darts ?? 9,
+    rounds: g.rounds === undefined ? C121_ATTEMPTS : g.rounds,
     streak,
     bestStreak: Math.max(g.bestStreak ?? 0, streak),
     past: [...past, prev],
@@ -196,15 +215,22 @@ export function c121Undo(g: C121Game): C121Game {
 // ───────────────────────── Highscore ─────────────────────────
 /** 10 kôl po 3 šípky, cieľ = čo najvyšší súčet bodov. */
 export const HIGHSCORE_ROUNDS = 10;
-export type HighscoreGame = { scores: number[]; done: boolean };
-export const newHighscore = (): HighscoreGame => ({ scores: [], done: false });
+export type HighscoreGame = { scores: number[]; done: boolean; rounds?: RoundsCount };
+export const newHighscore = (rounds: RoundsCount = HIGHSCORE_ROUNDS): HighscoreGame => ({
+  scores: [],
+  done: false,
+  rounds,
+});
+export const highscoreRounds = (g: HighscoreGame) =>
+  g.rounds === undefined ? HIGHSCORE_ROUNDS : g.rounds;
 export function highscoreRound(g: HighscoreGame, score: number): HighscoreGame {
   if (g.done || score < 0 || score > 180) return g;
   const scores = [...g.scores, score];
-  return { scores, done: scores.length >= HIGHSCORE_ROUNDS };
+  const total = highscoreRounds(g);
+  return { ...g, scores, done: total !== null && scores.length >= total };
 }
 export function highscoreUndo(g: HighscoreGame): HighscoreGame {
-  return g.scores.length ? { scores: g.scores.slice(0, -1), done: false } : g;
+  return g.scores.length ? { ...g, scores: g.scores.slice(0, -1), done: false } : g;
 }
 export const highscoreTotal = (g: HighscoreGame) => g.scores.reduce((a, b) => a + b, 0);
 
@@ -213,19 +239,32 @@ export const highscoreTotal = (g: HighscoreGame) => g.scores.reduce((a, b) => a 
  *  1 šípkou = 3, 2 šípkami = 2, 3 šípkami = 1, nezatvorené = 0. */
 export const FINISH_ROUNDS = 20;
 export type FinishGame = {
+  /** Počet kôl (null = nekonečno; staršie hry = 20). */
+  rounds?: RoundsCount;
   targets: number[];
   /** Body za odohrané kolá (0–3). */
   results: number[];
   done: boolean;
 };
-function randomTargets(): number[] {
-  return Array.from({ length: FINISH_ROUNDS }, () => 2 + Math.floor(Math.random() * 49));
-}
-export const newFinish = (): FinishGame => ({ targets: randomTargets(), results: [], done: false });
+const randomFinish = () => 2 + Math.floor(Math.random() * 49);
+export const finishRounds = (g: FinishGame) => (g.rounds === undefined ? FINISH_ROUNDS : g.rounds);
+export const newFinish = (rounds: RoundsCount = FINISH_ROUNDS): FinishGame => ({
+  rounds,
+  targets: [randomFinish()],
+  results: [],
+  done: false,
+});
+/** Číslo aktuálneho kola. */
+export const finishTarget = (g: FinishGame) => g.targets[g.results.length] ?? null;
 export function finishRound(g: FinishGame, points: 0 | 1 | 2 | 3): FinishGame {
   if (g.done) return g;
   const results = [...g.results, points];
-  return { ...g, results, done: results.length >= FINISH_ROUNDS };
+  const total = finishRounds(g);
+  const done = total !== null && results.length >= total;
+  // Ďalšie číslo sa vyžrebuje až keď treba (nekonečno nemá dopredu zoznam).
+  const targets =
+    !done && g.targets.length <= results.length ? [...g.targets, randomFinish()] : g.targets;
+  return { ...g, targets, results, done };
 }
 export function finishUndo(g: FinishGame): FinishGame {
   return g.results.length ? { ...g, results: g.results.slice(0, -1), done: false } : g;
@@ -243,6 +282,77 @@ export function finishHint(n: number): string {
   return n > 40 ? `S${n - 40} D20` : `S1 D${(n - 1) / 2}`;
 }
 
+// ─────────────────────── Random Checkout ───────────────────────
+/** Náhodné zatvoriteľné čísla 2–170 (double out), na každé zvolený počet šípok.
+ *  Zatvorené = body vo výške čísla, nezatvorené = nič, ide sa ďalej. */
+export const RC_DART_OPTIONS = [3, 6, 9] as const;
+export type RcDarts = (typeof RC_DART_OPTIONS)[number];
+export type RandomCheckoutGame = {
+  rounds: RoundsCount;
+  darts: RcDarts;
+  targets: number[];
+  results: boolean[];
+  done: boolean;
+};
+const BOGEY = [159, 162, 163, 165, 166, 168, 169];
+function randomCheckoutNumber(): number {
+  for (;;) {
+    const n = 2 + Math.floor(Math.random() * 169);
+    if (!BOGEY.includes(n)) return n;
+  }
+}
+export const newRandomCheckout = (rounds: RoundsCount, darts: RcDarts): RandomCheckoutGame => ({
+  rounds,
+  darts,
+  targets: [randomCheckoutNumber()],
+  results: [],
+  done: false,
+});
+export const rcTarget = (g: RandomCheckoutGame) => g.targets[g.results.length] ?? null;
+export function rcRound(g: RandomCheckoutGame, closed: boolean): RandomCheckoutGame {
+  if (g.done) return g;
+  const results = [...g.results, closed];
+  const done = g.rounds !== null && results.length >= g.rounds;
+  const targets =
+    !done && g.targets.length <= results.length
+      ? [...g.targets, randomCheckoutNumber()]
+      : g.targets;
+  return { ...g, targets, results, done };
+}
+export function rcUndo(g: RandomCheckoutGame): RandomCheckoutGame {
+  return g.results.length ? { ...g, results: g.results.slice(0, -1), done: false } : g;
+}
+/** Body = súčet zatvorených čísel. */
+export const rcPoints = (g: RandomCheckoutGame) =>
+  g.results.reduce((sum, ok, i) => sum + (ok ? g.targets[i] : 0), 0);
+
+/** Odporúčaná cesta zatvorenia do 170 (najmenej šípok, obľúbené čísla). */
+const PREFERRED: { label: string; value: number }[] = [
+  ...[20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10].map((n) => ({ label: `T${n}`, value: n * 3 })),
+  { label: 'Bull', value: 50 },
+  { label: '25', value: 25 },
+  ...Array.from({ length: 20 }, (_, i) => 20 - i).map((n) => ({ label: `S${n}`, value: n })),
+  ...[9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => ({ label: `T${n}`, value: n * 3 })),
+];
+const DOUBLES: { label: string; value: number }[] = [
+  ...[20, 16, 18, 10, 8, 12, 14, 6, 4, 2, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1].map((n) => ({
+    label: `D${n}`,
+    value: n * 2,
+  })),
+  { label: 'Bull', value: 50 },
+];
+export function checkoutRoute(n: number): string {
+  for (const d of DOUBLES) if (d.value === n) return d.label;
+  // Najprv obľúbený double na konci, až potom šípky pred ním.
+  for (const d of DOUBLES)
+    for (const a of PREFERRED) if (a.value + d.value === n) return `${a.label} ${d.label}`;
+  for (const d of DOUBLES)
+    for (const a of PREFERRED)
+      for (const b of PREFERRED)
+        if (a.value + b.value + d.value === n) return `${a.label} ${b.label} ${d.label}`;
+  return '';
+}
+
 // ───────────────────────── Úložisko ─────────────────────────
 export type GameRecords = {
   cricketPlayed: number;
@@ -254,6 +364,8 @@ export type GameRecords = {
   c121Best: number | null;
   highscoreBest?: number | null;
   finishBest?: number | null;
+  /** Najviac bodov v Random Checkout. */
+  rcBest?: number | null;
 };
 type ExtraGamesState = {
   hydrated: boolean;
@@ -263,6 +375,7 @@ type ExtraGamesState = {
   c121: C121Game | null;
   highscore: HighscoreGame | null;
   finishing: FinishGame | null;
+  randomCheckout: RandomCheckoutGame | null;
   records: GameRecords;
   setCricket: (g: CricketGame | null) => void;
   setClock: (g: ClockGame | null) => void;
@@ -270,8 +383,11 @@ type ExtraGamesState = {
   setC121: (g: C121Game | null) => void;
   setHighscore: (g: HighscoreGame | null) => void;
   setFinishing: (g: FinishGame | null) => void;
+  setRandomCheckout: (g: RandomCheckoutGame | null) => void;
   /** Uloží rekord dohranej hry a hru zavrie. */
-  finish: (mode: 'cricket' | 'clock' | 'bobs' | 'c121' | 'highscore' | 'finishing') => void;
+  finish: (
+    mode: 'cricket' | 'clock' | 'bobs' | 'c121' | 'highscore' | 'finishing' | 'randomCheckout',
+  ) => void;
 };
 const emptyRecords: GameRecords = {
   cricketPlayed: 0,
@@ -281,6 +397,7 @@ const emptyRecords: GameRecords = {
   c121Best: null,
   highscoreBest: null,
   finishBest: null,
+  rcBest: null,
 };
 const better = (prev: number | null, value: number, lower = false) =>
   prev === null ? value : lower ? Math.min(prev, value) : Math.max(prev, value);
@@ -295,6 +412,7 @@ export const useExtraGames = create<ExtraGamesState>()(
       c121: null,
       highscore: null,
       finishing: null,
+      randomCheckout: null,
       records: emptyRecords,
       setCricket: (cricket) => set({ cricket }),
       setClock: (clock) => set({ clock }),
@@ -302,6 +420,7 @@ export const useExtraGames = create<ExtraGamesState>()(
       setC121: (c121) => set({ c121 }),
       setHighscore: (highscore) => set({ highscore }),
       setFinishing: (finishing) => set({ finishing }),
+      setRandomCheckout: (randomCheckout) => set({ randomCheckout }),
       finish: (mode) => {
         const s = get();
         // Staré uložené rekordy nemusia mať nové položky → doplníme predvolené.
@@ -319,6 +438,8 @@ export const useExtraGames = create<ExtraGamesState>()(
           r.highscoreBest = better(r.highscoreBest ?? null, highscoreTotal(s.highscore));
         if (mode === 'finishing' && s.finishing?.done)
           r.finishBest = better(r.finishBest ?? null, finishTotal(s.finishing));
+        if (mode === 'randomCheckout' && s.randomCheckout?.done)
+          r.rcBest = better(r.rcBest ?? null, rcPoints(s.randomCheckout));
         set({ records: r, [mode]: null });
       },
     }),
@@ -332,6 +453,7 @@ export const useExtraGames = create<ExtraGamesState>()(
         c121: s.c121,
         highscore: s.highscore,
         finishing: s.finishing,
+        randomCheckout: s.randomCheckout,
         records: s.records,
       }),
       onRehydrateStorage: () => () => {

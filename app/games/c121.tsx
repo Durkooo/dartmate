@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { TrainingScreen } from '@/components/TrainingUI';
+import { OptionPicker, TrainingScreen } from '@/components/TrainingUI';
 import { PadButton } from '@/components/GameBoard';
 import { Txt } from '@/components/DartsUI';
 import { feedback } from '@/lib/darts';
 import {
   C121_ATTEMPTS,
   C121_DART_OPTIONS,
+  ROUND_OPTIONS,
+  endTraining,
+  roundOf,
+  roundsLabel,
+  type RoundsCount,
   C121_START,
   c121Attempt,
   c121Undo,
@@ -24,34 +29,46 @@ export default function Checkout121() {
   const finish = useExtraGames((s) => s.finish);
   const best = useExtraGames((s) => s.records.c121Best);
   const [darts, setDarts] = useState<C121Darts>(9);
+  const [rounds, setRounds] = useState<RoundsCount>(10);
   const gameDarts = game?.darts ?? 9;
+  const gameRounds = game ? (game.rounds === undefined ? C121_ATTEMPTS : game.rounds) : rounds;
   return (
     <TrainingScreen
       title="121"
       hydrated={hydrated}
       running={!!game}
-      intro={`Začína sa na ${C121_START}. Na každý pokus máš vybraný počet šípok, aby si číslo zatvoril na double. Keď zatvoríš, ďalší cieľ je o 1 vyšší. Keď nezatvoríš, začínaš znova od ${C121_START}. Hrá sa ${C121_ATTEMPTS} pokusov.${best !== null ? ` Tvoj rekord: zatvorené ${best}.` : ''}`}
+      intro={`Začína sa na ${C121_START}. Na každý pokus máš vybraný počet šípok, aby si číslo zatvoril na double. Keď zatvoríš, ďalší cieľ je o 1 vyšší. Keď nezatvoríš, začínaš znova od ${C121_START}. Počet pokusov si vyberieš (∞ = hráš, kým tréning neukončíš).${best !== null ? ` Tvoj rekord: zatvorené ${best}.` : ''}`}
       introExtra={
-        <View className="gap-2">
-          <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Koľko šípok na pokus?</Txt>
-          <View className="flex-row gap-2">
-            {C121_DART_OPTIONS.map((n) => (
-              <PadButton
-                key={n}
-                label={String(n)}
-                accessibilityLabel={`${n} šípok na pokus`}
-                selected={darts === n}
-                onPress={() => {
-                  setDarts(n);
-                  feedback.selection();
-                }}
-              />
-            ))}
-          </View>
+        <View className="gap-4">
+          <OptionPicker
+            label="Počet pokusov"
+            options={ROUND_OPTIONS}
+            value={rounds}
+            format={roundsLabel}
+            onChange={(v) => {
+              setRounds(v);
+              feedback.selection();
+            }}
+          />
+          <OptionPicker
+            label="Koľko šípok na pokus?"
+            options={C121_DART_OPTIONS}
+            value={darts}
+            format={String}
+            onChange={(v) => {
+              setDarts(v);
+              feedback.selection();
+            }}
+          />
         </View>
       }
-      onStart={() => setGame(newC121(darts))}
-      top={game ? `Pokus ${Math.min(game.attempt + 1, C121_ATTEMPTS)} z ${C121_ATTEMPTS}` : ''}
+      onStart={() => setGame(newC121(darts, rounds))}
+      top={game ? roundOf(game.attempt + 1, gameRounds).replace('Kolo', 'Pokus') : ''}
+      onEnd={
+        game && gameRounds === null && game.attempt > 0
+          ? () => setGame(endTraining(game))
+          : undefined
+      }
       big={game ? String(game.target) : ''}
       sub={game ? `Zatvorené ${game.successes} · ${gameDarts} šípok na pokus` : undefined}
       bottom={

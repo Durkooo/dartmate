@@ -69,14 +69,14 @@ export default function Games() {
           />
           <GameRow
             title="121"
-            detail="Zatváranie od 121, 10 pokusov po 3, 6, 9 alebo 12 šípok"
+            detail="Zatváranie od 121, 5–20 alebo ∞ pokusov po 3–12 šípok"
             record={r.c121Best !== null ? `Rekord: zatvorené ${r.c121Best}` : undefined}
             href="/games/c121"
             running={!!s.c121}
           />
           <GameRow
             title="Highscore"
-            detail="10 kôl po 3 šípky, čo najvyšší súčet bodov"
+            detail="5–20 alebo ∞ kôl po 3 šípky, čo najvyšší súčet"
             record={
               (r.highscoreBest ?? null) !== null ? `Rekord: ${r.highscoreBest} bodov` : undefined
             }
@@ -85,10 +85,17 @@ export default function Games() {
           />
           <GameRow
             title="Finishing 50"
-            detail="20 náhodných zatvorení od 2 do 50 na 3 šípky"
+            detail="Náhodné zatvorenia od 2 do 50 na 3 šípky, 5–20 alebo ∞ kôl"
             record={(r.finishBest ?? null) !== null ? `Rekord: ${r.finishBest} bodov` : undefined}
             href="/games/finishing"
             running={!!s.finishing}
+          />
+          <GameRow
+            title="Random Checkout"
+            detail="Náhodné zatvorenia 2–170 na 3, 6 alebo 9 šípok"
+            record={(r.rcBest ?? null) !== null ? `Rekord: ${r.rcBest} bodov` : undefined}
+            href="/games/random-checkout"
+            running={!!s.randomCheckout}
           />
         </View>
       )}

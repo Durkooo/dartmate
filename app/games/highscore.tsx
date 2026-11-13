@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { Txt } from '@/components/DartsUI';
 import { NumberPad } from '@/components/NumberPad';
-import { TrainingScreen } from '@/components/TrainingUI';
+import { OptionPicker, TrainingScreen } from '@/components/TrainingUI';
 import { feedback } from '@/lib/darts';
 import {
   HIGHSCORE_ROUNDS,
+  ROUND_OPTIONS,
+  endTraining,
+  highscoreRounds,
+  roundOf,
+  roundsLabel,
+  type RoundsCount,
   highscoreRound,
   highscoreTotal,
   highscoreUndo,
@@ -19,6 +25,8 @@ export default function Highscore() {
   const finish = useExtraGames((s) => s.finish);
   const best = useExtraGames((s) => s.records.highscoreBest ?? null);
   const [input, setInput] = useState('');
+  const [rounds, setRounds] = useState<RoundsCount>(HIGHSCORE_ROUNDS);
+  const gameRounds = game ? highscoreRounds(game) : rounds;
   const [error, setError] = useState('');
   const total = game ? highscoreTotal(game) : 0;
   const round = game ? game.scores.length : 0;
@@ -28,12 +36,27 @@ export default function Highscore() {
       title="Highscore"
       hydrated={hydrated}
       running={!!game}
-      intro={`${HIGHSCORE_ROUNDS} kôl po 3 šípky. Po každom kole zapíš, koľko si hodil (0–180). Cieľ: čo najvyšší súčet — tréning na stabilné skórovanie.${best !== null ? ` Tvoj rekord: ${best} bodov.` : ''}`}
+      intro={`Vybraný počet kôl po 3 šípky (∞ = hráš, kým tréning neukončíš). Po každom kole zapíš, koľko si hodil (0–180). Cieľ: čo najvyšší súčet — tréning na stabilné skórovanie.${best !== null ? ` Tvoj rekord: ${best} bodov.` : ''}`}
+      introExtra={
+        <OptionPicker
+          label="Počet kôl"
+          options={ROUND_OPTIONS}
+          value={rounds}
+          format={roundsLabel}
+          onChange={(v) => {
+            setRounds(v);
+            feedback.selection();
+          }}
+        />
+      }
       onStart={() => {
-        setGame(newHighscore());
+        setGame(newHighscore(rounds));
         setInput('');
       }}
-      top={game ? `Kolo ${Math.min(round + 1, HIGHSCORE_ROUNDS)} z ${HIGHSCORE_ROUNDS}` : ''}
+      top={game ? roundOf(round + 1, gameRounds) : ''}
+      onEnd={
+        game && gameRounds === null && round > 0 ? () => setGame(endTraining(game)) : undefined
+      }
       big={String(total)}
       sub={`Priemer na 3 šípky ${avg}`}
       bottom={

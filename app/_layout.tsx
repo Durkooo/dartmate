@@ -200,6 +200,7 @@ export default function RootLayout() {
           <Stack.Screen name="games/c121" options={{ title: '121' }} />
           <Stack.Screen name="games/highscore" options={{ title: 'Highscore' }} />
           <Stack.Screen name="games/finishing" options={{ title: 'Finishing 50' }} />
+          <Stack.Screen name="games/random-checkout" options={{ title: 'Random Checkout' }} />
           <Stack.Screen name="chat/[id]" options={{ title: 'Konverzácia' }} />
         </Stack>
         <InstallPrompt />

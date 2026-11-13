@@ -13,6 +13,38 @@ import { renderResultImage } from '@/lib/resultImage';
 
 export type TrainingStat = { label: string; value: string };
 
+/** Výber z možností ako tlačidlá klávesnice (počet kôl, šípok…). */
+export function OptionPicker<T>({
+  label,
+  options,
+  value,
+  onChange,
+  format,
+}: {
+  label: string;
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+  format: (v: T) => string;
+}) {
+  return (
+    <View className="gap-2">
+      <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>{label}</Txt>
+      <View className="flex-row gap-2">
+        {options.map((o) => (
+          <PadButton
+            key={format(o)}
+            label={format(o)}
+            accessibilityLabel={`${label} ${format(o) === '∞' ? 'nekonečno' : format(o)}`}
+            selected={o === value}
+            onPress={() => onChange(o)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** Spoločný rámec tréningov vo vzhľade zápasu 301/501: úvod → hra → výsledok. */
 export function TrainingScreen({
   title,
@@ -33,6 +65,7 @@ export function TrainingScreen({
   introExtra,
   stats = [],
   shareScore,
+  onEnd,
   onCancel,
   children,
 }: {
@@ -61,6 +94,8 @@ export function TrainingScreen({
   stats?: TrainingStat[];
   /** Veľké číslo na obrázku (predvolene `big`). */
   shareScore?: string;
+  /** Ukončenie skôr (pri ∞ kolách) — ukáže výsledky a štatistiky. */
+  onEnd?: () => void;
   onCancel: () => void;
   /** Riadky klávesnice (len počas hry). */
   children: ReactNode;
@@ -164,6 +199,11 @@ export function TrainingScreen({
                       <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
                     </PadButton>
                   </View>
+                )}
+                {!!onEnd && (
+                  <Button className="mt-4" variant="secondary" onPress={onEnd}>
+                    <Button.Label>Ukončiť tréning a zobraziť výsledky</Button.Label>
+                  </Button>
                 )}
                 <Button className="mt-4" variant="ghost" onPress={onCancel}>
                   <Button.Label>Zrušiť tréning</Button.Label>

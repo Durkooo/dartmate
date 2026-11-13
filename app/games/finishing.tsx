@@ -1,10 +1,18 @@
 import { View } from 'react-native';
 import { Txt } from '@/components/DartsUI';
 import { PadButton } from '@/components/GameBoard';
-import { TrainingScreen } from '@/components/TrainingUI';
+import { OptionPicker, TrainingScreen } from '@/components/TrainingUI';
 import { feedback } from '@/lib/darts';
+import { useState } from 'react';
 import {
   FINISH_ROUNDS,
+  ROUND_OPTIONS,
+  endTraining,
+  finishRounds,
+  finishTarget,
+  roundOf,
+  roundsLabel,
+  type RoundsCount,
   finishHint,
   finishRound,
   finishTotal,
@@ -21,8 +29,11 @@ export default function Finishing50() {
   const setGame = useExtraGames((s) => s.setFinishing);
   const finish = useExtraGames((s) => s.finish);
   const best = useExtraGames((s) => s.records.finishBest ?? null);
+  const [rounds, setRounds] = useState<RoundsCount>(FINISH_ROUNDS);
+  const gameRounds = game ? finishRounds(game) : rounds;
   const round = game ? game.results.length : 0;
-  const target = game && !game.done ? game.targets[round] : null;
+  const target = game && !game.done ? finishTarget(game) : null;
+  const played = Math.max(round, 0);
   const total = game ? finishTotal(game) : 0;
   const closed = game ? game.results.filter((r) => r > 0).length : 0;
   return (
@@ -30,26 +41,38 @@ export default function Finishing50() {
       title="Finishing 50"
       hydrated={hydrated}
       running={!!game}
-      intro={`${FINISH_ROUNDS} kôl, v každom dostaneš náhodné číslo od 2 do 50 a máš 3 šípky, aby si ho zatvoril na double (50 = bull). Body: zatvorené 1 šípkou = 3, 2 šípkami = 2, 3 šípkami = 1, nezatvorené = 0. Maximum je ${FINISH_ROUNDS * 3}.${best !== null ? ` Tvoj rekord: ${best} bodov.` : ''}`}
-      onStart={() => setGame(newFinish())}
-      top={
-        game ? `Kolo ${Math.min(round + 1, FINISH_ROUNDS)} z ${FINISH_ROUNDS} · body ${total}` : ''
+      intro={`Vybraný počet kôl (∞ = hráš, kým tréning neukončíš), v každom dostaneš náhodné číslo od 2 do 50 a máš 3 šípky, aby si ho zatvoril na double (50 = bull). Body: zatvorené 1 šípkou = 3, 2 šípkami = 2, 3 šípkami = 1, nezatvorené = 0. Maximum sú 3 body za kolo.${best !== null ? ` Tvoj rekord: ${best} bodov.` : ''}`}
+      introExtra={
+        <OptionPicker
+          label="Počet kôl"
+          options={ROUND_OPTIONS}
+          value={rounds}
+          format={roundsLabel}
+          onChange={(v) => {
+            setRounds(v);
+            feedback.selection();
+          }}
+        />
+      }
+      onStart={() => setGame(newFinish(rounds))}
+      top={game ? `${roundOf(round + 1, gameRounds)} · body ${total}` : ''}
+      onEnd={
+        game && gameRounds === null && round > 0 ? () => setGame(endTraining(game)) : undefined
       }
       big={target !== null ? String(target) : String(total)}
-      sub={
-        target !== null ? `Cesta: ${finishHint(target)}` : `Zatvorené ${closed} z ${FINISH_ROUNDS}`
-      }
+      sub={target !== null ? `Cesta: ${finishHint(target)}` : `Zatvorené ${closed} z ${played}`}
       bottom={target !== null ? `Zatvor ${target} na 3 šípky` : 'Koniec tréningu'}
       done={!!game?.done}
-      result={`${total} bodov · zatvorené ${closed} z ${FINISH_ROUNDS}`}
+      result={`${total} bodov · zatvorené ${closed} z ${played}`}
       onFinish={() => finish('finishing')}
       shareScore={`${total} b.`}
       stats={
         game
           ? [
-              { label: 'Body', value: `${total} z ${FINISH_ROUNDS * 3}` },
-              { label: 'Zatvorené', value: `${closed} z ${FINISH_ROUNDS}` },
-              { label: 'Úspešnosť zatvorenia', value: pct(closed, FINISH_ROUNDS) },
+              { label: 'Odohrané kolá', value: String(played) },
+              { label: 'Body', value: `${total} z ${played * 3}` },
+              { label: 'Zatvorené', value: `${closed} z ${played}` },
+              { label: 'Úspešnosť zatvorenia', value: pct(closed, played) },
               {
                 label: 'Zatvorené 1. šípkou',
                 value: String(game.results.filter((r) => r === 3).length),
