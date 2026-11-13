@@ -101,41 +101,56 @@ export async function sendResult(
   image?: () => Promise<Blob | null>,
 ): Promise<void> {
   const myId: string | undefined = (await bilt.auth.getSession()).data?.session?.user.id;
-  let photoPath: string | null = null;
-  if (image && myId) {
+  if (!myId) throw new Error('Na poslanie výsledku sa prihlás.');
+  let sent = false;
+  let imageError = '';
+  // 1) Obrázok tabuľky ako fotka v správe — rovnako ako bežná fotka v chate:
+  //    názov súboru = id požiadavky (server ich môže porovnávať).
+  if (image) {
+    let path: string | null = null;
     try {
       const blob = await image();
       if (blob) {
-        const path = `${myId}/${peerId}/${Crypto.randomUUID()}.png`;
-        const { error } = await bilt.storage
+        const requestId = Crypto.randomUUID();
+        path = `${myId}/${peerId}/${requestId}.png`;
+        const { error: uploadError } = await bilt.storage
           .from(MESSAGE_PHOTOS_BUCKET)
           .upload(path, blob, { contentType: 'image/png', upsert: false });
-        if (!error) photoPath = path;
+        if (uploadError) throw new Error(uploadError.message);
+        const { data, error } = await bilt.rpc('send_image_message', {
+          peer: peerId,
+          message_body: body,
+          client_request: requestId,
+          photo_path: path,
+        });
+        if (error) throw new Error(error.message);
+        if (!data?.[0]) throw new Error('Správa s obrázkom sa neuložila.');
+        sent = true;
       }
-    } catch {
-      // Obrázok sa nepodaril — pošle sa aspoň textová karta.
+    } catch (e) {
+      imageError = e instanceof Error ? e.message : String(e);
+      // Nahratý, ale neodoslaný obrázok zmažeme.
+      if (path) void bilt.storage.from(MESSAGE_PHOTOS_BUCKET).remove([path]);
     }
   }
-  const { data, error } = photoPath
-    ? await bilt.rpc('send_image_message', {
-        peer: peerId,
-        message_body: body,
-        client_request: Crypto.randomUUID(),
-        photo_path: photoPath,
-      })
-    : await bilt.rpc('send_direct_message', {
-        peer: peerId,
-        message_body: body,
-        client_request: Crypto.randomUUID(),
-      });
-  if (error) throw new Error(error.message);
-  if (!data?.[0]) throw new Error('Výsledok sa nepodarilo poslať.');
+  // 2) Bez obrázka (alebo keď sa nepodaril) aspoň textová karta — vždy ako správa.
+  if (!sent) {
+    const { data, error } = await bilt.rpc('send_direct_message', {
+      peer: peerId,
+      message_body: body,
+      client_request: Crypto.randomUUID(),
+    });
+    if (error)
+      throw new Error(
+        `Výsledok sa nepodarilo poslať: ${error.message}${imageError ? ` (obrázok: ${imageError})` : ''}`,
+      );
+    if (!data?.[0]) throw new Error('Výsledok sa nepodarilo poslať. Ste stále priatelia?');
+  }
   // Odkaz z pohľadu príjemcu = konverzácia so mnou.
-  if (myId)
-    notifyRecipient(
-      peerId,
-      `@${myNick}`,
-      resultLines(body)[0] ?? RESULT_HEADER,
-      `/conversation/${myId}`,
-    );
+  notifyRecipient(
+    peerId,
+    `@${myNick}`,
+    resultLines(body)[0] ?? RESULT_HEADER,
+    `/conversation/${myId}`,
+  );
 }
