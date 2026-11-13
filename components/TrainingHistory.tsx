@@ -60,10 +60,25 @@ function EntryRow({
               </Txt>
             </View>
           ))}
-          {entry.value !== null && (
+          {entry.value !== null && !!myNick && (
             <View className="mt-2">
               <ChallengeButton
                 challenge={{ mode: entry.mode, target: entry.value, lower: lowerIsBetter, unit }}
+                result={{
+                  body: formatTrainingResult({
+                    me: myNick,
+                    title,
+                    result: entry.result,
+                    stats: entry.stats,
+                  }),
+                  image: () =>
+                    renderResultImage({
+                      subtitle: `Tréning · ${title}`,
+                      players: [{ name: `@${myNick}`, score: entry.score }],
+                      winner: null,
+                      rows: entry.stats.map((st) => ({ label: st.label, values: [st.value] })),
+                    }),
+                }}
               />
             </View>
           )}

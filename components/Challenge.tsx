@@ -5,10 +5,19 @@ import { Swords } from 'lucide-react-native';
 import { Avatar, Txt } from '@/components/DartsUI';
 import { feedback, palette } from '@/lib/darts';
 import { sendChallenge, type Challenge } from '@/lib/challenge';
+import { sendResult } from '@/lib/matchResult';
 import { usePlayers } from '@/lib/players';
 
-/** „Vyzvať priateľa“: vyber priateľa, pošle mu výzvu prekonať tento výsledok. */
-export function ChallengeButton({ challenge }: { challenge: Challenge }) {
+/** „Vyzvať priateľa“: vyber priateľa, pošle mu najprv výsledok tréningu
+ *  (obrázok + karta) a hneď za ním výzvu prekonať ho (s tlačidlom Prijať výzvu). */
+export function ChallengeButton({
+  challenge,
+  result,
+}: {
+  challenge: Challenge;
+  /** Výsledok tréningu, ktorý príde priateľovi pred výzvou. */
+  result?: { body: string; image: () => Promise<Blob | null> };
+}) {
   const myNick = usePlayers((s) => s.profile?.nickname);
   const friends = usePlayers((s) => s.friends).filter((f) => !f.demo);
   const [open, setOpen] = useState(false);
@@ -51,7 +60,10 @@ export function ChallengeButton({ challenge }: { challenge: Challenge }) {
               onPress={() => {
                 setSending(true);
                 setError('');
-                void sendChallenge(f.id, myNick, challenge)
+                void (
+                  result ? sendResult(f.id, myNick, result.body, result.image) : Promise.resolve()
+                )
+                  .then(() => sendChallenge(f.id, myNick, challenge))
                   .then(() => {
                     setSentTo(f.handle);
                     setOpen(false);

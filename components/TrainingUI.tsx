@@ -215,11 +215,6 @@ export function TrainingScreen({
                     Výsledok mu pošleme po uložení.
                   </Txt>
                 )}
-                {scoreValue !== null && (
-                  <ChallengeButton
-                    challenge={{ mode, target: scoreValue, lower: lowerIsBetter, unit }}
-                  />
-                )}
                 {stats.length > 0 && (
                   <View className="bg-surface w-full rounded-xl px-4 py-2">
                     {stats.map((st) => (
@@ -236,6 +231,21 @@ export function TrainingScreen({
                       </View>
                     ))}
                   </View>
+                )}
+                {scoreValue !== null && !!myNick && (
+                  <ChallengeButton
+                    challenge={{ mode, target: scoreValue, lower: lowerIsBetter, unit }}
+                    result={{
+                      body: formatTrainingResult({ me: myNick, title, result, stats }),
+                      image: () =>
+                        renderResultImage({
+                          subtitle: `Tréning · ${title}`,
+                          players: [{ name: `@${myNick}`, score: shareScore ?? big }],
+                          winner: null,
+                          rows: stats.map((st) => ({ label: st.label, values: [st.value] })),
+                        }),
+                    }}
+                  />
                 )}
                 {!!myNick && (
                   <ShareResult
