@@ -24,30 +24,30 @@ function OfflineMatchRow({ game }: { game: Game }) {
   const friends = usePlayers((s) => s.friends);
   const [open, setOpen] = useState(false);
   return (
-    <View className="mb-2">
+    <View className="border-border border-b">
       <PressableFeedback
-        className="bg-ink flex-row items-center gap-3 rounded-2xl px-4 py-3"
+        className="flex-row items-center gap-3 py-4"
         onPress={() => setOpen((v) => !v)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityHint="Ťukni pre poslanie výsledku priateľovi"
       >
-        <Trophy size={22} color={palette.yellow} strokeWidth={1.8} />
+        <Trophy size={22} color={palette.ink} strokeWidth={1.8} />
         <View className="flex-1 gap-1">
-          <Txt className="text-white" style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>
+          <Txt style={{ fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>
             {game.solo
               ? 'Sólo hra'
               : `${game.winner === 0 ? 'Výhra' : 'Prehra'} proti ${game.opponentName}`}
           </Txt>
-          <Txt className="text-on-ink text-[13px]">
+          <Txt className="text-muted text-[13px]">
             {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'} ·{' '}
             {new Date(game.date).toLocaleDateString('sk-SK')} · Offline
           </Txt>
         </View>
-        {myNick ? <Send size={18} color={palette.yellow} strokeWidth={1.8} /> : null}
+        {myNick ? <Send size={18} color={palette.muted} strokeWidth={1.8} /> : null}
       </PressableFeedback>
       {open && !!myNick && (
-        <View className="pt-2 pb-2">
+        <View className="pb-4">
           <ShareResult {...localGameShare(game, myNick, friends)} />
         </View>
       )}
@@ -112,52 +112,39 @@ export default function Statistics() {
               </Txt>
             ) : (
               <View className="mt-5 mb-8">
-                <View className="bg-ink rounded-2xl px-4 py-1">
-                  {[
-                    ['Zápasy', totals.matches],
-                    ['Výhry', totals.wins],
-                    ['Prehry', totals.losses],
-                    ...(totals.solo ? [['Sólo hry', totals.solo]] : []),
-                    [
-                      'Priemer na 3 šípky',
-                      (totals.darts ? (totals.points * 3) / totals.darts : 0).toFixed(1),
-                    ],
-                    ['Priemer prvých 9 šípok', advanced.first9?.toFixed(1) ?? '–'],
-                    [
-                      'Úspešnosť zatvorenia',
-                      advanced.checkoutPct === null
-                        ? '–'
-                        : `${advanced.checkoutPct} % (${advanced.checkouts}/${advanced.checkoutChances})`,
-                    ],
-                    ['Najvyššie zatvorenie', advanced.highestCheckout || '–'],
-                    ['Najlepší leg (šípky)', advanced.bestLeg ?? '–'],
-                    ['Najvyšší náhod', totals.highest],
-                    ['Náhody 100+', advanced.tons100],
-                    ['Náhody 140+', advanced.tons140],
-                    ['Náhody 180', totals.scores180],
-                  ].map(([label, value], i) => (
-                    <View
-                      key={label}
-                      className="flex-row justify-between gap-4 py-3"
-                      style={
-                        i > 0
-                          ? { borderTopWidth: 1, borderTopColor: 'rgba(189,200,219,0.15)' }
-                          : undefined
-                      }
-                    >
-                      <Txt className="text-on-ink flex-1">{label}</Txt>
-                      <Txt
-                        style={{
-                          fontFamily: 'Inter_700Bold',
-                          fontVariant: ['tabular-nums'],
-                          color: palette.yellow,
-                        }}
-                      >
-                        {value}
-                      </Txt>
-                    </View>
-                  ))}
-                </View>
+                {[
+                  ['Zápasy', totals.matches],
+                  ['Výhry', totals.wins],
+                  ['Prehry', totals.losses],
+                  ...(totals.solo ? [['Sólo hry', totals.solo]] : []),
+                  [
+                    'Priemer na 3 šípky',
+                    (totals.darts ? (totals.points * 3) / totals.darts : 0).toFixed(1),
+                  ],
+                  ['Priemer prvých 9 šípok', advanced.first9?.toFixed(1) ?? '–'],
+                  [
+                    'Úspešnosť zatvorenia',
+                    advanced.checkoutPct === null
+                      ? '–'
+                      : `${advanced.checkoutPct} % (${advanced.checkouts}/${advanced.checkoutChances})`,
+                  ],
+                  ['Najvyššie zatvorenie', advanced.highestCheckout || '–'],
+                  ['Najlepší leg (šípky)', advanced.bestLeg ?? '–'],
+                  ['Najvyšší náhod', totals.highest],
+                  ['Náhody 100+', advanced.tons100],
+                  ['Náhody 140+', advanced.tons140],
+                  ['Náhody 180', totals.scores180],
+                ].map(([label, value]) => (
+                  <View
+                    key={label}
+                    className="border-border flex-row justify-between gap-4 border-b py-3"
+                  >
+                    <Txt className="flex-1">{label}</Txt>
+                    <Txt style={{ fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] }}>
+                      {value}
+                    </Txt>
+                  </View>
+                ))}
                 <StatsTrend points={advanced.trend} />
                 <Txt className="text-muted mt-4 text-[12px] leading-5">
                   Úspešnosť zatvorenia = zatvorené legy z hodov, keď ti ostávalo zatvorenie jednou

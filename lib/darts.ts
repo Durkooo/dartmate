@@ -18,14 +18,7 @@ export const palette = {
   danger: '#B63044',
   success: '#28714E',
   playing: '#E8850C',
-  // Na tmavomodrých dlaždiciach (štýl ikon): svetlejšie, aby boli čitateľné.
-  successOnInk: '#5FD38D',
-  dangerOnInk: '#FF7A86',
-  /** Avatar s iniciálami na tmavomodrej dlaždici (o odtieň svetlejší). */
-  inkRaised: '#2C3D61',
 };
-/** Tmavomodrá dlaždica v štýle ikon DartMate (riadky zoznamov, karty). */
-export const CARD_ROW = 'bg-ink mb-2 flex-row items-center gap-3 rounded-2xl px-4 py-3';
 export const feedback = {
   selection: () => {
     void Haptics.selectionAsync().catch(() => undefined);
