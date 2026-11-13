@@ -832,7 +832,7 @@ function ConversationContent({
                             key={g.emoji}
                             className="flex-row items-center rounded-full px-2 py-0.5"
                             style={{
-                              backgroundColor: palette.white,
+                              backgroundColor: palette.surface,
                               borderWidth: 1,
                               borderColor: g.mineToo ? palette.ink : palette.line,
                             }}

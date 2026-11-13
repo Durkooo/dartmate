@@ -16,7 +16,7 @@ export default function TabLayout() {
           headerShown: false,
           sceneStyle: { backgroundColor: palette.paper },
           tabBarStyle: {
-            backgroundColor: palette.white,
+            backgroundColor: palette.surface,
             borderTopColor: palette.line,
             height: 68 + bottom,
             paddingTop: 8,

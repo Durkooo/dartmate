@@ -8,6 +8,8 @@ export const palette = {
   ink: '#192438',
   paper: '#C9CFDA', // pozadie appky: svetlejší odtieň poľa 25 z terča
   white: '#FFFFFF',
+  /** Plochy (karty, dlaždice, polia, lišta) — jemná svetlosivá namiesto bielej. */
+  surface: '#E9ECF1',
   muted: '#525D71', // farba poľa 25 — čitateľná na pozadí aj na bielom
   yellow: '#F7CF46',
   line: '#DEE2EA',
