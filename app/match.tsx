@@ -31,6 +31,8 @@ export default function Match() {
   const game = useDarts((s) => s.game);
   const friends = usePlayers((s) => s.friends);
   const myNick = usePlayers((s) => s.profile?.nickname);
+  // Meno majiteľa účtu (bez prihlásenia „Ty“).
+  const me = myNick || 'Ty';
   const hydrated = useDarts((s) => s.hydrated);
   const submitTurn = useDarts((s) => s.submitTurn);
   const undo = useDarts((s) => s.undo);
@@ -128,7 +130,7 @@ export default function Match() {
     if (!legBreak) return '';
     const last = game.turns.at(-1);
     if (!last) return '';
-    return last.player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
+    return last.player === 0 ? me : practice ? 'Hráč 2' : opponentFirst;
   })();
   const append = (digit: string) => {
     if (input.length >= 3) return;
@@ -207,7 +209,7 @@ export default function Match() {
                     className={`flex-1 items-center px-2 ${p === 0 && !game.solo ? 'border-on-ink/20 border-r' : ''}`}
                   >
                     <Txt className="text-on-ink text-[14px]" numberOfLines={1}>
-                      {p === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
+                      {p === 0 ? me : practice ? 'Hráč 2' : opponentFirst}
                     </Txt>
                     <Txt
                       className={`text-[57px] leading-[68px] ${!finished && player === p ? 'text-accent' : 'text-white'}`}
@@ -548,7 +550,7 @@ export default function Match() {
             className="border-border flex-row items-center gap-3 border-b py-3"
           >
             <Txt className="flex-1 text-[14px]" numberOfLines={1}>
-              {item.player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst}
+              {item.player === 0 ? me : practice ? 'Hráč 2' : opponentFirst}
             </Txt>
             <Txt
               className={

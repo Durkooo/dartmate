@@ -73,7 +73,8 @@ export default function Cricket() {
         <ScoreBoard
           top={finished ? 'Hra dohraná' : `Kolo ${round}`}
           players={game.players.map((name, i) => ({
-            name,
+            // Prvý hráč je majiteľ účtu.
+            name: i === 0 && myNick ? myNick : name,
             value: String(game.points[i]),
             sub: `Šípky ${game.totalDarts[i]}`,
           }))}
