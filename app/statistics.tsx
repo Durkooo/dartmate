@@ -101,7 +101,6 @@ export default function Statistics() {
         }}
         ListHeaderComponent={
           <>
-            <Heading>Moje štatistiky</Heading>
             <StorageNotice />
             <OnlineError error={query.error} retry={() => void query.refresh()} />
             {loading ? (

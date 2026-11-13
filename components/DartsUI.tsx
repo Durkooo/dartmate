@@ -14,11 +14,19 @@ import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette, useDarts, type Friend, CARD_ROW } from '@/lib/darts';
 
+/** Malé písmo (text-[11–15px]) bez vlastného riadkovania dostane primerané riadkovanie —
+ * predvolené z Typography je pre veľké písmo a malé texty roztrhávalo. */
+function smallLineHeight(className: string) {
+  if (className.includes('leading-')) return undefined;
+  const m = className.match(/text-\[(\d+)px\]/);
+  const size = m ? Number(m[1]) : 0;
+  return size >= 11 && size <= 15 ? { lineHeight: Math.round(size * 1.4) } : undefined;
+}
 export function Txt({ className = '', style, ...props }: TextProps & { className?: string }) {
   return (
     <Typography
       className={`text-foreground ${className}`}
-      style={[{ fontFamily: 'Inter_400Regular' }, style]}
+      style={[{ fontFamily: 'Inter_400Regular' }, smallLineHeight(className), style]}
       {...props}
     />
   );

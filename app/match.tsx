@@ -240,7 +240,7 @@ export default function Match() {
                 </Txt>
               </View>
             </View>
-            <View className="mb-4 flex-row items-center justify-between">
+            <View className="mb-4 gap-0.5">
               <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'}
                 {game.legsToWin > 1 &&
@@ -248,7 +248,7 @@ export default function Match() {
                     ? ` · Vyhrané legy ${game.legs[0]} z ${game.legsToWin}`
                     : ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`)}
               </Txt>
-              <Txt className="text-muted mt-2 text-[12px]">Lokálna hra</Txt>
+              <Txt className="text-muted text-[12px]">Lokálna hra</Txt>
             </View>
             {finished ? (
               <View className="items-center gap-4 py-6">
@@ -374,11 +374,11 @@ export default function Match() {
                 <View className="mt-2 mb-2 flex-row items-center justify-between">
                   <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Súčet 3 šípok</Txt>
                   <Txt
-                    className="text-[30px] leading-9"
+                    className={`text-[30px] leading-9 ${input ? '' : 'text-muted'}`}
                     style={{ fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] }}
                     accessibilityLiveRegion="polite"
                   >
-                    {input || '—'}
+                    {input || '0'}
                   </Txt>
                 </View>
                 <VoiceScore

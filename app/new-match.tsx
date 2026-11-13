@@ -173,8 +173,7 @@ export default function NewMatch() {
                   className="rounded-xl"
                 />
                 <Txt className="text-muted mt-2 mb-4 text-[12px]">
-                  Dočasný súper sa neuloží medzi priateľov — po zápase zmizne, zápas ostane v
-                  odohraných.
+                  Dočasný súper sa neuloží medzi priateľov.
                 </Txt>
               </>
             )}

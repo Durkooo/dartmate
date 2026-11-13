@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Page, Heading, Txt } from '@/components/DartsUI';
+import { Page, Txt } from '@/components/DartsUI';
 import { CameraPreview } from '@/components/CameraPreview';
 import { feedback } from '@/lib/darts';
 import { useHardwareKeyboard, useInputSettings } from '@/lib/scoreInput';
@@ -100,9 +100,8 @@ function KeyboardSettings() {
         Klávesnica
       </Txt>
       <Txt className="text-muted text-[13px] leading-5">
-        Skóre môžeš zadávať z klávesnice namiesto ťukania do mobilu. Klávesnicu najprv spáruj v
-        telefóne: Nastavenia → Bluetooth (stačí aj malá numerická klávesnica). V zápase potom píšeš
-        čísla, Enter = Zapísať, Backspace = zmazať číslicu, Esc = vymazať.
+        Bluetooth klávesnicu najprv spáruj v telefóne. V zápase: čísla, Enter = zapísať, Backspace =
+        zmazať číslicu, Esc = vymazať.
       </Txt>
       <View className="flex-row gap-2">
         {(
@@ -167,9 +166,7 @@ function ThemeSettings() {
           </Button>
         ))}
       </View>
-      <Txt className="text-muted text-[12px]">
-        „Ako mobil“ = podľa svetlého/tmavého režimu telefónu. Po zmene sa appka znova načíta.
-      </Txt>
+      <Txt className="text-muted text-[12px]">„Ako mobil“ = podľa režimu telefónu.</Txt>
     </View>
   );
 }
@@ -277,7 +274,6 @@ export default function SettingsScreen() {
     <Page fallbackHref="/account" fallbackLabel="Späť na môj účet">
       <Stack.Screen options={{ title: 'Nastavenia' }} />
       <View className="mt-3 gap-5">
-        <Heading>Nastavenia</Heading>
         <ThemeSettings />
         <BackupSettings />
         {!!session && (

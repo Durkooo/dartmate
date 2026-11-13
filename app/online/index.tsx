@@ -3,7 +3,7 @@ import { View, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import { Button } from 'heroui-native';
 import { Target } from 'lucide-react-native';
-import { Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { Txt, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError, MatchRow } from '@/components/OnlineUI';
 import { loadOpenMatches, useOnlineQuery } from '@/lib/online';
 import { palette } from '@/lib/darts';
@@ -29,8 +29,7 @@ export default function OnlineLobby() {
           flexGrow: 1,
         }}
         ListHeaderComponent={
-          <View className="mb-5 gap-4">
-            <Heading>Hráme spolu</Heading>
+          <View className="mt-3 mb-5 gap-4">
             <OnlineError error={query.error} retry={() => void query.refresh()} />
             <Txt className="text-muted text-[13px]">Pozvánky a rozhrané zápasy</Txt>
           </View>

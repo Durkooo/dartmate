@@ -309,7 +309,13 @@ export function TrainingScreen({
                       disabled={!canUndo}
                       onPress={onUndo}
                     >
-                      <Undo2 size={21} color={palette.yellow} strokeWidth={1.8} />
+                      <Undo2 size={20} color={palette.yellow} strokeWidth={1.8} />
+                      <Button.Label
+                        className="text-[16px]"
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                      >
+                        Späť
+                      </Button.Label>
                     </PadButton>
                   </View>
                 )}

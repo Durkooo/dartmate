@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Button } from 'heroui-native';
-import { Page, Heading, Txt, LoadingRows, Avatar } from '@/components/DartsUI';
+import { Page, Txt, LoadingRows, Avatar } from '@/components/DartsUI';
 import { OnlineError, OnlineGate } from '@/components/OnlineUI';
 import { palette, CARD_ROW } from '@/lib/darts';
 import { useOnlineQuery } from '@/lib/online';
@@ -38,10 +38,9 @@ export default function Leaderboard() {
     );
   return (
     <Page>
-      <Stack.Screen options={{ title: 'Rebríček' }} />
+      <Stack.Screen options={{ title: 'Rebríček priateľov' }} />
       <OnlineGate>
         <View className="mt-3 gap-4">
-          <Heading>Rebríček priateľov</Heading>
           <View className="flex-row gap-2">
             {(
               [

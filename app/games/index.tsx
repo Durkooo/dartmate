@@ -3,7 +3,7 @@ import { TRAINING_ICONS } from '@/lib/trainingIcons';
 import { Stack, router, type Href } from 'expo-router';
 import { PressableFeedback } from 'heroui-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Page, Heading, Txt, LoadingRows } from '@/components/DartsUI';
+import { Page, Txt, LoadingRows } from '@/components/DartsUI';
 import { palette } from '@/lib/darts';
 import { useExtraGames } from '@/lib/games';
 
@@ -59,10 +59,9 @@ export default function Games() {
       {!s.hydrated ? (
         <LoadingRows />
       ) : (
-        <View className="mt-3">
-          <Heading>Tréning</Heading>
-          <Txt className="text-muted mt-1 mb-3 text-[13px]">
-            Tréningy pre jedného hráča na tomto telefóne. Výsledky sa ukladajú ako tvoje rekordy.
+        <View>
+          <Txt className="text-muted mb-3 text-[13px]">
+            Tréningy pre jedného hráča. Výsledky sa ukladajú ako tvoje rekordy.
           </Txt>
           <GameRow
             title="Around the Clock"
