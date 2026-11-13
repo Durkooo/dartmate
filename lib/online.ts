@@ -206,8 +206,14 @@ async function loadTrainingPlayers(): Promise<Set<string>> {
         trainingUnavailable = true;
       return ids;
     }
+    // Server môže vrátiť [{ user_id }] alebo len zoznam id (podľa typov) — berieme oboje.
     for (const r of (Array.isArray(data) ? data : []) as unknown[]) {
-      const id: unknown = typeof r === 'object' && r !== null ? Reflect.get(r, 'user_id') : null;
+      const id: unknown =
+        typeof r === 'string'
+          ? r
+          : typeof r === 'object' && r !== null
+            ? Reflect.get(r, 'user_id')
+            : null;
       if (typeof id === 'string') ids.add(id);
     }
   } catch {
