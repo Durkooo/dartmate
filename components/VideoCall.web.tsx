@@ -5,6 +5,7 @@ import {
   RoomEvent,
   Track,
   LocalVideoTrack,
+  RemoteTrackPublication,
   VideoPresets,
   ConnectionQuality,
   type Participant,
@@ -40,6 +41,13 @@ function snapshotTracks(room: Room): MediaTrack[] {
     );
   }
   return tracks;
+}
+
+function removeElement(track: Track, element: HTMLMediaElement) {
+  track.detach(element);
+  element.pause();
+  element.srcObject = null;
+  element.remove();
 }
 
 export default function VideoCall({
@@ -220,8 +228,12 @@ export default function VideoCall({
   useEffect(() => {
     if (!room) return undefined;
     let active = true;
-    let cooling = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Prvých 8 s po pripojení nemeníme kvalitu: hneď po štarte hlási sieť
+    // „výborná“ a reštart kamery na 1080p na mnohých Androidoch zlyhal → súper videl čiernu.
+    let cooling = true;
+    let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+      cooling = false;
+    }, 8000);
     const applyQuality = (quality: ConnectionQuality) => {
       const tier =
         quality === ConnectionQuality.Excellent ? 2 : quality === ConnectionQuality.Good ? 1 : 0;
@@ -244,8 +256,25 @@ export default function VideoCall({
           videoTier.current = tier;
           setPubTier(tier);
         })
-        .catch(() => {
-          if (active) setError('Kvalitu kamery sa nepodarilo zmeniť. Skús to znova.');
+        .catch(async () => {
+          // restartTrack najprv zastaví starú kameru — po zlyhaní by ostala mŕtva
+          // (súper vidí čierne okno). Vrátime predošlú kvalitu, inak kameru znova zapneme.
+          try {
+            await track.restartTrack({
+              resolution: VIDEO_PRESETS[videoTier.current].resolution,
+              ...trackOptions(facing, deviceId),
+            });
+          } catch {
+            try {
+              await room.localParticipant.setCameraEnabled(false);
+              await room.localParticipant.setCameraEnabled(true, {
+                resolution: VIDEO_PRESETS[videoTier.current].resolution,
+                ...trackOptions(facing, deviceId),
+              });
+            } catch {
+              if (active) setError('Kamera sa zasekla. Vypni ju a znova zapni tlačidlom nižšie.');
+            }
+          }
         })
         .finally(() => {
           if (active)
@@ -302,37 +331,116 @@ export default function VideoCall({
     };
   }, [micWanted, room]);
   const remoteHeight = large ? 440 : 160; // veľké okno súpera, keď čakám
+  // Pripojené prvky <video>/<audio> podľa stopy. Držíme ich medzi rendermi:
+  // predtým sa pri každej udalosti (odber mikrofónu, zmena stavu…) zničili a
+  // vytvorili nanovo — iOS Safari potom nový prvok často nespustil (čierne okno).
+  const attached = useRef(new Map<Track, { element: HTMLMediaElement; host: HTMLDivElement }>());
+  const [remoteStuck, setRemoteStuck] = useState(false);
+  // Spustí prehrávanie; iOS ho mimo gesta môže odmietnuť — vtedy ponúkneme tlačidlo.
+  const playAll = (fromGesture: boolean) => {
+    for (const [track, { element }] of attached.current) {
+      if (track.kind !== Track.Kind.Video && !fromGesture) continue;
+      void element.play().catch(() => {
+        if (track.kind === Track.Kind.Video) setRemoteStuck(true);
+      });
+    }
+  };
   useEffect(() => {
     if (!room) return undefined;
-    const elements: { track: Track; element: HTMLMediaElement }[] = [];
-    const attach = (track: Track | undefined, host: HTMLDivElement | null, local: boolean) => {
-      if (!track || !host || track.isMuted) return;
-      const element = track.attach();
-      element.autoplay = true;
-      if (element instanceof HTMLVideoElement) {
-        element.playsInline = true;
-        element.style.width = '100%';
-        element.style.height = local ? '150px' : `${remoteHeight}px`;
-        element.style.objectFit = 'contain';
-      }
-      if (local) element.muted = true;
-      host.appendChild(element);
-      elements.push({ track, element });
-    };
+    const map = attached.current;
+    const wanted = new Map<Track, { host: HTMLDivElement; local: boolean }>();
     for (const { track, local } of tracks) {
       // Hádžem: zobrazíme len SÚPEROVU kameru – moju lokálnu skryjeme.
       if (!large && local) continue;
-      attach(track, local ? localHost.current : remoteHost.current, local);
+      const host = local ? localHost.current : remoteHost.current;
+      if (!track || !host || track.isMuted) continue;
+      wanted.set(track, { host, local });
     }
-    return () => {
-      for (const { track, element } of elements) {
-        track.detach(element);
-        element.pause();
-        element.srcObject = null;
-        element.remove();
+    for (const [track, { element, host }] of map) {
+      const want = wanted.get(track);
+      if (!want || want.host !== host) {
+        removeElement(track, element);
+        map.delete(track);
       }
-    };
+    }
+    for (const [track, { host, local }] of wanted) {
+      let entry = map.get(track);
+      if (!entry) {
+        // autoplay/muted/playsInline nastavuje LiveKit sám (na Safari zámerne bez
+        // autoplay — v úspornom režime by video ostalo stáť na pauze).
+        const element = track.attach();
+        if (local) element.muted = true;
+        host.appendChild(element);
+        entry = { element, host };
+        map.set(track, entry);
+        if (element instanceof HTMLVideoElement)
+          void element.play().catch(() => {
+            if (!local) setRemoteStuck(true);
+          });
+      }
+      if (entry.element instanceof HTMLVideoElement) {
+        entry.element.style.width = '100%';
+        entry.element.style.height = local ? '150px' : `${remoteHeight}px`;
+        entry.element.style.objectFit = 'contain';
+        entry.element.style.display = 'block';
+      }
+    }
+    return undefined;
   }, [room, tracks, large, remoteHeight]);
+  // Pri odchode z hovoru / novej miestnosti uprac všetky prvky.
+  useEffect(() => {
+    if (!room) return undefined;
+    const map = attached.current;
+    return () => {
+      for (const [track, { element }] of map) removeElement(track, element);
+      map.clear();
+      setRemoteStuck(false);
+    };
+  }, [room]);
+  // Strážca: súperova stopa je, ale obraz nebeží (pauza / žiadne snímky) → tlačidlo.
+  useEffect(() => {
+    if (!room) return undefined;
+    let misses = 0;
+    const id = setInterval(() => {
+      let remoteVideo: HTMLVideoElement | undefined;
+      for (const [track, { element }] of attached.current)
+        if (
+          track.kind === Track.Kind.Video &&
+          element instanceof HTMLVideoElement &&
+          element.parentElement === remoteHost.current
+        )
+          remoteVideo = element;
+      if (!remoteVideo) {
+        misses = 0;
+        setRemoteStuck(false);
+        return;
+      }
+      const ok = !remoteVideo.paused && remoteVideo.videoWidth > 0;
+      if (ok) {
+        misses = 0;
+        setRemoteStuck(false);
+        return;
+      }
+      if (remoteVideo.paused) void remoteVideo.play().catch(() => undefined);
+      misses += 1;
+      if (misses >= 2) setRemoteStuck(true);
+    }, 2000);
+    return () => clearInterval(id);
+  }, [room]);
+  const restartRemoteVideo = () => {
+    // Ťuknutie = gesto → iOS dovolí spustiť prehrávanie. Navyše obnovíme odber.
+    playAll(true);
+    if (!room) return;
+    for (const p of room.remoteParticipants.values()) {
+      const pub = p.getTrackPublication(Track.Source.Camera);
+      if (pub instanceof RemoteTrackPublication && !pub.isMuted) {
+        pub.setSubscribed(false);
+        setTimeout(() => pub.setSubscribed(true), 400);
+      }
+    }
+    setRemoteStuck(false);
+    feedback.selection();
+  };
   const control = async (action: () => Promise<unknown>) => {
     if (!room || pending) return;
     setPending(true);
@@ -421,6 +529,17 @@ export default function VideoCall({
                   </div>
                 )}
               </div>
+              {remoteStuck && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-2"
+                  accessibilityLabel="Spustiť obraz súpera"
+                  onPress={restartRemoteVideo}
+                >
+                  <Button.Label>Nevidíš obraz? Ťukni sem</Button.Label>
+                </Button>
+              )}
             </View>
             {large && (
               <View>
