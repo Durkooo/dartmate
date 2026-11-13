@@ -392,3 +392,37 @@ export async function loadHeadToHead(
     count180: [me.c180, them.c180],
   };
 }
+
+export type LeaderRow = {
+  userId: string;
+  nickname: string;
+  matches: number;
+  wins: number;
+  avg: number | null;
+};
+/** Rebríček mňa a priateľov (online zápasy). null = backend ešte nemá funkciu. */
+export async function loadLeaderboard(since: string): Promise<LeaderRow[] | null> {
+  const { data, error } = await bilt.rpc('friends_leaderboard', { since });
+  if (error) {
+    if (/friends_leaderboard|function|schema cache|not find/i.test(error.message)) return null;
+    throw new Error(error.message);
+  }
+  const rows: LeaderRow[] = [];
+  for (const r of (Array.isArray(data) ? data : []) as unknown[]) {
+    if (typeof r !== 'object' || r === null) continue;
+    const get = (k: string): unknown => Reflect.get(r, k);
+    const userId = get('user_id');
+    const nickname = get('nickname');
+    if (typeof userId !== 'string' || typeof nickname !== 'string') continue;
+    const points = Number(get('points') ?? 0);
+    const darts = Number(get('darts') ?? 0);
+    rows.push({
+      userId,
+      nickname,
+      matches: Number(get('matches') ?? 0),
+      wins: Number(get('wins') ?? 0),
+      avg: darts > 0 ? round1((points * 3) / darts) : null,
+    });
+  }
+  return rows;
+}

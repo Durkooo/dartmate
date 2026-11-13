@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input, PressableFeedback } from 'heroui-native';
-import { UserPlus, ChevronRight } from 'lucide-react-native';
+import { UserPlus, ChevronRight, Trophy } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import {
@@ -173,6 +173,16 @@ export default function Friends() {
                   </Txt>
                 ) : null}
               </View>
+              {!!session && (
+                <Button
+                  variant="secondary"
+                  isIconOnly
+                  accessibilityLabel="Rebríček priateľov"
+                  onPress={() => router.push('/leaderboard')}
+                >
+                  <Trophy size={21} color={palette.ink} strokeWidth={1.8} />
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 isIconOnly

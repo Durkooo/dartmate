@@ -137,6 +137,15 @@ export default function Statistics() {
                 </Txt>
               </View>
             )}
+            {!!userId && (
+              <Button
+                variant="secondary"
+                className="mb-6"
+                onPress={() => router.push('/leaderboard')}
+              >
+                <Button.Label>Rebríček priateľov</Button.Label>
+              </Button>
+            )}
             <Heading className="text-[20px]">História zápasov</Heading>
           </>
         }
