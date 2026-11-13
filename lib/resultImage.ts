@@ -1,5 +1,14 @@
 import { Platform } from 'react-native';
-import { palette } from '@/lib/darts';
+import { palette as livePalette } from '@/lib/darts';
+
+/** Obrázok výsledku má vždy svetlé farby (rovnaký v svetlom aj tmavom režime). */
+const palette = {
+  ...livePalette,
+  ink: livePalette.navy,
+  paper: '#D2D7E0',
+  white: '#FFFFFF',
+  muted: '#5B6679',
+};
 
 /* Výsledok zápasu ako obrázok (tabuľka so štatistikami), ktorý sa pošle do chatu
  * ako fotka — príjemca si ho zväčší a stiahne. Kreslí sa na webe cez <canvas>;

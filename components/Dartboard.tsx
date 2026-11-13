@@ -17,27 +17,27 @@ function sector(inner: number, outer: number, a: number, b: number) {
  *  (tmavomodrá, žltá, svetlomodrošedá). */
 const TONES = {
   classic: {
-    base: palette.ink,
+    base: palette.navy,
     edge: palette.onInk,
     light: palette.paper,
-    dark: palette.ink,
+    dark: palette.navy,
     ringA: palette.yellow,
     ringB: palette.blue,
     line: palette.onInk,
-    ringLine: palette.ink,
+    ringLine: palette.navy,
     label: palette.onInk,
     bull: palette.blue,
     eye: palette.yellow,
   },
   board: {
-    base: palette.ink,
+    base: palette.navy,
     edge: 'rgba(189,200,219,0.35)',
     light: '#2B3C5C',
-    dark: palette.ink,
+    dark: palette.navy,
     ringA: palette.yellow,
     ringB: 'rgba(189,200,219,0.55)',
     line: 'rgba(189,200,219,0.22)',
-    ringLine: palette.ink,
+    ringLine: palette.navy,
     label: 'rgba(189,200,219,0.75)',
     bull: 'rgba(189,200,219,0.55)',
     eye: palette.yellow,
@@ -104,7 +104,7 @@ export function Dartboard({
           <Path
             d="M 179 52 L 179 31 L 204 22 L 200 46 Z"
             fill={palette.yellow}
-            stroke={palette.ink}
+            stroke={palette.navy}
             strokeWidth="2"
           />
         </>

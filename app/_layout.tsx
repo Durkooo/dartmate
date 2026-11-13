@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import * as DevClient from 'expo-dev-client';
 import { HeroUINativeProvider } from 'heroui-native';
 import { Uniwind } from 'uniwind';
+import { applyTheme } from '@/lib/theme';
 import {
   ErrorBoundary as ExpoErrorBoundary,
   type ErrorBoundaryProps,
@@ -54,8 +55,8 @@ export { ErrorBoundary };
 patchExpoGoAssetUrls();
 registerColorTokens();
 
-// Starter is light-only by default. Remove this when implementing requested dark mode.
-Uniwind.setTheme('light');
+// Svetlý/tmavý režim podľa Nastavení (pred vykreslením obrazoviek).
+Uniwind.setTheme(applyTheme());
 
 void SplashScreen.preventAutoHideAsync();
 

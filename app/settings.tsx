@@ -7,6 +7,7 @@ import { CameraPreview } from '@/components/CameraPreview';
 import { feedback } from '@/lib/darts';
 import { useHardwareKeyboard, useInputSettings } from '@/lib/scoreInput';
 import { usePlayers } from '@/lib/players';
+import { getThemePref, setThemePref } from '@/lib/theme';
 import {
   loadCameraPrefs,
   saveCameraPrefs,
@@ -135,6 +136,43 @@ function KeyboardSettings() {
   );
 }
 
+/** Vzhľad: svetlý, tmavý alebo podľa telefónu (po zmene sa appka znova načíta). */
+function ThemeSettings() {
+  const current = getThemePref();
+  return (
+    <View className="gap-3">
+      <Txt className="text-[17px]" style={{ fontFamily: 'Inter_700Bold' }}>
+        Vzhľad
+      </Txt>
+      <View className="flex-row gap-2">
+        {(
+          [
+            ['light', 'Svetlý'],
+            ['dark', 'Tmavý'],
+            ['system', 'Ako mobil'],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={value}
+            className="flex-1 px-1"
+            variant={current === value ? 'secondary' : 'tertiary'}
+            onPress={() => {
+              if (value === current) return;
+              feedback.selection();
+              setThemePref(value);
+            }}
+          >
+            <Button.Label numberOfLines={1}>{label}</Button.Label>
+          </Button>
+        ))}
+      </View>
+      <Txt className="text-muted text-[12px]">
+        „Ako mobil“ = podľa svetlého/tmavého režimu telefónu. Po zmene sa appka znova načíta.
+      </Txt>
+    </View>
+  );
+}
+
 /** Nastavenia: všetko na jednom mieste (otvára sa z Môjho účtu). */
 export default function SettingsScreen() {
   const session = usePlayers((s) => s.session);
@@ -155,6 +193,7 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ title: 'Nastavenia' }} />
       <View className="mt-3 gap-5">
         <Heading>Nastavenia</Heading>
+        <ThemeSettings />
         {!!session && (
           <View className="gap-4">
             <View>

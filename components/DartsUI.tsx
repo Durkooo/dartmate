@@ -107,7 +107,7 @@ export function Avatar({
         width: size,
         height: size,
         // Štýl ikon DartMate: tmavomodrý kruh so žltými písmenami.
-        backgroundColor: palette.ink,
+        backgroundColor: palette.navy,
         borderRadius: size / 2,
       }}
       className="items-center justify-center"

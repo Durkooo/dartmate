@@ -6,6 +6,8 @@ import type { BotConfig } from '@/lib/bots';
 
 export const palette = {
   ink: '#213049',
+  /** Tmavomodrá výplň (skóre box, avatary, terč) — rovnaká v svetlom aj tmavom režime. */
+  navy: '#213049',
   paper: '#D2D7E0', // pozadie appky: svetlejší odtieň poľa 25 z terča
   white: '#FFFFFF',
   /** Plochy (karty, dlaždice, polia, lišta) — jemná svetlosivá namiesto bielej. */

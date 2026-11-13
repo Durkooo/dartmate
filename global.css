@@ -31,25 +31,25 @@
       --color-on-ink: oklch(0.827 0.03 264);
     }
     @variant dark {
-      --background: #D2D7E0;
-      --foreground: #213049;
-      --surface: #E9ECF1;
-      --surface-foreground: #213049;
-      --overlay: #E9ECF1;
-      --overlay-foreground: #213049;
+      --background: #121927;
+      --foreground: #E6EAF2;
+      --surface: #1C2536;
+      --surface-foreground: #E6EAF2;
+      --overlay: #1C2536;
+      --overlay-foreground: #E6EAF2;
       --accent: oklch(0.867 0.154 91);
       --accent-foreground: #213049;
-      --default: oklch(0.934 0.009 270);
-      --default-foreground: #213049;
-      --muted: #5B6679;
-      --border: oklch(0.907 0.013 264);
-      --separator: oklch(0.907 0.013 264);
-      --field-background: #E9ECF1;
-      --field-foreground: #213049;
-      --field-placeholder: oklch(0.546 0.032 260);
-      --focus: oklch(0.546 0.032 260);
-      --danger: oklch(0.521 0.165 15);
-      --success: oklch(0.495 0.09 157);
+      --default: #2A3447;
+      --default-foreground: #E6EAF2;
+      --muted: #A3ADBF;
+      --border: #2C374B;
+      --separator: #2C374B;
+      --field-background: #1C2536;
+      --field-foreground: #E6EAF2;
+      --field-placeholder: #A3ADBF;
+      --focus: #A3ADBF;
+      --danger: #FF7A86;
+      --success: #5FD38D;
       --color-accent-soft-foreground: #213049;
       --color-ink: #213049;
       --color-on-ink: oklch(0.827 0.03 264);
@@ -74,5 +74,5 @@
   background-color: var(--color-surface);
 }
 .button__label--variant-tertiary {
-  color: var(--color-ink);
+  color: var(--color-foreground);
 }
