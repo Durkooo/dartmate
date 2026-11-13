@@ -6,6 +6,7 @@ import {
   Track,
   LocalVideoTrack,
   RemoteTrackPublication,
+  type TrackPublication,
   VideoPresets,
   ConnectionQuality,
   type Participant,
@@ -38,6 +39,30 @@ function peerStatus(room: Room, tracks: MediaTrack[]): string | null {
   if (!pub) return 'Súper je pripojený, kameru nevysiela';
   if (pub.isMuted) return 'Súper má vypnutú kameru';
   return !pub.isSubscribed ? 'Čakám na súperov obraz…' : 'Súperov obraz sa načítava…';
+}
+/** DOČASNÁ diagnostika hovoru (malý riadok pod hovorom) — ukáže, čo vidí každý
+ *  telefón: moje zverejnené stopy a stopy súpera. Po vyriešení kamery odstrániť. */
+function pubInfo(p: TrackPublication | undefined): string {
+  if (!p) return '–';
+  let out = p.trackSid ? 'ok' : 'čaká';
+  if (p.isMuted) out += ',mute';
+  if (p instanceof RemoteTrackPublication) out += p.isSubscribed ? ',sub' : ',nesub';
+  if (p.track?.mediaStreamTrack) out += `,${p.track.mediaStreamTrack.readyState}`;
+  return out;
+}
+function diagnostics(room: Room, camErrors: string[]): string {
+  const me = room.localParticipant;
+  const parts = [
+    `ja cam:${pubInfo(me.getTrackPublication(Track.Source.Camera))} mic:${pubInfo(me.getTrackPublication(Track.Source.Microphone))}`,
+  ];
+  const remotes = [...room.remoteParticipants.values()];
+  parts.push(`súperi:${remotes.length}`);
+  for (const p of remotes)
+    parts.push(
+      `${p.identity.slice(0, 6)} cam:${pubInfo(p.getTrackPublication(Track.Source.Camera))} mic:${pubInfo(p.getTrackPublication(Track.Source.Microphone))} stôp:${p.trackPublications.size}`,
+    );
+  if (camErrors.length) parts.push(`chyba:${camErrors.at(-1)}`);
+  return parts.join(' | ');
 }
 function snapshotTracks(room: Room): MediaTrack[] {
   const tracks: MediaTrack[] = [
@@ -77,6 +102,8 @@ export default function VideoCall({
   const [request, setRequest] = useState({ matchId });
   const [tracks, setTracks] = useState<MediaTrack[]>([]);
   const [peerInfo, setPeerInfo] = useState<string | null>(null);
+  const [diag, setDiag] = useState('');
+  const camErrors = useRef<string[]>([]);
   const [pending, setPending] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const micRef = useRef(micWanted);
@@ -134,6 +161,7 @@ export default function VideoCall({
         // Text stavu súpera počítame tu (mení sa aj bez zmeny stôp — napr. zverejnená,
         // ale ešte neodobratá kamera); rovnaký reťazec React neprekreslí.
         setPeerInfo(peerStatus(session, next));
+        setDiag(diagnostics(session, camErrors.current));
         // Rovnaké stopy v rovnakom stave → bez prekreslenia (pravidelná obnova).
         setTracks((prev) =>
           prev.length === next.length &&
@@ -238,14 +266,21 @@ export default function VideoCall({
             );
           // „Prebudenie“ kamery z ťuknutia ešte môže kameru držať (Android).
           await waitForCameraWarmUp();
+          const note = (e: unknown) => {
+            camErrors.current.push(
+              e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 80) : String(e),
+            );
+          };
           try {
             await enableCam(initialDeviceId);
-          } catch {
+          } catch (first) {
+            note(first);
             // Konkrétne zariadenie nemusí existovať — skús stranu.
             try {
               if (initialDeviceId) await enableCam(undefined);
-              else throw new Error('blocked');
+              else throw first;
             } catch (e) {
+              if (initialDeviceId) note(e);
               if (active) {
                 const msg = e instanceof Error ? `${e.message} ${e.name}` : '';
                 const blocked = /notallowed|denied|permission/i.test(msg);
@@ -547,6 +582,9 @@ export default function VideoCall({
       );
       feedback.selection();
     } catch (e) {
+      camErrors.current.push(
+        e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 80) : String(e),
+      );
       setError(
         isCameraBusy(e)
           ? 'Kameru drží iná aplikácia alebo karta. Zavri ju a skús kameru zapnúť znova.'
@@ -685,6 +723,11 @@ export default function VideoCall({
       {!!error && (
         <Txt className="text-danger mt-2 text-[12px]" accessibilityRole="alert">
           {error}
+        </Txt>
+      )}
+      {!!diag && !audioOnly && (
+        <Txt className="text-muted mt-2 text-[10px]" selectable>
+          {diag}
         </Txt>
       )}
       <VideoControls
