@@ -151,14 +151,38 @@ export default function Friends() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
-            <View className="mb-6 flex-row items-center justify-between">
-              <View className="flex-1 flex-row items-baseline gap-2">
-                <Heading>Priatelia</Heading>
+            {/* 1. riadok: nadpis a ikony (rebríček, pridať priateľa) s medzerou. */}
+            <View className="flex-row items-center justify-between">
+              <Heading>Priatelia</Heading>
+              <View className="flex-row items-center gap-4">
+                {!!session && (
+                  <Button
+                    variant="secondary"
+                    isIconOnly
+                    accessibilityLabel="Rebríček priateľov"
+                    onPress={() => router.push('/leaderboard')}
+                  >
+                    <Trophy size={21} color={palette.yellow} strokeWidth={1.8} />
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  isIconOnly
+                  accessibilityLabel="Pridať priateľa"
+                  onPress={() => router.push('/friend/new')}
+                >
+                  <UserPlus size={21} color={palette.yellow} strokeWidth={1.8} />
+                </Button>
+              </View>
+            </View>
+            {/* 2. riadok: moja prezývka a priemer. */}
+            {profile || avg !== null ? (
+              <View className="mt-1 mb-6 flex-row items-baseline gap-3">
                 {profile ? (
                   <Txt
                     numberOfLines={1}
-                    className="text-[24px] leading-8"
-                    style={{ fontFamily: 'Inter_700Bold', color: palette.onInk }}
+                    className="flex-shrink text-[20px] leading-7"
+                    style={{ fontFamily: 'Inter_700Bold', color: palette.muted }}
                   >
                     @{profile.nickname}
                   </Txt>
@@ -167,31 +191,15 @@ export default function Friends() {
                   <Txt
                     numberOfLines={1}
                     className="text-[15px]"
-                    style={{ fontFamily: 'Inter_600SemiBold', color: palette.onInk }}
+                    style={{ fontFamily: 'Inter_600SemiBold', color: palette.muted }}
                   >
                     avg. {Math.round(avg)}
                   </Txt>
                 ) : null}
               </View>
-              {!!session && (
-                <Button
-                  variant="secondary"
-                  isIconOnly
-                  accessibilityLabel="Rebríček priateľov"
-                  onPress={() => router.push('/leaderboard')}
-                >
-                  <Trophy size={21} color={palette.yellow} strokeWidth={1.8} />
-                </Button>
-              )}
-              <Button
-                variant="secondary"
-                isIconOnly
-                accessibilityLabel="Pridať priateľa"
-                onPress={() => router.push('/friend/new')}
-              >
-                <UserPlus size={21} color={palette.yellow} strokeWidth={1.8} />
-              </Button>
-            </View>
+            ) : (
+              <View className="mb-6" />
+            )}
             <StorageNotice />
             {session ? <PushNotice /> : null}
             {!profile && (

@@ -7,7 +7,7 @@
 @layer theme {
   :root {
     @variant light {
-      --background: oklch(0.971 0.005 270);
+      --background: #E6E8ED;
       --foreground: oklch(0.259 0.04 260);
       --surface: oklch(1 0 0);
       --surface-foreground: oklch(0.259 0.04 260);
@@ -31,7 +31,7 @@
       --color-on-ink: oklch(0.827 0.03 264);
     }
     @variant dark {
-      --background: oklch(0.971 0.005 270);
+      --background: #E6E8ED;
       --foreground: oklch(0.259 0.04 260);
       --surface: oklch(1 0 0);
       --surface-foreground: oklch(0.259 0.04 260);

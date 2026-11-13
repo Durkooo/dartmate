@@ -6,7 +6,7 @@ import type { BotConfig } from '@/lib/bots';
 
 export const palette = {
   ink: '#192438',
-  paper: '#F4F5F9',
+  paper: '#E6E8ED', // pozadie appky (o kúsok tmavšia sivá)
   white: '#FFFFFF',
   muted: '#687184',
   yellow: '#F7CF46',
