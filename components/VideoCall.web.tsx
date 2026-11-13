@@ -229,7 +229,14 @@ export default function VideoCall({
     // Po 8 s bez snímok kameru znova zverejníme v jednej kvalite (bez simulcastu),
     // ktorú zvládnu aj slabšie kodéry v telefónoch. Funkčné kamery sa to netýka.
     let zeroSince: number | undefined;
-    let fallbackDone = false;
+    // Poistky pri 0 snímkach: 1 = znova v 1 kvalite (VP8), 2 = kodek H.264,
+    // 3 = kodek VP9. Každá po 8 s bez snímok; funkčné kamery sa to netýka.
+    let fallbackStage = 0;
+    const FALLBACKS = [
+      { label: '1 kvalita VP8', codec: 'vp8' },
+      { label: 'kodek H.264', codec: 'h264' },
+      { label: 'kodek VP9', codec: 'vp9' },
+    ] as const;
     let checking = false;
     const checkSender = async () => {
       if (checking || !active) return;
@@ -254,15 +261,43 @@ export default function VideoCall({
         } catch {
           layersOn = '?';
         }
-        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${layersOn ? ` zap:${layersOn}` : ''}${limit ? ` obmedz:${limit}` : ''}${fallbackDone ? ' (1 kvalita)' : ''}`;
+        // Surové údaje prehliadača: snímky z kamery do kodéra, zakódované snímky,
+        // kodér a kodek — ukážu, kde presne sa video zastaví.
+        let raw = '';
+        try {
+          const report = await track.sender?.getStats();
+          let source = 0;
+          let encoded = 0;
+          let impl = '';
+          let codec = '';
+          report?.forEach((r: Record<string, unknown>) => {
+            if (r.type === 'media-source' && r.kind === 'video')
+              source = Math.max(source, Number(r.frames ?? r.framesPerSecond ?? 0));
+            if (r.type === 'outbound-rtp' && r.kind === 'video') {
+              encoded += Number(r.framesEncoded ?? 0);
+              if (typeof r.encoderImplementation === 'string') impl = r.encoderImplementation;
+              if (typeof r.codecId === 'string') {
+                const c: unknown = report.get(r.codecId);
+                const mime = c && typeof c === 'object' ? Reflect.get(c, 'mimeType') : undefined;
+                if (typeof mime === 'string') codec = mime.replace('video/', '');
+              }
+            }
+          });
+          raw = ` kam:${source} kód:${encoded}${impl ? ` ${impl}` : ''}${codec ? ` ${codec}` : ''}`;
+        } catch {
+          raw = '';
+        }
+        senderInfo.current = `odoslané:${frames}sn ${kb}kB vrstvy:${stats.length}${layersOn ? ` zap:${layersOn}` : ''}${limit ? ` obmedz:${limit}` : ''}${raw}${fallbackStage ? ` (${FALLBACKS[fallbackStage - 1].label})` : ''}`;
         if (frames > 0) {
           zeroSince = undefined;
           return;
         }
         zeroSince ??= Date.now();
-        if (fallbackDone || Date.now() - zeroSince < 8000) return;
-        fallbackDone = true;
-        camErrors.current.push('0 snímok → kamera znova v 1 kvalite');
+        if (fallbackStage >= FALLBACKS.length || Date.now() - zeroSince < 8000) return;
+        const next = FALLBACKS[fallbackStage];
+        fallbackStage += 1;
+        zeroSince = undefined;
+        camErrors.current.push(`0 snímok → kamera znova (${next.label})`);
         const { facing: f, deviceId: d } = cameraChoice.current;
         await session.localParticipant.unpublishTrack(track, true);
         if (!active) return;
@@ -270,7 +305,7 @@ export default function VideoCall({
           session.localParticipant.setCameraEnabled(
             true,
             { resolution: VIDEO_PRESETS[videoTier.current].resolution, ...trackOptions(f, d) },
-            { simulcast: false },
+            { simulcast: false, videoCodec: next.codec },
           ),
         );
       } catch (e) {
