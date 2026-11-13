@@ -414,11 +414,12 @@ export default function OnlineGame() {
                   <Button
                     key={n}
                     variant="secondary"
-                    size="sm"
-                    className="flex-1 rounded-lg"
+                    className="h-14 flex-1 rounded-xl"
                     onPress={() => quickSubmit(n)}
                   >
-                    <Button.Label>{n}</Button.Label>
+                    <Button.Label className="text-[22px]" style={{ fontFamily: 'Inter_700Bold' }}>
+                      {n}
+                    </Button.Label>
                   </Button>
                 ))}
               </View>
