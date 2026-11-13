@@ -8,7 +8,9 @@ import { OnlineError, MatchRow } from '@/components/OnlineUI';
 import { palette, useDarts, type Game } from '@/lib/darts';
 import { usePlayers } from '@/lib/players';
 import { useOnlineQuery } from '@/lib/online';
+import { StatsTrend } from '@/components/StatsTrend';
 import {
+  advancedStatistics,
   combinedStatistics,
   loadAccountStatistics,
   matchHistory,
@@ -55,6 +57,10 @@ export default function Statistics() {
       ),
     [localHistory, online, userId],
   );
+  const advanced = useMemo(
+    () => advancedStatistics(localHistory, online?.matches ?? [], online?.turns ?? []),
+    [localHistory, online],
+  );
   const rows = useMemo(
     () => matchHistory(localHistory, online?.matches ?? []),
     [localHistory, online],
@@ -96,7 +102,18 @@ export default function Statistics() {
                     'Priemer na 3 šípky',
                     (totals.darts ? (totals.points * 3) / totals.darts : 0).toFixed(1),
                   ],
+                  ['Priemer prvých 9 šípok', advanced.first9?.toFixed(1) ?? '–'],
+                  [
+                    'Úspešnosť zatvorenia',
+                    advanced.checkoutPct === null
+                      ? '–'
+                      : `${advanced.checkoutPct} % (${advanced.checkouts}/${advanced.checkoutChances})`,
+                  ],
+                  ['Najvyššie zatvorenie', advanced.highestCheckout || '–'],
+                  ['Najlepší leg (šípky)', advanced.bestLeg ?? '–'],
                   ['Najvyšší náhod', totals.highest],
+                  ['Náhody 100+', advanced.tons100],
+                  ['Náhody 140+', advanced.tons140],
                   ['Náhody 180', totals.scores180],
                 ].map(([label, value]) => (
                   <View
@@ -109,9 +126,11 @@ export default function Statistics() {
                     </Txt>
                   </View>
                 ))}
+                <StatsTrend points={advanced.trend} />
                 <Txt className="text-muted mt-4 text-[12px] leading-5">
-                  Dokončené online a uložené offline zápasy. Offline výsledky zostávajú na tomto
-                  zariadení.
+                  Úspešnosť zatvorenia = zatvorené legy z hodov, keď ti ostávalo zatvorenie jednou
+                  šípkou (do 40 párne alebo 50), len pri double out. Dokončené online a uložené
+                  offline zápasy. Offline výsledky zostávajú na tomto zariadení.
                   {totals.solo > 0
                     ? ' Sólo hry sa rátajú do zápasov a priemeru, nie do výhier a prehier.'
                     : ''}
