@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Session, Tables } from '@biltme/backend';
 import { useEffect } from 'react';
 import { bilt } from '@/lib/bilt';
+import { loadFriendAvatars, signAvatarUrls } from '@/lib/avatars';
 import { feedback, type Friend } from '@/lib/darts';
 
 type Profile = Tables<'player_profiles'>;
@@ -10,6 +11,8 @@ type PlayersState = {
   session: Session | null;
   profile: Profile | null;
   friends: Friend[];
+  /** Moja profilová fotka (podpísaný odkaz). */
+  myAvatarUrl?: string;
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
@@ -61,9 +64,10 @@ export const usePlayers = create<PlayersState>((set, get) => ({
     }
     set({ loading: true, error: '' });
     try {
-      const [profileResult, friendsResult] = await Promise.all([
+      const [profileResult, friendsResult, avatars] = await Promise.all([
         bilt.from('player_profiles').select('*').eq('user_id', userId).maybeSingle(),
         bilt.rpc('list_player_friends'),
+        loadFriendAvatars(),
       ]);
       if (get().session?.user.id !== userId) return;
       const error = profileResult.error ?? friendsResult.error;
@@ -72,8 +76,12 @@ export const usePlayers = create<PlayersState>((set, get) => ({
         feedback.error();
         return;
       }
+      const myPath: string | null | undefined = profileResult.data?.avatar_path;
+      const myAvatarUrl = myPath ? (await signAvatarUrls([myPath])).get(myPath) : undefined;
+      if (get().session?.user.id !== userId) return;
       set({
         profile: profileResult.data,
+        myAvatarUrl,
         friends: (friendsResult.data ?? []).map((p: any): Friend => {
           if (!p.user_id || !p.nickname) throw new Error('Zoznam priateľov sa nepodarilo načítať.');
           return {
@@ -82,6 +90,7 @@ export const usePlayers = create<PlayersState>((set, get) => ({
             handle: p.nickname,
             color: 'blue',
             demo: false,
+            avatarUrl: avatars.get(p.user_id),
           };
         }),
         loading: false,
@@ -109,7 +118,9 @@ export function usePlayerSession() {
       usePlayers.setState({
         session,
         ready: true,
-        ...(changed ? { profile: null, friends: [], error: '', loading: !!session } : {}),
+        ...(changed
+          ? { profile: null, friends: [], myAvatarUrl: undefined, error: '', loading: !!session }
+          : {}),
       });
       if (session) void usePlayers.getState().refresh();
     };

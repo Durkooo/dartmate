@@ -36,6 +36,8 @@ export type Friend = {
   handle: string;
   color: 'lavender' | 'blue' | 'peach';
   demo: boolean;
+  /** Profilová fotka (podpísaný odkaz); bez nej sa ukážu začiatočné písmená. */
+  avatarUrl?: string;
 };
 export type Message = { id: string; friendId: string; text: string; mine: boolean; time: string };
 export type Turn = {
