@@ -215,6 +215,16 @@ export default function Home() {
                   </Button.Label>
                 </Button>
               </View>
+              <Button
+                size="md"
+                variant="outline"
+                onPress={() => router.push('/games')}
+                className="mt-2 rounded-xl"
+              >
+                <Button.Label style={{ fontFamily: 'Inter_600SemiBold' }}>
+                  Cricket a tréning
+                </Button.Label>
+              </Button>
             </View>
           </View>
         </View>
