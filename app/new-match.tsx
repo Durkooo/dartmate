@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Accordion, Button, Input, PressableFeedback } from 'heroui-native';
-import { Check, Target, ChevronRight } from 'lucide-react-native';
+import { Check, Target, ChevronRight, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Page, Heading, Txt, Avatar, LoadingRows, StorageNotice } from '@/components/DartsUI';
 import { LegPicker } from '@/components/LegPicker';
@@ -82,7 +82,8 @@ export default function NewMatch() {
   const startGame = useDarts((s) => s.startGame);
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState(
-    friends.find((friend) => friend.id === friendId)?.id ?? friends[0]?.id ?? 'solo',
+    // Bez vybraného priateľa (z profilu) začíname „Hrám sám“ — zoznam priateľov je zbalený.
+    friends.find((friend) => friend.id === friendId)?.id ?? 'solo',
   );
   const [starting, setStarting] = useState<301 | 501>(501);
   // Druh hry: 301/501 (x01) alebo Cricket.
@@ -94,6 +95,10 @@ export default function NewMatch() {
   const [replace, setReplace] = useState(false);
   const [botId, setBotId] = useState<BotId>('novice');
   const [botExpanded, setBotExpanded] = useState(false);
+  // Priatelia v rozbaľovacom zozname (ako boti); otvorený, ak je priateľ už vybraný.
+  const [friendsExpanded, setFriendsExpanded] = useState(() =>
+    friends.some((f) => f.id === friendId),
+  );
   const selectedBot = BOTS.find((bot) => bot.id === botId) ?? BOTS[0];
   const botOpponent: Friend = {
     id: `bot-${selectedBot.id}`,
@@ -135,7 +140,7 @@ export default function NewMatch() {
       <Stack.Screen options={{ title: 'Nový zápas' }} />
       <FlatList
         keyboardShouldPersistTaps="handled"
-        data={trimmed ? [tempOpponent, soloFriend, ...friends] : [soloFriend, ...friends]}
+        data={trimmed ? [tempOpponent, soloFriend] : [soloFriend]}
         keyExtractor={(friend) => friend.id}
         contentContainerStyle={{
           padding: 20,
@@ -197,6 +202,70 @@ export default function NewMatch() {
                 <Check size={22} color={palette.ink} strokeWidth={1.8} />
               )}
             </PressableFeedback>
+            {friend.id === 'solo' && friends.length > 0 && (
+              <Accordion
+                selectionMode="single"
+                hideSeparator
+                className="mb-2"
+                value={friendsExpanded ? 'friends' : ''}
+                onValueChange={(value: string | undefined) => {
+                  setFriendsExpanded(value === 'friends');
+                  feedback.selection();
+                }}
+              >
+                <Accordion.Item value="friends">
+                  <Accordion.Trigger className="gap-3 rounded-xl p-3">
+                    <View
+                      className="bg-ink items-center justify-center rounded-full"
+                      style={{ width: 42, height: 42 }}
+                    >
+                      <Users size={20} color={palette.yellow} strokeWidth={1.8} />
+                    </View>
+                    <View className="flex-1">
+                      <Txt numberOfLines={1} style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        Priatelia
+                      </Txt>
+                      <Txt className="text-muted mt-1 text-[12px]" numberOfLines={1}>
+                        {friends.find((f) => f.id === selected)?.name ??
+                          `${friends.length} ${friends.length === 1 ? 'priateľ' : friends.length < 5 ? 'priatelia' : 'priateľov'}`}
+                      </Txt>
+                    </View>
+                    <Accordion.Indicator />
+                  </Accordion.Trigger>
+                  <Accordion.Content>
+                    {friends.map((f) => (
+                      <PressableFeedback
+                        key={f.id}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: selected === f.id }}
+                        onPress={() => {
+                          if (tempName) setTempName('');
+                          if (selected !== f.id) {
+                            setSelected(f.id);
+                            feedback.selection();
+                          }
+                        }}
+                        className={`mx-3 mb-1 flex-row items-center gap-3 rounded-xl px-3 py-2 ${selected === f.id ? 'bg-surface' : ''}`}
+                      >
+                        <Avatar friend={f} size={34} />
+                        <Txt
+                          className="flex-1 text-[14px]"
+                          numberOfLines={1}
+                          style={{ fontFamily: 'Inter_600SemiBold' }}
+                        >
+                          {f.name}
+                        </Txt>
+                        <View className="w-5">
+                          {selected === f.id && (
+                            <Check size={20} color={palette.ink} strokeWidth={1.8} />
+                          )}
+                        </View>
+                      </PressableFeedback>
+                    ))}
+                  </Accordion.Content>
+                </Accordion.Item>
+              </Accordion>
+            )}
             {friend.id === 'solo' && (
               <Accordion
                 selectionMode="single"
