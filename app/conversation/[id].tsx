@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import {
+  View,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from 'heroui-native';
@@ -268,6 +276,7 @@ function ConversationContent({
   const [historyError, setHistoryError] = useState('');
   const request = useRef<{ key: string; body: string; id: string } | null>(null);
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const messages = useMemo(() => {
     const rows = [...(query.data?.messages ?? []), ...(older?.key === key ? older.rows : [])];
     return [...new Map(rows.map((m) => [m.id, m])).values()].sort((a, b) => b.id - a.id);
@@ -539,7 +548,14 @@ function ConversationContent({
                 />
               ))}
           {callOpen && userId && (
-            <View className="my-2">
+            // Hovor je v pevnej hlavičke nad správami — keď je vyšší ako displej
+            // (iPhone), dá sa v ňom posúvať, aby bolo vidno aj ovládanie kamery.
+            <ScrollView
+              className="my-2"
+              style={{ maxHeight: Math.round(windowHeight * 0.72) }}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
               <VideoCall
                 key={kind}
                 audioOnly={kind === 'audio'}
@@ -553,7 +569,7 @@ function ConversationContent({
                 initialFacing={camPrefs.call}
                 initialDeviceId={camPrefs.callDeviceId}
               />
-            </View>
+            </ScrollView>
           )}
         </View>
         <FlatList
