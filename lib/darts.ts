@@ -46,6 +46,8 @@ export type Turn = {
   darts?: 1 | 2 | 3;
   /** Poradové číslo legu (od 0), v ktorom padol ťah. */
   leg: number;
+  /** Vrátený ťah: ostáva v prehľade prečiarknutý, do skóre sa neráta. */
+  undone?: boolean;
 };
 export type Game = {
   id: string;
@@ -91,6 +93,7 @@ const sampleMessages: Message[] = [
 export function scores(game: Game): [number, number] {
   const result: [number, number] = [game.starting, game.starting];
   for (const turn of game.turns) {
+    if (turn.undone) continue;
     const visibleLeg = currentLeg(game) - (game.betweenLegs || game.winner !== null ? 1 : 0);
     if (turn.leg === visibleLeg) result[turn.player] = turn.remaining;
   }
@@ -100,10 +103,10 @@ export function scores(game: Game): [number, number] {
 export function currentLeg(game: Game): number {
   return game.legs[0] + game.legs[1];
 }
-/** Ťahy práve hraného legu. */
+/** Ťahy práve hraného legu (bez vrátených). */
 export function legTurns(game: Game): Turn[] {
   const leg = currentLeg(game);
-  return game.turns.filter((t) => t.leg === leg);
+  return game.turns.filter((t) => t.leg === leg && !t.undone);
 }
 export function activePlayer(game: Game): 0 | 1 {
   if (game.solo) return 0;
@@ -128,7 +131,7 @@ export function topScores(turnScores: number[]): number[] {
     .sort((a, b) => a - b);
 }
 export function average(game: Game, player: 0 | 1): string {
-  const turns = game.turns.filter((t) => t.player === player);
+  const turns = game.turns.filter((t) => t.player === player && !t.undone);
   if (!turns.length) return '—';
   const points = turns.reduce((sum, t) => sum + (t.bust ? 0 : t.score), 0);
   const darts = turns.reduce((sum, t) => sum + (t.darts ?? 3), 0);
@@ -324,17 +327,24 @@ export const useDarts = create<DartsState>()(
       undo: () =>
         set((s) => {
           if (!s.game) return {};
-          const last = s.game.turns.at(-1);
-          const previous = s.game.turns.at(-2);
-          const removeCount =
-            s.game.bot && last?.player === 1 && previous?.player === 0 && previous.leg === last.leg
-              ? 2
-              : 1;
-          const legWon = !!last && !last.bust && last.remaining === 0;
+          // Vrátené ťahy sa nemažú, len označia — v prehľade ostanú prečiarknuté.
+          const idx: number[] = [];
+          for (let i = s.game.turns.length - 1; i >= 0 && idx.length < 2; i--) {
+            if (!s.game.turns[i].undone) idx.push(i);
+          }
+          const last = idx.length ? s.game.turns[idx[0]] : undefined;
+          const previous = idx.length > 1 ? s.game.turns[idx[1]] : undefined;
+          const pair =
+            s.game.bot &&
+            last?.player === 1 &&
+            previous?.player === 0 &&
+            previous.leg === last.leg;
+          const mark = new Set(pair ? idx.slice(0, 2) : idx.slice(0, 1));
+          const legWon = !!last && !last.bust && last.remaining === 0 && mark.has(idx[0]);
           return {
             game: {
               ...s.game,
-              turns: s.game.turns.slice(0, -removeCount),
+              turns: s.game.turns.map((t, i) => (mark.has(i) ? { ...t, undone: true } : t)),
               legs:
                 legWon && last
                   ? ([

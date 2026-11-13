@@ -48,7 +48,7 @@ export function combinedStatistics(
 ): StatisticsTotals {
   const completed = offline.filter((game) => game.winner !== null);
   const local = scoringTotals(
-    completed.flatMap((game) => game.turns.filter((turn) => turn.player === 0)),
+    completed.flatMap((game) => game.turns.filter((turn) => turn.player === 0 && !turn.undone)),
   );
   return {
     matches: completed.length + online.length,

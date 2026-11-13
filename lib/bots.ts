@@ -32,7 +32,7 @@ function setupPenalty(remaining: number): number {
 export function generateBotTurn(game: Game, random: () => number = Math.random) {
   if (!game.bot) throw new Error('Bot configuration is missing');
   const target = game.bot.target;
-  const turns = game.turns.filter((turn) => turn.player === 1);
+  const turns = game.turns.filter((turn) => turn.player === 1 && !turn.undone);
   const points = turns.reduce((sum, turn) => sum + (turn.bust ? 0 : turn.score), 0);
   const darts = turns.reduce((sum, turn) => sum + (turn.darts ?? 3), 0);
   // Recover points lost on doubles gradually, without making every visit identical.
