@@ -5,7 +5,8 @@ import { Button } from 'heroui-native';
 import { Page, Heading, Txt, Avatar, LoadingRows, Empty } from '@/components/DartsUI';
 import { usePlayers, playerError } from '@/lib/players';
 import { bilt } from '@/lib/bilt';
-import { feedback } from '@/lib/darts';
+import { feedback, useDarts } from '@/lib/darts';
+import { loadHeadToHead } from '@/lib/statistics';
 import { loadContacts, useOnlineQuery } from '@/lib/online';
 import { OnlineError, Presence } from '@/components/OnlineUI';
 
@@ -21,6 +22,15 @@ export default function PlayerFriend() {
   const social = useOnlineQuery(
     session ? `friend:${session.user.id}:${id}` : null,
     useCallback(() => loadContacts(), []),
+  );
+  const localHistory = useDarts((s) => s.history);
+  const h2h = useOnlineQuery(
+    session ? `h2h:${session.user.id}:${id}:${localHistory.length}` : null,
+    useCallback(
+      () => (session ? loadHeadToHead(session.user.id, id, localHistory) : Promise.resolve(null)),
+      [session, id, localHistory],
+    ),
+    60000,
   );
   const [confirm, setConfirm] = useState(false);
   const [pending, setPending] = useState(false);
@@ -84,6 +94,41 @@ export default function PlayerFriend() {
             lastSeen={social.data?.find((c: any) => c.user_id === id)?.last_seen ?? null}
           />
           <OnlineError error={social.error} retry={() => void social.refresh()} />
+          {!!h2h.data && h2h.data.matches > 0 && (
+            <View className="bg-surface gap-3 rounded-xl p-4">
+              <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Ty vs @{friend.handle}</Txt>
+              <Txt
+                style={{
+                  fontFamily: 'Inter_600SemiBold',
+                  fontSize: 32,
+                  fontVariant: ['tabular-nums'],
+                }}
+                accessibilityLabel={`Výhry ${h2h.data.wins}, prehry ${h2h.data.losses}`}
+              >
+                {h2h.data.wins} : {h2h.data.losses}
+              </Txt>
+              {[
+                ['Zápasy', String(h2h.data.matches)],
+                ['Legy', `${h2h.data.legsWon} : ${h2h.data.legsLost}`],
+                [
+                  'Priemer na 3 šípky',
+                  `${h2h.data.avg[0]?.toFixed(1) ?? '–'} : ${h2h.data.avg[1]?.toFixed(1) ?? '–'}`,
+                ],
+                ['Náhody 180', `${h2h.data.count180[0]} : ${h2h.data.count180[1]}`],
+              ].map(([label, value]) => (
+                <View key={label} className="flex-row justify-between gap-4">
+                  <Txt className="text-muted">{label}</Txt>
+                  <Txt style={{ fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] }}>
+                    {value}
+                  </Txt>
+                </View>
+              ))}
+              <Txt className="text-muted text-[12px]">
+                Ty vľavo, @{friend.handle} vpravo. Online zápasy medzi vami a lokálne zápasy na
+                tomto telefóne.
+              </Txt>
+            </View>
+          )}
           <Button
             onPress={() =>
               router.push({ pathname: '/conversation/[id]', params: { id: friend.id } })

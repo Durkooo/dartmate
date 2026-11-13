@@ -300,3 +300,95 @@ export async function loadAccountStatistics(userId: string) {
   }
   return { matches, scoring, turns };
 }
+
+export type HeadToHead = {
+  matches: number;
+  wins: number;
+  losses: number;
+  legsWon: number;
+  legsLost: number;
+  /** Priemer na 3 šípky [ja, priateľ]. */
+  avg: [number | null, number | null];
+  count180: [number, number];
+};
+
+type SideTotals = { points: number; darts: number; c180: number };
+const emptySide = (): SideTotals => ({ points: 0, darts: 0, c180: 0 });
+function addVisit(side: SideTotals, score: number, bust: boolean, darts: number) {
+  const points = bust ? 0 : score;
+  side.points += points;
+  side.darts += darts;
+  if (points === 180) side.c180 += 1;
+}
+const avgOf = (s: SideTotals) => (s.darts ? round1((s.points * 3) / s.darts) : null);
+
+/** Ty vs priateľ: dohrané online zápasy medzi vami + lokálne zápasy proti nemu na tomto telefóne. */
+export async function loadHeadToHead(
+  userId: string,
+  friendId: string,
+  offline: Game[],
+): Promise<HeadToHead> {
+  const me = emptySide();
+  const them = emptySide();
+  let matches = 0;
+  let wins = 0;
+  let losses = 0;
+  let legsWon = 0;
+  let legsLost = 0;
+  for (const game of offline) {
+    if (game.winner === null || game.solo || game.opponentId !== friendId) continue;
+    matches += 1;
+    if (game.winner === 0) wins += 1;
+    else losses += 1;
+    // Staršie uložené hry nemusia mať legy (hralo sa na jeden leg).
+    legsWon += game.legs?.[0] ?? (game.winner === 0 ? 1 : 0);
+    legsLost += game.legs?.[1] ?? (game.winner === 1 ? 1 : 0);
+    for (const t of game.turns)
+      if (!t.undone) addVisit(t.player === 0 ? me : them, t.score, t.bust, t.darts ?? 3);
+  }
+  const { data, error }: QueryPage<OnlineMatch> = await bilt
+    .from('online_matches')
+    .select('*')
+    .eq('status', 'finished')
+    .or(
+      `and(host_id.eq.${userId},guest_id.eq.${friendId}),and(host_id.eq.${friendId},guest_id.eq.${userId})`,
+    )
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  const online = data ?? [];
+  for (const m of online) {
+    matches += 1;
+    if (m.winner_id === userId) wins += 1;
+    else if (m.winner_id) losses += 1;
+    const mineLegs = m.host_id === userId ? m.host_legs : m.guest_legs;
+    const theirLegs = m.host_id === userId ? m.guest_legs : m.host_legs;
+    legsWon += mineLegs;
+    legsLost += theirLegs;
+  }
+  if (online.length) {
+    const {
+      data: turns,
+      error: turnsError,
+    }: QueryPage<Pick<OnlineTurn, 'player_id' | 'score' | 'darts' | 'bust'>> = await bilt
+      .from('online_turns')
+      .select('player_id, score, darts, bust')
+      .in(
+        'match_id',
+        online.map((m) => m.id),
+      )
+      .limit(10000);
+    if (turnsError) throw new Error(turnsError.message);
+    for (const t of turns ?? [])
+      addVisit(t.player_id === userId ? me : them, t.score, t.bust, t.darts || 3);
+  }
+  return {
+    matches,
+    wins,
+    losses,
+    legsWon,
+    legsLost,
+    avg: [avgOf(me), avgOf(them)],
+    count180: [me.c180, them.c180],
+  };
+}
