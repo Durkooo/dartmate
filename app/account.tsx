@@ -9,6 +9,7 @@ import { CameraPreview } from '@/components/CameraPreview';
 import { FunctionsHttpError } from '@biltme/backend';
 import { bilt } from '@/lib/bilt';
 import { feedback, palette } from '@/lib/darts';
+import { useHardwareKeyboard, useInputSettings } from '@/lib/scoreInput';
 import { removeAvatar, uploadAvatar } from '@/lib/avatars';
 import { playerError, usePlayers } from '@/lib/players';
 import {
@@ -177,6 +178,60 @@ function ProfilePhoto({
           <Txt className="text-muted text-[13px]">Ťukni na krúžok a pridaj si fotku.</Txt>
         )}
       </View>
+    </View>
+  );
+}
+
+/** Klávesnica: zadávanie skóre z pripojenej (Bluetooth) klávesnice. */
+function KeyboardSettings() {
+  const enabled = useInputSettings((s) => s.hardwareKeyboard);
+  const setEnabled = useInputSettings((s) => s.setHardwareKeyboard);
+  const [test, setTest] = useState('');
+  useHardwareKeyboard(enabled, {
+    digit: (d) => setTest((t) => (t + d).slice(-6)),
+    backspace: () => setTest((t) => t.slice(0, -1)),
+    clear: () => setTest(''),
+    enter: () => setTest((t) => (t ? `${t} ✓` : t)),
+  });
+  return (
+    <View className="mt-2 gap-3">
+      <Txt className="text-[17px]" style={{ fontFamily: 'Inter_700Bold' }}>
+        Klávesnica
+      </Txt>
+      <Txt className="text-muted text-[13px] leading-5">
+        Skóre môžeš zadávať z klávesnice namiesto ťukania do mobilu. Klávesnicu najprv spáruj v
+        telefóne: Nastavenia → Bluetooth (stačí aj malá numerická klávesnica). V zápase potom píšeš
+        čísla, Enter = Zapísať, Backspace = zmazať číslicu, Esc = vymazať.
+      </Txt>
+      <View className="flex-row gap-2">
+        {(
+          [
+            [false, 'Vypnutá'],
+            [true, 'Zapnutá'],
+          ] as const
+        ).map(([v, label]) => (
+          <Button
+            key={label}
+            className="flex-1"
+            variant={enabled === v ? 'secondary' : 'tertiary'}
+            onPress={() => {
+              setEnabled(v);
+              setTest('');
+              feedback.selection();
+            }}
+          >
+            <Button.Label>{label}</Button.Label>
+          </Button>
+        ))}
+      </View>
+      {enabled && (
+        <View className="bg-surface items-center gap-1 rounded-xl p-4">
+          <Txt className="text-muted text-[12px]">Vyskúšaj: stlač čísla na klávesnici</Txt>
+          <Txt className="text-[28px]" style={{ fontFamily: 'Inter_700Bold' }}>
+            {test || '–'}
+          </Txt>
+        </View>
+      )}
     </View>
   );
 }
@@ -402,10 +457,14 @@ export default function Account() {
           <Button variant="secondary" onPress={() => router.push('/statistics')}>
             <Button.Label>Moje štatistiky</Button.Label>
           </Button>
+          {/* NASTAVENIA: kamera a klávesnica */}
+          <Heading className="mt-7 text-[22px]">Nastavenia</Heading>
           {!!session && (
-            <View className="mt-7 gap-4">
+            <View className="gap-4">
               <View>
-                <Heading className="text-[20px]">Kamera</Heading>
+                <Txt className="text-[17px]" style={{ fontFamily: 'Inter_700Bold' }}>
+                  Kamera
+                </Txt>
               </View>
               <FacingPicker
                 label="Online zápas"
@@ -502,6 +561,7 @@ export default function Account() {
               )}
             </View>
           )}
+          <KeyboardSettings />
           {!!(error || remoteError) && (
             <Txt accessibilityRole="alert" className="text-danger">
               {error || remoteError}

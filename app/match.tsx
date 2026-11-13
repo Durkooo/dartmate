@@ -9,6 +9,8 @@ import { generateBotTurn } from '@/lib/bots';
 import { ShareResult } from '@/components/ShareResult';
 import { localGameShare } from '@/lib/shareGame';
 import { usePlayers } from '@/lib/players';
+import { VoiceScore } from '@/components/VoiceScore';
+import { clickById, useHardwareKeyboard, useInputSettings, useVoiceMode } from '@/lib/scoreInput';
 import {
   palette,
   feedback,
@@ -40,6 +42,22 @@ export default function Match() {
   const [discard, setDiscard] = useState(false);
   const botTurn =
     !!game?.bot && game.winner === null && !game.betweenLegs && activePlayer(game) === 1;
+  // Hlásenie skóre hlasom (ostáva zapnuté počas celého zápasu) a Bluetooth klávesnica.
+  const [voiceOn, setVoiceOn] = useVoiceMode(`offline:${game?.id ?? ''}`);
+  const hardwareKeyboard = useInputSettings((s) => s.hardwareKeyboard);
+  useHardwareKeyboard(
+    hardwareKeyboard && !!game && game.winner === null && !game.betweenLegs && !botTurn,
+    {
+      digit: (d) => {
+        setInput((prev) => (prev.length >= 3 ? prev : prev === '0' ? d : prev + d));
+        setError('');
+      },
+      backspace: () => setInput((prev) => prev.slice(0, -1)),
+      clear: () => setInput(''),
+      // Enter = ťuknutie na „Zapísať“ (rovnaké kontroly ako pri ťuknutí).
+      enter: () => clickById('score-submit'),
+    },
+  );
   useFocusEffect(
     useCallback(() => {
       if (!hydrated || !game || !botTurn || discard) return undefined;
@@ -332,7 +350,21 @@ export default function Match() {
                     {input || '—'}
                   </Txt>
                 </View>
-                {frequent.length > 0 && (
+                <VoiceScore
+                  on={voiceOn}
+                  setOn={setVoiceOn}
+                  validate={(n) =>
+                    validScore(n) ? null : 'toto skóre sa tromi šípkami hodiť nedá.'
+                  }
+                  needsDarts={(n) => n === currentScores[player] && canFinish(n, game.doubleOut)}
+                  onPreview={(n) => {
+                    setInput(String(n));
+                    setError('');
+                  }}
+                  onCommit={(n) => saveWith(3, n)}
+                  onCancel={() => setInput('')}
+                />
+                {!voiceOn && frequent.length > 0 && (
                   <View className="mb-2 flex-row gap-2">
                     {frequent.map((n) => (
                       <Button
@@ -347,11 +379,14 @@ export default function Match() {
                     ))}
                   </View>
                 )}
-                {[
-                  [1, 2, 3],
-                  [4, 5, 6],
-                  [7, 8, 9],
-                ].map((row) => (
+                {(voiceOn
+                  ? []
+                  : [
+                      [1, 2, 3],
+                      [4, 5, 6],
+                      [7, 8, 9],
+                    ]
+                ).map((row) => (
                   <View key={row.join('-')} className="mb-2 flex-row gap-2">
                     {row.map((n) => (
                       <Button
@@ -385,18 +420,20 @@ export default function Match() {
                   >
                     <Undo2 size={24} color={palette.yellow} strokeWidth={1.8} />
                   </Button>
-                  <Button
-                    className="bg-surface h-15 flex-1 rounded-xl"
-                    variant="secondary"
-                    onPress={() => append('0')}
-                  >
-                    <Button.Label
-                      className="text-[24px]"
-                      style={{ fontFamily: 'Inter_600SemiBold' }}
+                  {!voiceOn && (
+                    <Button
+                      className="bg-surface h-15 flex-1 rounded-xl"
+                      variant="secondary"
+                      onPress={() => append('0')}
                     >
-                      0
-                    </Button.Label>
-                  </Button>
+                      <Button.Label
+                        className="text-[24px]"
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                      >
+                        0
+                      </Button.Label>
+                    </Button>
+                  )}
                   <Button
                     className="h-15 flex-1 rounded-xl"
                     variant="secondary"
@@ -445,6 +482,7 @@ export default function Match() {
                   <Button
                     size="lg"
                     className="rounded-xl"
+                    nativeID="score-submit"
                     isDisabled={!input}
                     onPress={() => saveWith(3)}
                   >

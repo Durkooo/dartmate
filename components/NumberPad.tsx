@@ -12,6 +12,10 @@ type NumberPadProps = {
   onUndoTurn?: () => void;
   disabled?: boolean;
   pending?: boolean;
+  /** Hlasový režim: skryje číslice (ostane okno skóre, späť a Zapísať). */
+  hideDigits?: boolean;
+  /** id tlačidla „Zapísať“ (Enter z klávesnice ho stlačí). */
+  submitId?: string;
 };
 
 export function NumberPad({
@@ -21,6 +25,8 @@ export function NumberPad({
   onUndoTurn,
   disabled = false,
   pending = false,
+  hideDigits = false,
+  submitId,
 }: NumberPadProps) {
   const locked = disabled || pending;
   const change = (next: string) => {
@@ -43,11 +49,14 @@ export function NumberPad({
           {value || '0'}
         </Txt>
       </View>
-      {[
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 9],
-      ].map((row) => (
+      {(hideDigits
+        ? []
+        : [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+          ]
+      ).map((row) => (
         <View key={row.join('-')} className="flex-row gap-2">
           {row.map((digit) => (
             <Button
@@ -74,16 +83,18 @@ export function NumberPad({
         >
           <Undo2 size={21} color={palette.yellow} strokeWidth={1.8} />
         </Button>
-        <Button
-          variant="secondary"
-          className="bg-surface h-12 flex-1 rounded-xl"
-          isDisabled={locked}
-          onPress={() => append('0')}
-        >
-          <Button.Label className="text-[21px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-            0
-          </Button.Label>
-        </Button>
+        {!hideDigits && (
+          <Button
+            variant="secondary"
+            className="bg-surface h-12 flex-1 rounded-xl"
+            isDisabled={locked}
+            onPress={() => append('0')}
+          >
+            <Button.Label className="text-[21px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+              0
+            </Button.Label>
+          </Button>
+        )}
         <Button
           variant="secondary"
           className="h-12 flex-1 rounded-xl"
@@ -94,7 +105,7 @@ export function NumberPad({
           <Delete size={21} color={palette.yellow} strokeWidth={1.8} />
         </Button>
       </View>
-      <Button className="mt-2" isDisabled={locked || !value} onPress={onSubmit}>
+      <Button className="mt-2" nativeID={submitId} isDisabled={locked || !value} onPress={onSubmit}>
         <Button.Label>{pending ? 'Ukladám…' : 'Zapísať skóre'}</Button.Label>
       </Button>
     </View>

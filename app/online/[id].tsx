@@ -7,6 +7,8 @@ import { Page, Heading, Txt, Empty, LoadingRows } from '@/components/DartsUI';
 import { OnlineGate, OnlineError } from '@/components/OnlineUI';
 import VideoCall from '@/components/VideoCall';
 import { NumberPad } from '@/components/NumberPad';
+import { VoiceScore } from '@/components/VoiceScore';
+import { clickById, useHardwareKeyboard, useInputSettings, useVoiceMode } from '@/lib/scoreInput';
 import { MatchChat } from '@/components/MatchChat';
 import { bilt } from '@/lib/bilt';
 import { feedback, palette, validScore, canFinish, validCheckout, topScores } from '@/lib/darts';
@@ -59,6 +61,18 @@ export default function OnlineGame() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [video, setVideo] = useState(false);
+  // Hlásenie skóre hlasom (počas celého zápasu) a Bluetooth klávesnica.
+  const [voiceOn, setVoiceOn] = useVoiceMode(`online:${id}`);
+  const hardwareKeyboard = useInputSettings((s) => s.hardwareKeyboard);
+  useHardwareKeyboard(hardwareKeyboard, {
+    digit: (d) => {
+      setInput((prev) => (prev.length >= 3 ? prev : prev === '0' ? d : prev + d));
+      setError('');
+    },
+    backspace: () => setInput((prev) => prev.slice(0, -1)),
+    clear: () => setInput(''),
+    enter: () => clickById('score-submit-online'),
+  });
   // Vyskakovacie okno s kamerou: otvorí sa samo pri zmene ťahu na súpera;
   // „Skryť“ vydrží do ďalšieho ťahu, kuk (peek) ho otvorí aj v mojom ťahu.
   const [camHiddenTurn, setCamHiddenTurn] = useState<string | null>(null);
@@ -392,7 +406,26 @@ export default function OnlineGame() {
                 ))}
               </View>
             )}
+            <VoiceScore
+              on={voiceOn}
+              setOn={setVoiceOn}
+              disabledReason={
+                video && micWanted
+                  ? 'Hlásenie hlasom nejde, kým beží mikrofón videohovoru zápasu. Vypni mikrofón alebo video.'
+                  : undefined
+              }
+              validate={(n) => (validScore(n) ? null : 'toto skóre sa tromi šípkami hodiť nedá.')}
+              needsDarts={(n) => n === myRemaining && canFinish(n, m.double_out)}
+              onPreview={(n) => {
+                setInput(String(n));
+                setError('');
+              }}
+              onCommit={(n) => void submitWith(3, n)}
+              onCancel={() => setInput('')}
+            />
             <NumberPad
+              hideDigits={voiceOn && !(video && micWanted)}
+              submitId="score-submit-online"
               value={input}
               onChange={(v) => {
                 setInput(v);
