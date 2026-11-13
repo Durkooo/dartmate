@@ -40,7 +40,7 @@ export function LegPicker({
         <Button.Label className="text-[20px]" style={{ fontFamily: 'Inter_700Bold' }}>
           {legsLabel(value)}
         </Button.Label>
-        <ChevronDown size={20} color={palette.ink} strokeWidth={2} />
+        <ChevronDown size={20} color={palette.yellow} strokeWidth={2} />
       </Button>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <View className="flex-1 items-center justify-center p-6">

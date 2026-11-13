@@ -106,12 +106,13 @@ export function Avatar({
       style={{
         width: size,
         height: size,
-        backgroundColor: palette[friend.color],
+        // Štýl ikon DartMate: tmavomodrý kruh so žltými písmenami.
+        backgroundColor: palette.ink,
         borderRadius: size / 2,
       }}
       className="items-center justify-center"
     >
-      <Txt style={{ fontFamily: 'Inter_600SemiBold', color: palette.ink, fontSize: size * 0.3 }}>
+      <Txt style={{ fontFamily: 'Inter_600SemiBold', color: palette.yellow, fontSize: size * 0.3 }}>
         {initials}
       </Txt>
     </View>

@@ -72,7 +72,7 @@ export function NumberPad({
           isDisabled={locked || (!value && !onUndoTurn)}
           onPress={() => (value ? change('') : onUndoTurn?.())}
         >
-          <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+          <Undo2 size={21} color={palette.yellow} strokeWidth={1.8} />
         </Button>
         <Button
           variant="secondary"
@@ -91,7 +91,7 @@ export function NumberPad({
           isDisabled={locked || !value}
           onPress={() => change(value.slice(0, -1))}
         >
-          <Delete size={21} color={palette.ink} strokeWidth={1.8} />
+          <Delete size={21} color={palette.yellow} strokeWidth={1.8} />
         </Button>
       </View>
       <Button className="mt-2" isDisabled={locked || !value} onPress={onSubmit}>

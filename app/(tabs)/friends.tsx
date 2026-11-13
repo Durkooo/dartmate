@@ -180,7 +180,7 @@ export default function Friends() {
                   accessibilityLabel="Rebríček priateľov"
                   onPress={() => router.push('/leaderboard')}
                 >
-                  <Trophy size={21} color={palette.ink} strokeWidth={1.8} />
+                  <Trophy size={21} color={palette.yellow} strokeWidth={1.8} />
                 </Button>
               )}
               <Button
@@ -189,7 +189,7 @@ export default function Friends() {
                 accessibilityLabel="Pridať priateľa"
                 onPress={() => router.push('/friend/new')}
               >
-                <UserPlus size={21} color={palette.ink} strokeWidth={1.8} />
+                <UserPlus size={21} color={palette.yellow} strokeWidth={1.8} />
               </Button>
             </View>
             <StorageNotice />

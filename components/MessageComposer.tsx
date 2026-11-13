@@ -78,7 +78,7 @@ export function MessageComposer({
               feedback.selection();
             }}
           >
-            <ImageIcon size={22} strokeWidth={1.8} color={palette.ink} />
+            <ImageIcon size={22} strokeWidth={1.8} color={palette.yellow} />
           </Button>
           <Modal
             visible={open}
@@ -122,7 +122,7 @@ export function MessageComposer({
               accessibilityLabel="Odstrániť fotografiu"
               onPress={onRemovePhoto}
             >
-              <X size={17} strokeWidth={1.8} color={palette.ink} />
+              <X size={17} strokeWidth={1.8} color={palette.yellow} />
             </Button>
           </View>
         )}

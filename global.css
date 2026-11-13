@@ -56,3 +56,13 @@
     }
   }
 }
+
+/* Štýl DartMate ikon: sekundárne tlačidlá sú tmavomodré dlaždice so žltým
+ * textom (hlavné tlačidlá ostávajú žlté s tmavomodrým textom). Mimo vrstiev,
+ * aby prebili predvolené farby HeroUI aj triedy ako bg-surface. */
+.button__root--variant-secondary {
+  background-color: var(--color-ink);
+}
+.button__label--variant-secondary {
+  color: var(--color-accent);
+}

@@ -56,7 +56,7 @@ export function VideoControls({
             accessibilityLabel={label}
             onPress={action}
           >
-            <Icon size={20} color={palette.ink} strokeWidth={1.8} />
+            <Icon size={20} color={palette.yellow} strokeWidth={1.8} />
           </Button>
         ))}
     </View>

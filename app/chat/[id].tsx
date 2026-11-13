@@ -58,7 +58,7 @@ export default function Chat() {
               size="sm"
               onPress={() => router.push({ pathname: '/new-match', params: { friendId: id } })}
             >
-              <Target size={17} color={palette.ink} />
+              <Target size={17} color={palette.yellow} />
               <Button.Label>Hrať</Button.Label>
             </Button>
           </View>

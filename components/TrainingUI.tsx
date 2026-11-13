@@ -209,7 +209,7 @@ export function TrainingScreen({
                       disabled={!canUndo}
                       onPress={onUndo}
                     >
-                      <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+                      <Undo2 size={21} color={palette.yellow} strokeWidth={1.8} />
                     </PadButton>
                   </View>
                 )}

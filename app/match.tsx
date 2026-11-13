@@ -383,7 +383,7 @@ export default function Match() {
                       feedback.success();
                     }}
                   >
-                    <Undo2 size={24} color={palette.ink} strokeWidth={1.8} />
+                    <Undo2 size={24} color={palette.yellow} strokeWidth={1.8} />
                   </Button>
                   <Button
                     className="bg-surface h-15 flex-1 rounded-xl"
@@ -408,7 +408,7 @@ export default function Match() {
                       feedback.selection();
                     }}
                   >
-                    <Delete size={24} color={palette.ink} strokeWidth={1.8} />
+                    <Delete size={24} color={palette.yellow} strokeWidth={1.8} />
                   </Button>
                 </View>
                 {checkout ? (

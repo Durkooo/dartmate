@@ -545,7 +545,7 @@ export default function OnlineGame() {
               feedback.selection();
             }}
           >
-            <Video size={19} strokeWidth={1.8} color={palette.ink} />
+            <Video size={19} strokeWidth={1.8} color={palette.yellow} />
             <Button.Label>Zapnúť kameru na terč</Button.Label>
           </Button>
         )}

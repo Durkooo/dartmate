@@ -548,7 +548,7 @@ function ConversationContent({
                     isDisabled={pending || callOpen || !!query.error}
                     onPress={() => void startCall('audio')}
                   >
-                    <Phone size={19} strokeWidth={1.8} color={palette.ink} />
+                    <Phone size={19} strokeWidth={1.8} color={palette.yellow} />
                   </Button>
                   <Button
                     size="sm"
@@ -564,7 +564,7 @@ function ConversationContent({
                       void startCall();
                     }}
                   >
-                    <Video size={19} strokeWidth={1.8} color={palette.ink} />
+                    <Video size={19} strokeWidth={1.8} color={palette.yellow} />
                   </Button>
                   <Button
                     size="sm"

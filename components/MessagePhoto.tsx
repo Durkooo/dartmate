@@ -121,11 +121,11 @@ export function MessagePhoto({ path, mine }: { path: string; mine: boolean }) {
                   isDisabled={saving}
                   onPress={() => void download()}
                 >
-                  <Download size={18} strokeWidth={1.8} color={palette.ink} />
+                  <Download size={18} strokeWidth={1.8} color={palette.yellow} />
                   <Button.Label>{saving ? 'Otváram…' : 'Stiahnuť fotku'}</Button.Label>
                 </Button>
                 <Button variant="secondary" isIconOnly onPress={() => setZoomed(false)}>
-                  <X size={20} strokeWidth={1.8} color={palette.ink} />
+                  <X size={20} strokeWidth={1.8} color={palette.yellow} />
                 </Button>
               </View>
             </View>

@@ -61,7 +61,7 @@ export function ShareResult({
           isDisabled={sending}
           onPress={() => send(peerId, peerName ?? '')}
         >
-          <Send size={18} color={palette.ink} />
+          <Send size={18} color={palette.yellow} />
           <Button.Label>
             {sending ? 'Posielam…' : `Poslať výsledok @${peerName ?? ''} do chatu`}
           </Button.Label>
@@ -77,7 +77,7 @@ export function ShareResult({
               feedback.selection();
             }}
           >
-            <Send size={18} color={palette.ink} />
+            <Send size={18} color={palette.yellow} />
             <Button.Label>{sending ? 'Posielam…' : 'Poslať výsledok priateľovi'}</Button.Label>
           </Button>
           {picking && (

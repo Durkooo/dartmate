@@ -222,7 +222,7 @@ export default function Cricket() {
                   feedback.selection();
                 }}
               >
-                <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+                <Undo2 size={21} color={palette.yellow} strokeWidth={1.8} />
               </PadButton>
               <PadButton
                 label="Ďalší hráč"
