@@ -14,6 +14,7 @@ import { playerError, usePlayers } from '@/lib/players';
 import { loadCameraPrefs, warmUpCamera, type CameraPrefs } from '@/lib/video';
 import { ShareResult } from '@/components/ShareResult';
 import { formatResult } from '@/lib/matchResult';
+import { onlineVisits, renderResultImage, x01Rows, x01Stats } from '@/lib/resultImage';
 import {
   appIsActive,
   computeMatchStats,
@@ -634,6 +635,32 @@ export default function OnlineGame() {
                     computeMatchStats(turns, peerId).avg3,
                   ],
                 })}
+                image={() => {
+                  const mineLegs = m.host_id === userId ? m.host_legs : m.guest_legs;
+                  const theirLegs = m.host_id === userId ? m.guest_legs : m.host_legs;
+                  return renderResultImage({
+                    subtitle: `Online ${m.starting}${m.double_out ? ' · double out' : ''}${m.legs_to_win > 1 ? ` · na ${m.legs_to_win} legy` : ''}`,
+                    players: [
+                      {
+                        name: `@${myNick ?? ''}`,
+                        score: String(
+                          m.legs_to_win > 1 ? mineLegs : m.winner_id === userId ? 1 : 0,
+                        ),
+                      },
+                      {
+                        name: `@${peerName}`,
+                        score: String(
+                          m.legs_to_win > 1 ? theirLegs : m.winner_id === userId ? 0 : 1,
+                        ),
+                      },
+                    ],
+                    winner: m.winner_id === userId ? 0 : m.winner_id ? 1 : null,
+                    rows: x01Rows([
+                      x01Stats(onlineVisits(turns, userId)),
+                      x01Stats(onlineVisits(turns, peerId)),
+                    ]),
+                  });
+                }}
               />
             )}
             <Button onPress={() => router.push('/statistics')}>

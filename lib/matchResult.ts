@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { bilt } from '@/lib/bilt';
 import { notifyRecipient } from '@/lib/sendPush';
+import { MESSAGE_PHOTOS_BUCKET } from '@/lib/messagePhotos';
 
 /** Výsledok zápasu poslaný do chatu je obyčajná čitateľná správa s touto hlavičkou
  *  (v upozornení aj v staršej verzii appky sa ukáže ako text, appka z nej spraví kartu). */
@@ -76,16 +77,44 @@ export function resultLines(body: string): string[] {
   return body.split('\n').slice(1).filter(Boolean);
 }
 
-/** Pošle výsledok priateľovi do chatu (+ upozornenie). */
-export async function sendResult(peerId: string, myNick: string, body: string): Promise<void> {
-  const { data, error } = await bilt.rpc('send_direct_message', {
-    peer: peerId,
-    message_body: body,
-    client_request: Crypto.randomUUID(),
-  });
+/** Pošle výsledok priateľovi do chatu (+ upozornenie). S obrázkom tabuľky ho
+ *  pošle ako fotku (príjemca si ju zväčší a stiahne); bez neho len text. */
+export async function sendResult(
+  peerId: string,
+  myNick: string,
+  body: string,
+  image?: () => Promise<Blob | null>,
+): Promise<void> {
+  const myId: string | undefined = (await bilt.auth.getSession()).data?.session?.user.id;
+  let photoPath: string | null = null;
+  if (image && myId) {
+    try {
+      const blob = await image();
+      if (blob) {
+        const path = `${myId}/${peerId}/${Crypto.randomUUID()}.png`;
+        const { error } = await bilt.storage
+          .from(MESSAGE_PHOTOS_BUCKET)
+          .upload(path, blob, { contentType: 'image/png', upsert: false });
+        if (!error) photoPath = path;
+      }
+    } catch {
+      // Obrázok sa nepodaril — pošle sa aspoň textová karta.
+    }
+  }
+  const { data, error } = photoPath
+    ? await bilt.rpc('send_image_message', {
+        peer: peerId,
+        message_body: body,
+        client_request: Crypto.randomUUID(),
+        photo_path: photoPath,
+      })
+    : await bilt.rpc('send_direct_message', {
+        peer: peerId,
+        message_body: body,
+        client_request: Crypto.randomUUID(),
+      });
   if (error) throw new Error(error.message);
   if (!data?.[0]) throw new Error('Výsledok sa nepodarilo poslať.');
-  const myId: string | undefined = (await bilt.auth.getSession()).data?.session?.user.id;
   // Odkaz z pohľadu príjemcu = konverzácia so mnou.
   if (myId)
     notifyRecipient(

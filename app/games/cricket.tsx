@@ -8,6 +8,7 @@ import { PadButton, ScoreBoard } from '@/components/GameBoard';
 import { feedback, palette } from '@/lib/darts';
 import { ShareResult } from '@/components/ShareResult';
 import { formatCricketResult } from '@/lib/matchResult';
+import { renderResultImage } from '@/lib/resultImage';
 import { usePlayers } from '@/lib/players';
 import {
   CRICKET_TARGETS,
@@ -138,6 +139,30 @@ export default function Cricket() {
                       darts: game.totalDarts,
                       won: game.winner === 0,
                     })}
+                    image={() =>
+                      renderResultImage({
+                        subtitle: 'Cricket',
+                        players: [
+                          { name: `@${myNick}`, score: String(game.points[0]) },
+                          {
+                            name: friend ? `@${friend.handle}` : game.players[1],
+                            score: String(game.points[1]),
+                          },
+                        ],
+                        winner: game.winner,
+                        rows: [
+                          {
+                            label: 'Body',
+                            values: game.points.map(String),
+                          },
+                          {
+                            label: 'Zavreté čísla (z 7)',
+                            values: game.marks.map((m) => String(m.filter((x) => x >= 3).length)),
+                          },
+                          { label: 'Šípky', values: game.totalDarts.map(String) },
+                        ],
+                      })
+                    }
                   />
                 );
               })()}

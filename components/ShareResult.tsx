@@ -14,10 +14,13 @@ export function ShareResult({
   peerId,
   peerName,
   body,
+  image,
 }: {
   peerId?: string;
   peerName?: string;
   body: string;
+  /** Obrázok tabuľky so štatistikami (posiela sa ako fotka). */
+  image?: () => Promise<Blob | null>;
 }) {
   const myNick = usePlayers((s) => s.profile?.nickname);
   const friends = usePlayers((s) => s.friends).filter((f) => !f.demo);
@@ -29,7 +32,7 @@ export function ShareResult({
   const send = (id: string, name: string) => {
     setSending(true);
     setError('');
-    void sendResult(id, myNick, body)
+    void sendResult(id, myNick, body, image)
       .then(() => {
         setSentTo({ id, name });
         setPicking(false);

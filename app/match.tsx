@@ -8,6 +8,7 @@ import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/Da
 import { generateBotTurn } from '@/lib/bots';
 import { ShareResult } from '@/components/ShareResult';
 import { formatResult, formatSoloResult } from '@/lib/matchResult';
+import { renderResultImage, x01Rows, x01Stats } from '@/lib/resultImage';
 import { usePlayers } from '@/lib/players';
 import {
   palette,
@@ -276,11 +277,50 @@ export default function Match() {
                             Number.parseFloat(average(game, 1)) || null,
                           ],
                         });
+                    // Obrázok tabuľky: 100+, 140+, 180, priemery, najlepší leg, zatvorenie.
+                    const image = () => {
+                      const sides = game.solo ? ([0] as const) : ([0, 1] as const);
+                      const stats = sides.map((p) =>
+                        x01Stats(
+                          game.turns
+                            .filter((t) => t.player === p && !t.undone)
+                            .map((t) => ({
+                              points: t.score,
+                              darts: t.darts ?? 3,
+                              remaining: t.remaining,
+                              bust: t.bust,
+                              leg: t.leg,
+                            })),
+                        ),
+                      );
+                      return renderResultImage({
+                        subtitle: `${game.starting}${game.doubleOut ? ' · double out' : ''}${game.legsToWin > 1 ? ` · na ${game.legsToWin} legy` : ''}`,
+                        players: game.solo
+                          ? [{ name: `@${myNick}`, score: `${myDarts} šípok` }]
+                          : [
+                              {
+                                name: `@${myNick}`,
+                                score: String(
+                                  game.legsToWin > 1 ? game.legs[0] : game.winner === 0 ? 1 : 0,
+                                ),
+                              },
+                              {
+                                name: friendOpponent ? `@${game.opponentName}` : game.opponentName,
+                                score: String(
+                                  game.legsToWin > 1 ? game.legs[1] : game.winner === 1 ? 1 : 0,
+                                ),
+                              },
+                            ],
+                        winner: game.solo ? null : game.winner,
+                        rows: x01Rows(stats),
+                      });
+                    };
                     return (
                       <ShareResult
                         peerId={friendOpponent ? game.opponentId : undefined}
                         peerName={friendOpponent ? game.opponentName : undefined}
                         body={body}
+                        image={image}
                       />
                     );
                   })()}
