@@ -181,7 +181,7 @@ export function TrainingScreen({
             <Txt className="text-muted text-[14px] leading-6">{intro}</Txt>
             {introExtra}
             <Button size="lg" onPress={onStart}>
-              <Target size={20} color={palette.ink} strokeWidth={1.8} />
+              <Target size={20} color={palette.navy} strokeWidth={1.8} />
               <Button.Label>Začať tréning</Button.Label>
             </Button>
             <Button variant="ghost" onPress={() => router.dismissTo('/games')}>

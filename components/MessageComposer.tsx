@@ -143,7 +143,7 @@ export function MessageComposer({
         accessibilityLabel={pending ? 'Odosielam správu' : 'Odoslať správu'}
         onPress={onSend}
       >
-        {pending ? <Spinner size="sm" /> : <Send size={21} strokeWidth={1.8} color={palette.ink} />}
+        {pending ? <Spinner size="sm" /> : <Send size={21} strokeWidth={1.8} color={palette.navy} />}
       </Button>
     </View>
   );

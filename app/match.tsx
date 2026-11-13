@@ -494,7 +494,7 @@ export default function Match() {
                     onPress={() => saveWith(3)}
                   >
                     <Button.Label>{input ? `Zapísať ${input}` : 'Zapísať skóre'}</Button.Label>
-                    <Check size={21} color={palette.ink} strokeWidth={1.8} />
+                    <Check size={21} color={palette.navy} strokeWidth={1.8} />
                   </Button>
                 )}
                 {/* Hlas až pod Zapísať — aby sa pri ťukaní čísel nezapol omylom. */}

@@ -47,7 +47,7 @@ function CricketStart({
           <Txt>Máš rozohraný Cricket.</Txt>
           <Button onPress={() => router.push('/games/cricket')}>
             <Button.Label>Pokračovať v Crickete</Button.Label>
-            <ChevronRight size={20} color={palette.ink} />
+            <ChevronRight size={20} color={palette.navy} />
           </Button>
           <Button variant="ghost" onPress={() => setReplace(true)}>
             <Button.Label>Začať odznova</Button.Label>
@@ -61,7 +61,7 @@ function CricketStart({
             </Txt>
           )}
           <Button size="lg" onPress={onStart}>
-            <Target size={20} color={palette.ink} strokeWidth={1.8} />
+            <Target size={20} color={palette.navy} strokeWidth={1.8} />
             <Button.Label>Začať Cricket proti {opponent.name}</Button.Label>
           </Button>
         </>
@@ -429,7 +429,7 @@ export default function NewMatch() {
                       <Button.Label>
                         {game.winner !== null ? 'Zobraziť výsledok' : 'Pokračovať v zápase'}
                       </Button.Label>
-                      <ChevronRight size={20} color={palette.ink} />
+                      <ChevronRight size={20} color={palette.navy} />
                     </Button>
                     <Button variant="ghost" onPress={() => setReplace(true)}>
                       <Button.Label>Začať odznova</Button.Label>
@@ -464,7 +464,7 @@ export default function NewMatch() {
                         router.replace('/match');
                       }}
                     >
-                      <Target size={20} color={palette.ink} strokeWidth={1.8} />
+                      <Target size={20} color={palette.navy} strokeWidth={1.8} />
                       <Button.Label>Začať zápas</Button.Label>
                     </Button>
                   </View>
