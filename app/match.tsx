@@ -5,6 +5,7 @@ import { Button, Spinner } from 'heroui-native';
 import { Delete, Undo2, Check, Trophy, RotateCcw } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Txt, Heading, Empty, StorageNotice, LoadingRows } from '@/components/DartsUI';
+import { ScoreStrip } from '@/components/GameBoard';
 import { generateBotTurn } from '@/lib/bots';
 import { ShareResult } from '@/components/ShareResult';
 import { localGameShare } from '@/lib/shareGame';
@@ -103,7 +104,6 @@ export default function Match() {
   const player = activePlayer(game);
   const opponentFirst = game.bot ? game.opponentName : game.opponentName.split(' ')[0];
   const practice = game.opponentId === 'practice';
-  const name = player === 0 ? 'Ty' : practice ? 'Hráč 2' : opponentFirst;
   // Najčastejšie súčty hádžuceho hráča (história + tento zápas, bez prehodených).
   const frequent = topScores([
     ...history.flatMap((g) =>
@@ -227,28 +227,18 @@ export default function Match() {
                   </View>
                 ))}
               </View>
-              <View className="bg-accent px-3 py-1">
-                <Txt
-                  className="text-center text-[13px]"
-                  style={{ fontFamily: 'Inter_600SemiBold' }}
-                >
-                  {finished
+              {/* Legy: moje vľavo, súperove vpravo; v strede na koľko sa hrá. */}
+              <ScoreStrip
+                left={`Legy ${game.legs[0]}`}
+                right={game.solo ? undefined : `Legy ${game.legs[1]}`}
+                center={
+                  finished
                     ? game.winner === 0
                       ? 'Vyhral si!'
                       : `${practice ? 'Hráč 2' : opponentFirst} vyhráva!`
-                    : `Na ťahu: ${name}`}
-                </Txt>
-              </View>
-            </View>
-            <View className="mb-4 gap-0.5">
-              <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>
-                {game.starting} · {game.doubleOut ? 'Double out' : 'Straight out'}
-                {game.legsToWin > 1 &&
-                  (game.solo
-                    ? ` · Vyhrané legy ${game.legs[0]} z ${game.legsToWin}`
-                    : ` · Legy ${game.legs[0]}:${game.legs[1]} (do ${game.legsToWin})`)}
-              </Txt>
-              <Txt className="text-muted text-[12px]">Lokálna hra</Txt>
+                    : `First to ${game.legsToWin}`
+                }
+              />
             </View>
             {finished ? (
               <View className="items-center gap-4 py-6">
@@ -372,7 +362,7 @@ export default function Match() {
                   </Txt>
                 )}
                 <View className="mt-2 mb-2 flex-row items-center justify-between">
-                  <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Súčet 3 šípok</Txt>
+                  <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Nahrané skóre</Txt>
                   <Txt
                     className={`text-[30px] leading-9 ${input ? '' : 'text-muted'}`}
                     style={{ fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] }}
@@ -381,20 +371,6 @@ export default function Match() {
                     {input || '0'}
                   </Txt>
                 </View>
-                <VoiceScore
-                  on={voiceOn}
-                  setOn={setVoiceOn}
-                  validate={(n) =>
-                    validScore(n) ? null : 'toto skóre sa tromi šípkami hodiť nedá.'
-                  }
-                  needsDarts={(n) => n === currentScores[player] && canFinish(n, game.doubleOut)}
-                  onPreview={(n) => {
-                    setInput(String(n));
-                    setError('');
-                  }}
-                  onCommit={(n) => saveWith(3, n)}
-                  onCancel={() => setInput('')}
-                />
                 {!voiceOn && frequent.length > 0 && (
                   <View className="mb-2 flex-row gap-2">
                     {frequent.map((n) => (
@@ -521,6 +497,23 @@ export default function Match() {
                     <Check size={21} color={palette.ink} strokeWidth={1.8} />
                   </Button>
                 )}
+                {/* Hlas až pod Zapísať — aby sa pri ťukaní čísel nezapol omylom. */}
+                <View className="mt-3">
+                  <VoiceScore
+                    on={voiceOn}
+                    setOn={setVoiceOn}
+                    validate={(n) =>
+                      validScore(n) ? null : 'toto skóre sa tromi šípkami hodiť nedá.'
+                    }
+                    needsDarts={(n) => n === currentScores[player] && canFinish(n, game.doubleOut)}
+                    onPreview={(n) => {
+                      setInput(String(n));
+                      setError('');
+                    }}
+                    onCommit={(n) => saveWith(3, n)}
+                    onCancel={() => setInput('')}
+                  />
+                </View>
                 {!!error && (
                   <Txt className="text-danger mb-3 text-[13px]" accessibilityRole="alert">
                     {error}

@@ -83,12 +83,9 @@ export default function Cricket() {
               ? game.winner === 0
                 ? 'Vyhral si!'
                 : `${game.players[game.winner ?? 1]} vyhráva!`
-              : `Na ťahu: ${game.players[p]} · šípka ${game.dartsInTurn + 1} z 3`
+              : `Šípka ${game.dartsInTurn + 1} z 3`
           }
         />
-        <View className="mb-4 flex-row items-center justify-between">
-          <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Cricket · 20–15 a bull</Txt>
-        </View>
         {/* Zásahy: hráč 1 | číslo | hráč 2 */}
         <View className="bg-surface mb-4 rounded-xl px-3 py-2">
           {CRICKET_TARGETS.map((value, t) => {

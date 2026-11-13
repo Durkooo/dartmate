@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Button } from 'heroui-native';
 import { Txt } from '@/components/DartsUI';
+import { palette } from '@/lib/darts';
 
 /* Spoločný vzhľad všetkých hier podľa zápasu 301/501: tmavá tabuľa so skóre,
  * žltý pásik „Na ťahu“ a klávesnica s tlačidlami ako pri zadávaní skóre. */
@@ -11,14 +12,19 @@ export function ScoreBoard({
   players,
   active,
   bottom,
+  bottomLeft,
+  bottomRight,
 }: {
   /** Malý text hore (kolo, stav). */
   top: string;
   players: { name: string; value: string; sub?: string }[];
   /** Index hráča na ťahu (zvýraznený žltou), null = nikto. */
   active: number | null;
-  /** Žltý pásik dole. */
+  /** Žltý pásik dole (stred). */
   bottom: string;
+  /** Ľavý / pravý roh žltého pásika (napr. vyhrané legy hráčov). */
+  bottomLeft?: string;
+  bottomRight?: string;
 }) {
   return (
     <View className="bg-ink mb-3 overflow-hidden rounded-[22px]">
@@ -53,11 +59,41 @@ export function ScoreBoard({
           </View>
         ))}
       </View>
-      <View className="bg-accent px-3 py-1">
-        <Txt className="text-center text-[13px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-          {bottom}
+      <ScoreStrip left={bottomLeft} center={bottom} right={bottomRight} />
+    </View>
+  );
+}
+
+/** Žltý pásik tabule: stred + rohy (legy). Text je vždy tmavomodrý (aj v tmavom režime). */
+export function ScoreStrip({
+  left,
+  center,
+  right,
+}: {
+  left?: string;
+  center: string;
+  right?: string;
+}) {
+  const side = { fontFamily: 'Inter_700Bold', color: palette.navy, minWidth: 64 } as const;
+  return (
+    <View className="bg-accent flex-row items-center px-4 py-1">
+      {left !== undefined || right !== undefined ? (
+        <Txt className="text-[13px]" style={side} numberOfLines={1}>
+          {left ?? ''}
         </Txt>
-      </View>
+      ) : null}
+      <Txt
+        className="flex-1 text-center text-[13px]"
+        style={{ fontFamily: 'Inter_600SemiBold', color: palette.navy }}
+        numberOfLines={1}
+      >
+        {center}
+      </Txt>
+      {left !== undefined || right !== undefined ? (
+        <Txt className="text-right text-[13px]" style={side} numberOfLines={1}>
+          {right ?? ''}
+        </Txt>
+      ) : null}
     </View>
   );
 }

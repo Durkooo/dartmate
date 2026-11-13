@@ -40,11 +40,13 @@ export function NumberPad({
 
   return (
     <View className="gap-2">
-      <View className="bg-surface mb-2 min-h-20 items-center justify-center rounded-xl p-4">
+      <View className="flex-row items-center justify-between">
+        <Txt style={{ fontFamily: 'Inter_600SemiBold' }}>Nahrané skóre</Txt>
         <Txt
           accessibilityLabel={`Skóre: ${value || '0'}`}
-          className="text-[36px]"
-          style={{ fontFamily: 'Inter_700Bold' }}
+          accessibilityLiveRegion="polite"
+          className={`text-[30px] leading-9 ${value ? '' : 'text-muted'}`}
+          style={{ fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] }}
         >
           {value || '0'}
         </Txt>

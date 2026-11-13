@@ -8,6 +8,7 @@ import { OnlineGate, OnlineError } from '@/components/OnlineUI';
 import VideoCall from '@/components/VideoCall';
 import { NumberPad } from '@/components/NumberPad';
 import { VoiceScore } from '@/components/VoiceScore';
+import { ScoreStrip } from '@/components/GameBoard';
 import { clickById, useHardwareKeyboard, useInputSettings, useVoiceMode } from '@/lib/scoreInput';
 import { MatchChat } from '@/components/MatchChat';
 import { bilt } from '@/lib/bilt';
@@ -331,8 +332,8 @@ export default function OnlineGame() {
               <Trophy size={14} strokeWidth={1.8} color={palette.ink} />
               <Txt className="text-on-ink text-[12px]" style={{ fontFamily: 'Inter_600SemiBold' }}>
                 {m?.status === 'finished'
-                  ? `Legy ${myLegs}:${peerLegs}`
-                  : `Leg ${legNo} · legy ${myLegs}:${peerLegs} (do ${legsToWin}) · začína @${legStarterName}`}
+                  ? 'Zápas dohraný'
+                  : `Leg ${legNo} · začína @${legStarterName}`}
               </Txt>
             </View>
           )}
@@ -385,6 +386,18 @@ export default function OnlineGame() {
               </View>
             ))}
           </View>
+          {/* Legy: moje vľavo, súperove vpravo; v strede na koľko sa hrá. */}
+          <ScoreStrip
+            left={`Legy ${myLegs}`}
+            right={`Legy ${peerLegs}`}
+            center={
+              m.status === 'finished'
+                ? m.winner_id === userId
+                  ? 'Vyhral si!'
+                  : `@${peerName} vyhráva!`
+                : `First to ${legsToWin}`
+            }
+          />
         </View>
 
         {/* Status / chyby spojenia pod skóre (kompaktné, bez času) */}
@@ -410,23 +423,6 @@ export default function OnlineGame() {
                 ))}
               </View>
             )}
-            <VoiceScore
-              on={voiceOn}
-              setOn={setVoiceOn}
-              disabledReason={
-                video && micWanted
-                  ? 'Hlásenie hlasom nejde, kým beží mikrofón videohovoru zápasu. Vypni mikrofón alebo video.'
-                  : undefined
-              }
-              validate={(n) => (validScore(n) ? null : 'toto skóre sa tromi šípkami hodiť nedá.')}
-              needsDarts={(n) => n === myRemaining && canFinish(n, m.double_out)}
-              onPreview={(n) => {
-                setInput(String(n));
-                setError('');
-              }}
-              onCommit={(n) => void submitWith(3, n)}
-              onCancel={() => setInput('')}
-            />
             <NumberPad
               hideDigits={voiceOn && !(video && micWanted)}
               submitId="score-submit-online"
@@ -476,6 +472,24 @@ export default function OnlineGame() {
                 ) : null}
               </View>
             )}
+            {/* Hlas až pod Zapísať — aby sa pri ťukaní čísel nezapol omylom. */}
+            <VoiceScore
+              on={voiceOn}
+              setOn={setVoiceOn}
+              disabledReason={
+                video && micWanted
+                  ? 'Hlásenie hlasom nejde, kým beží mikrofón videohovoru zápasu. Vypni mikrofón alebo video.'
+                  : undefined
+              }
+              validate={(n) => (validScore(n) ? null : 'toto skóre sa tromi šípkami hodiť nedá.')}
+              needsDarts={(n) => n === myRemaining && canFinish(n, m.double_out)}
+              onPreview={(n) => {
+                setInput(String(n));
+                setError('');
+              }}
+              onCommit={(n) => void submitWith(3, n)}
+              onCancel={() => setInput('')}
+            />
           </View>
         )}
 
