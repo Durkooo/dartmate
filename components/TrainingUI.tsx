@@ -23,6 +23,7 @@ export function TrainingScreen({
   onFinish,
   onUndo,
   canUndo,
+  hideUndo = false,
   onCancel,
   children,
 }: {
@@ -43,6 +44,8 @@ export function TrainingScreen({
   onFinish: () => void;
   onUndo: () => void;
   canUndo: boolean;
+  /** Vlastné tlačidlo späť (napr. v číselnej klávesnici). */
+  hideUndo?: boolean;
   onCancel: () => void;
   /** Riadky klávesnice (len počas hry). */
   children: ReactNode;
@@ -104,15 +107,17 @@ export function TrainingScreen({
             ) : (
               <View className="gap-2">
                 {children}
-                <View className="flex-row gap-2">
-                  <PadButton
-                    accessibilityLabel="Vrátiť posledný hod"
-                    disabled={!canUndo}
-                    onPress={onUndo}
-                  >
-                    <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
-                  </PadButton>
-                </View>
+                {!hideUndo && (
+                  <View className="flex-row gap-2">
+                    <PadButton
+                      accessibilityLabel="Vrátiť posledný hod"
+                      disabled={!canUndo}
+                      onPress={onUndo}
+                    >
+                      <Undo2 size={21} color={palette.ink} strokeWidth={1.8} />
+                    </PadButton>
+                  </View>
+                )}
                 <Button className="mt-4" variant="ghost" onPress={onCancel}>
                   <Button.Label>Zrušiť tréning</Button.Label>
                 </Button>

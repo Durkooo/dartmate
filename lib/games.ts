@@ -177,6 +177,56 @@ export function c121Undo(g: C121Game): C121Game {
   return prev ? { ...prev, past: g.past.slice(0, -1) } : g;
 }
 
+// ───────────────────────── Highscore ─────────────────────────
+/** 10 kôl po 3 šípky, cieľ = čo najvyšší súčet bodov. */
+export const HIGHSCORE_ROUNDS = 10;
+export type HighscoreGame = { scores: number[]; done: boolean };
+export const newHighscore = (): HighscoreGame => ({ scores: [], done: false });
+export function highscoreRound(g: HighscoreGame, score: number): HighscoreGame {
+  if (g.done || score < 0 || score > 180) return g;
+  const scores = [...g.scores, score];
+  return { scores, done: scores.length >= HIGHSCORE_ROUNDS };
+}
+export function highscoreUndo(g: HighscoreGame): HighscoreGame {
+  return g.scores.length ? { scores: g.scores.slice(0, -1), done: false } : g;
+}
+export const highscoreTotal = (g: HighscoreGame) => g.scores.reduce((a, b) => a + b, 0);
+
+// ───────────────────────── Finishing 50 ─────────────────────────
+/** 20 kôl, v každom náhodné zatvorenie 2–50 na 3 šípky. Body: zatvorené
+ *  1 šípkou = 3, 2 šípkami = 2, 3 šípkami = 1, nezatvorené = 0. */
+export const FINISH_ROUNDS = 20;
+export type FinishGame = {
+  targets: number[];
+  /** Body za odohrané kolá (0–3). */
+  results: number[];
+  done: boolean;
+};
+function randomTargets(): number[] {
+  return Array.from({ length: FINISH_ROUNDS }, () => 2 + Math.floor(Math.random() * 49));
+}
+export const newFinish = (): FinishGame => ({ targets: randomTargets(), results: [], done: false });
+export function finishRound(g: FinishGame, points: 0 | 1 | 2 | 3): FinishGame {
+  if (g.done) return g;
+  const results = [...g.results, points];
+  return { ...g, results, done: results.length >= FINISH_ROUNDS };
+}
+export function finishUndo(g: FinishGame): FinishGame {
+  return g.results.length ? { ...g, results: g.results.slice(0, -1), done: false } : g;
+}
+export const finishTotal = (g: FinishGame) => g.results.reduce((a, b) => a + b, 0);
+/** Odporúčaná cesta zatvorenia (do 50) pri double out. */
+export function finishHint(n: number): string {
+  if (n === 50) return 'Bull';
+  if (n % 2 === 0 && n <= 40) return `D${n / 2}`;
+  // Nepárne alebo nad 40: single tak, aby ostal obľúbený double.
+  for (const d of [16, 20, 8, 18, 12, 10, 4, 2, 1]) {
+    const single = n - d * 2;
+    if (single >= 1 && single <= 20) return `S${single} D${d}`;
+  }
+  return n > 40 ? `S${n - 40} D20` : `S1 D${(n - 1) / 2}`;
+}
+
 // ───────────────────────── Úložisko ─────────────────────────
 export type GameRecords = {
   cricketPlayed: number;
@@ -186,6 +236,8 @@ export type GameRecords = {
   bobsBest: number | null;
   /** Najvyššie zatvorené číslo v 121. */
   c121Best: number | null;
+  highscoreBest?: number | null;
+  finishBest?: number | null;
 };
 type ExtraGamesState = {
   hydrated: boolean;
@@ -193,13 +245,17 @@ type ExtraGamesState = {
   clock: ClockGame | null;
   bobs: BobsGame | null;
   c121: C121Game | null;
+  highscore: HighscoreGame | null;
+  finishing: FinishGame | null;
   records: GameRecords;
   setCricket: (g: CricketGame | null) => void;
   setClock: (g: ClockGame | null) => void;
   setBobs: (g: BobsGame | null) => void;
   setC121: (g: C121Game | null) => void;
+  setHighscore: (g: HighscoreGame | null) => void;
+  setFinishing: (g: FinishGame | null) => void;
   /** Uloží rekord dohranej hry a hru zavrie. */
-  finish: (mode: 'cricket' | 'clock' | 'bobs' | 'c121') => void;
+  finish: (mode: 'cricket' | 'clock' | 'bobs' | 'c121' | 'highscore' | 'finishing') => void;
 };
 const emptyRecords: GameRecords = {
   cricketPlayed: 0,
@@ -207,6 +263,8 @@ const emptyRecords: GameRecords = {
   clockBest: null,
   bobsBest: null,
   c121Best: null,
+  highscoreBest: null,
+  finishBest: null,
 };
 const better = (prev: number | null, value: number, lower = false) =>
   prev === null ? value : lower ? Math.min(prev, value) : Math.max(prev, value);
@@ -219,14 +277,19 @@ export const useExtraGames = create<ExtraGamesState>()(
       clock: null,
       bobs: null,
       c121: null,
+      highscore: null,
+      finishing: null,
       records: emptyRecords,
       setCricket: (cricket) => set({ cricket }),
       setClock: (clock) => set({ clock }),
       setBobs: (bobs) => set({ bobs }),
       setC121: (c121) => set({ c121 }),
+      setHighscore: (highscore) => set({ highscore }),
+      setFinishing: (finishing) => set({ finishing }),
       finish: (mode) => {
         const s = get();
-        const r = { ...s.records };
+        // Staré uložené rekordy nemusia mať nové položky → doplníme predvolené.
+        const r = { ...emptyRecords, ...s.records };
         if (mode === 'cricket' && s.cricket?.winner != null) {
           r.cricketPlayed += 1;
           if (s.cricket.winner === 0) r.cricketWins += 1;
@@ -236,6 +299,10 @@ export const useExtraGames = create<ExtraGamesState>()(
         if (mode === 'bobs' && s.bobs?.over) r.bobsBest = better(r.bobsBest, s.bobs.score);
         if (mode === 'c121' && s.c121?.done && s.c121.best)
           r.c121Best = better(r.c121Best, s.c121.best);
+        if (mode === 'highscore' && s.highscore?.done)
+          r.highscoreBest = better(r.highscoreBest ?? null, highscoreTotal(s.highscore));
+        if (mode === 'finishing' && s.finishing?.done)
+          r.finishBest = better(r.finishBest ?? null, finishTotal(s.finishing));
         set({ records: r, [mode]: null });
       },
     }),
@@ -247,6 +314,8 @@ export const useExtraGames = create<ExtraGamesState>()(
         clock: s.clock,
         bobs: s.bobs,
         c121: s.c121,
+        highscore: s.highscore,
+        finishing: s.finishing,
         records: s.records,
       }),
       onRehydrateStorage: () => () => {

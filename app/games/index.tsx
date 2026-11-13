@@ -74,6 +74,22 @@ export default function Games() {
             href="/games/c121"
             running={!!s.c121}
           />
+          <GameRow
+            title="Highscore"
+            detail="10 kôl po 3 šípky, čo najvyšší súčet bodov"
+            record={
+              (r.highscoreBest ?? null) !== null ? `Rekord: ${r.highscoreBest} bodov` : undefined
+            }
+            href="/games/highscore"
+            running={!!s.highscore}
+          />
+          <GameRow
+            title="Finishing 50"
+            detail="20 náhodných zatvorení od 2 do 50 na 3 šípky"
+            record={(r.finishBest ?? null) !== null ? `Rekord: ${r.finishBest} bodov` : undefined}
+            href="/games/finishing"
+            running={!!s.finishing}
+          />
         </View>
       )}
     </Page>
