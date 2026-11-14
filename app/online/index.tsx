@@ -59,8 +59,11 @@ export default function OnlineLobby() {
                 <Button.Label>Pozvať priateľa na zápas</Button.Label>
               </Button>
             )}
-            <Button variant="secondary" onPress={() => router.push('/statistics')}>
-              <Button.Label>Moje štatistiky</Button.Label>
+            <Button
+              variant="secondary"
+              onPress={() => router.push({ pathname: '/statistics', params: { scope: 'online' } })}
+            >
+              <Button.Label>Online štatistiky</Button.Label>
             </Button>
             <Button variant="ghost" onPress={() => router.dismissTo('/')}>
               <Button.Label>Späť domov</Button.Label>

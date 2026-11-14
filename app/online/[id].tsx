@@ -700,8 +700,11 @@ export default function OnlineGame() {
               <RotateCcw size={20} color={palette.navy} strokeWidth={1.8} />
               <Button.Label>{rematchPending ? 'Posielam…' : `Odveta s @${peerName}`}</Button.Label>
             </Button>
-            <Button variant="tertiary" onPress={() => router.push('/statistics')}>
-              <Button.Label>Moje štatistiky</Button.Label>
+            <Button
+              variant="tertiary"
+              onPress={() => router.push({ pathname: '/statistics', params: { scope: 'online' } })}
+            >
+              <Button.Label>Online štatistiky</Button.Label>
             </Button>
           </View>
         )}

@@ -56,12 +56,16 @@ function OfflineMatchRow({ game }: { game: Game }) {
 }
 
 export default function Statistics() {
-  // ?scope=offline — len offline zápasy (z Nového zápasu); inak offline + online.
-  const offlineOnly = useLocalSearchParams<{ scope?: string }>().scope === 'offline';
+  // ?scope=offline / ?scope=online — len jeden druh zápasov (z Nového / Online zápasu);
+  // bez neho (Môj účet) offline + online spolu.
+  const scope = useLocalSearchParams<{ scope?: string }>().scope;
+  const offlineOnly = scope === 'offline';
+  const onlineOnly = scope === 'online';
   const signedInId = usePlayers((s) => s.session?.user.id);
   const userId = offlineOnly ? undefined : signedInId;
   const ready = usePlayers((s) => s.ready);
-  const localHistory = useDarts((s) => s.history);
+  const allLocal = useDarts((s) => s.history);
+  const localHistory = useMemo(() => (onlineOnly ? [] : allLocal), [onlineOnly, allLocal]);
   const hydrated = useDarts((s) => s.hydrated);
   const query = useOnlineQuery(
     userId ? `account-stats:${userId}` : null,
@@ -105,6 +109,7 @@ export default function Statistics() {
         ListHeaderComponent={
           <>
             {offlineOnly && <Stack.Screen options={{ title: 'Offline štatistiky' }} />}
+            {onlineOnly && <Stack.Screen options={{ title: 'Online štatistiky' }} />}
             <StorageNotice />
             <OnlineError error={query.error} retry={() => void query.refresh()} />
             {loading ? (
@@ -158,7 +163,9 @@ export default function Statistics() {
                   šípkou (do 40 párne alebo 50), len pri double out.{' '}
                   {offlineOnly
                     ? 'Len offline zápasy z tohto zariadenia.'
-                    : 'Dokončené online a uložené offline zápasy. Offline výsledky zostávajú na tomto zariadení.'}
+                    : onlineOnly
+                      ? 'Len dokončené online zápasy.'
+                      : 'Dokončené online a uložené offline zápasy. Offline výsledky zostávajú na tomto zariadení.'}
                   {totals.solo > 0
                     ? ' Sólo hry sa rátajú do zápasov a priemeru, nie do výhier a prehier.'
                     : ''}
@@ -190,16 +197,16 @@ export default function Statistics() {
           ) : !query.error ? (
             <Empty
               text="Dokončené zápasy sa zobrazia tu."
-              action="Hrať offline"
-              onPress={() => router.push('/new-match')}
+              action={onlineOnly ? 'Online zápasy' : 'Hrať offline'}
+              onPress={() => router.push(onlineOnly ? '/online' : '/new-match')}
             />
           ) : undefined
         }
         ListFooterComponent={
           <View className="mt-5 gap-3">
-            {offlineOnly ? (
+            {offlineOnly || onlineOnly ? (
               <Button variant="ghost" onPress={() => router.back()}>
-                <Button.Label>Späť na nový zápas</Button.Label>
+                <Button.Label>{offlineOnly ? 'Späť na nový zápas' : 'Späť'}</Button.Label>
               </Button>
             ) : (
               <Button variant="ghost" onPress={() => router.dismissTo('/account')}>
