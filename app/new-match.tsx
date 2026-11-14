@@ -471,7 +471,11 @@ export default function NewMatch() {
                 )}
               </>
             )}
-            <Button className="mt-5" variant="ghost" onPress={() => router.dismissTo('/')}>
+            {/* Rovnako ako v online zápasoch. */}
+            <Button className="mt-5" variant="secondary" onPress={() => router.push('/statistics')}>
+              <Button.Label>Moje štatistiky</Button.Label>
+            </Button>
+            <Button className="mt-2" variant="ghost" onPress={() => router.dismissTo('/')}>
               <Button.Label>Späť domov</Button.Label>
             </Button>
           </View>
