@@ -101,9 +101,11 @@ function OnlineMessages({ userId }: { userId: string }) {
             item.last_sender_id !== userId &&
             incomingCallState(item.last_message_at ?? 0, joined[item.user_id ?? ''] ?? 0) ===
               'waiting';
+          // Neprečítaná konverzácia: žltý pásik vľavo a tučnejší text.
+          const unread = hasUnread(item, userId, read);
           return (
             <PressableFeedback
-              className="bg-surface mb-2 flex-row items-start gap-3 rounded-2xl p-3"
+              className={`bg-surface mb-2 flex-row items-start gap-3 rounded-2xl p-3 ${unread ? 'border-accent border-l-4' : ''}`}
               onPress={() =>
                 router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
               }
@@ -113,7 +115,7 @@ function OnlineMessages({ userId }: { userId: string }) {
                   <Txt
                     className="flex-1"
                     numberOfLines={1}
-                    style={{ fontFamily: 'Inter_600SemiBold' }}
+                    style={{ fontFamily: unread ? 'Inter_700Bold' : 'Inter_600SemiBold' }}
                   >
                     @{item.nickname}
                   </Txt>
@@ -125,11 +127,16 @@ function OnlineMessages({ userId }: { userId: string }) {
                     unknown={!!query.error}
                   />
                   {item.last_message_at && (
-                    <Txt className="text-muted text-[11px]">{timeLabel(item.last_message_at)}</Txt>
+                    <Txt
+                      className={`text-[11px] ${unread ? 'text-foreground' : 'text-muted'}`}
+                      style={unread ? { fontFamily: 'Inter_700Bold' } : undefined}
+                    >
+                      {timeLabel(item.last_message_at)}
+                    </Txt>
                   )}
                 </View>
                 <View className="flex-row items-center gap-2">
-                  {hasUnread(item, userId, read) ? <UnreadEnvelope /> : null}
+                  {unread ? <UnreadEnvelope /> : null}
                   {call ? (
                     <Txt
                       numberOfLines={2}
@@ -151,7 +158,11 @@ function OnlineMessages({ userId }: { userId: string }) {
                             : 'Videohovor'}
                     </Txt>
                   ) : (
-                    <Txt className="text-muted flex-1 text-[13px] leading-5" numberOfLines={2}>
+                    <Txt
+                      className={`flex-1 text-[13px] leading-5 ${unread ? 'text-foreground' : 'text-muted'}`}
+                      style={unread ? { fontFamily: 'Inter_600SemiBold' } : undefined}
+                      numberOfLines={2}
+                    >
                       {item.last_sender_id === userId ? 'Ty: ' : ''}
                       {item.last_body}
                     </Txt>
