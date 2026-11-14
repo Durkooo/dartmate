@@ -6,6 +6,10 @@ import { Heading, Txt, Avatar, Empty, LoadingRows } from '@/components/DartsUI';
 import { useDarts } from '@/lib/darts';
 import { palette } from '@/lib/darts';
 import { useCallback, useMemo, useState } from 'react';
+import { PenLine } from 'lucide-react-native';
+import { InboxSearch, PresenceAvatar, QuickAction, WaitingForYou } from '@/components/Inbox';
+import { parseChallenge, TRAINING_TITLES } from '@/lib/challenge';
+
 import { usePlayers } from '@/lib/players';
 import {
   hasUnread,
@@ -19,13 +23,17 @@ import {
   timeLabel,
   useOnlineQuery,
 } from '@/lib/online';
-import {
-  OnlineGate,
-  OnlineError,
-  Presence,
-  OpenMatches,
-  UnreadEnvelope,
-} from '@/components/OnlineUI';
+import { OnlineGate, OnlineError, UnreadEnvelope } from '@/components/OnlineUI';
+
+/** Farba tlačidiel „secondary“ — neprečítaná konverzácia má celú kartu v nej. */
+const SECONDARY = '#384d78';
+/** Výzva v náhľade: krátko namiesto celého textu karty. */
+function challengeText(body: string | null) {
+  const c = parseChallenge(body);
+  return c
+    ? `🏆 Výzva · ${TRAINING_TITLES[c.mode]} ${c.target}${c.unit ? ` ${c.unit}` : ''}`
+    : body;
+}
 
 export default function Messages() {
   const session = usePlayers((s) => s.session);
@@ -55,19 +63,44 @@ function OnlineMessages({ userId }: { userId: string }) {
     }, []),
   );
   const insets = useSafeAreaInsets();
+  const [search, setSearch] = useState('');
+  const friends = usePlayers((s) => s.friends);
+  const avatars = useMemo(
+    () => new Map(friends.map((f) => [f.id, f.avatarUrl] as const)),
+    [friends],
+  );
+  // Od najnovšej správy hore po najstaršiu; hľadanie podľa mena alebo textu správy.
+  const conversations = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return [...(query.data?.contacts.filter((c) => c.last_body) ?? [])]
+      .filter(
+        (c) =>
+          !q ||
+          (c.nickname ?? '').toLowerCase().includes(q) ||
+          (c.last_body ?? '').toLowerCase().includes(q),
+      )
+      .sort(
+        (a, b) =>
+          (b.last_message_at ? Date.parse(b.last_message_at) : 0) -
+          (a.last_message_at ? Date.parse(a.last_message_at) : 0),
+      );
+  }, [query.data, search]);
+  // Výzvy na tréning, ktoré mi priateľ poslal ako poslednú správu.
+  const challenges = useMemo(
+    () =>
+      (query.data?.contacts ?? []).flatMap((c) => {
+        const challenge =
+          c.last_sender_id && c.last_sender_id !== userId ? parseChallenge(c.last_body) : null;
+        return challenge && c.user_id
+          ? [{ fromId: c.user_id, fromNick: c.nickname ?? '', challenge }]
+          : [];
+      }),
+    [query.data, userId],
+  );
   return (
     <View className="bg-background flex-1" style={{ paddingTop: insets.top }}>
       <FlatList
-        data={useMemo(
-          () =>
-            // Od najnovšej správy hore po najstaršiu.
-            [...(query.data?.contacts.filter((c) => c.last_body) ?? [])].sort(
-              (a, b) =>
-                (b.last_message_at ? Date.parse(b.last_message_at) : 0) -
-                (a.last_message_at ? Date.parse(a.last_message_at) : 0),
-            ),
-          [query.data],
-        )}
+        data={conversations}
         keyExtractor={(c) => c.user_id ?? ''}
         contentContainerStyle={{
           padding: 20,
@@ -82,11 +115,28 @@ function OnlineMessages({ userId }: { userId: string }) {
             <View className="flex-row items-center justify-between gap-3">
               <Heading>Správy</Heading>
               <Button variant="secondary" size="sm" onPress={() => router.push('/friends')}>
+                <PenLine size={16} color={palette.yellow} strokeWidth={1.8} />
                 <Button.Label>Napísať</Button.Label>
               </Button>
             </View>
             <OnlineError error={query.error} retry={() => void query.refresh()} />
-            {query.data && <OpenMatches matches={query.data.matches} userId={userId} />}
+            {query.data && (
+              <WaitingForYou
+                matches={query.data.matches}
+                challenges={challenges}
+                userId={userId}
+                onChanged={() => void query.refresh()}
+              />
+            )}
+            <InboxSearch value={search} onChange={setSearch} />
+            {conversations.length > 0 && (
+              <Txt
+                className="text-muted mt-5 text-[12px]"
+                style={{ fontFamily: 'Inter_700Bold', letterSpacing: 0.5 }}
+              >
+                KONVERZÁCIE
+              </Txt>
+            )}
           </View>
         }
         renderItem={({ item }) => {
@@ -101,52 +151,67 @@ function OnlineMessages({ userId }: { userId: string }) {
             item.last_sender_id !== userId &&
             incomingCallState(item.last_message_at ?? 0, joined[item.user_id ?? ''] ?? 0) ===
               'waiting';
-          // Neprečítaná konverzácia: žltý pásik vľavo a tučnejší text.
+          // Neprečítaná konverzácia: celá karta modrá (ako aktívna voľba), text svetlý.
           const unread = hasUnread(item, userId, read);
+          const fg = unread ? '#FFFFFF' : undefined;
+          const peerId = item.user_id ?? '';
           return (
             <PressableFeedback
-              className={`bg-surface mb-2 flex-row items-start gap-3 rounded-2xl p-3 ${unread ? 'border-accent border-l-4' : ''}`}
+              className={`mb-2 flex-row items-center gap-3 rounded-2xl p-3 ${unread ? '' : 'bg-surface'}`}
+              style={unread ? { backgroundColor: SECONDARY } : undefined}
               onPress={() =>
-                router.push({ pathname: '/conversation/[id]', params: { id: item.user_id ?? '' } })
+                router.push({ pathname: '/conversation/[id]', params: { id: peerId } })
               }
             >
-              <View className="flex-1 gap-2">
+              <PresenceAvatar
+                name={item.nickname ?? ''}
+                avatarUrl={avatars.get(peerId)}
+                online={!!item.online}
+                playing={!!item.in_match}
+                training={!!item.training}
+                ring={unread ? SECONDARY : palette.surface}
+              />
+              <View className="flex-1 gap-1">
                 <View className="flex-row items-center gap-2">
                   <Txt
                     className="flex-1"
                     numberOfLines={1}
-                    style={{ fontFamily: unread ? 'Inter_700Bold' : 'Inter_600SemiBold' }}
+                    style={{
+                      fontFamily: unread ? 'Inter_700Bold' : 'Inter_600SemiBold',
+                      color: fg,
+                    }}
                   >
                     @{item.nickname}
                   </Txt>
-                  <Presence
-                    inline
-                    online={!!item.online}
-                    playing={!!item.in_match}
-                    training={!!item.training}
-                    unknown={!!query.error}
-                  />
                   {item.last_message_at && (
                     <Txt
-                      className={`text-[11px] ${unread ? 'text-foreground' : 'text-muted'}`}
-                      style={unread ? { fontFamily: 'Inter_700Bold' } : undefined}
+                      className={`text-[11px] ${unread ? '' : 'text-muted'}`}
+                      style={
+                        unread ? { fontFamily: 'Inter_700Bold', color: palette.yellow } : undefined
+                      }
                     >
                       {timeLabel(item.last_message_at)}
                     </Txt>
                   )}
                 </View>
                 <View className="flex-row items-center gap-2">
-                  {unread ? <UnreadEnvelope /> : null}
+                  {unread ? <UnreadEnvelope color={palette.yellow} /> : null}
                   {call ? (
                     <Txt
-                      numberOfLines={2}
+                      numberOfLines={1}
                       className="flex-1 text-[13px] leading-5"
                       style={
                         waitingCall
-                          ? { color: palette.success, fontFamily: 'Inter_600SemiBold' }
+                          ? {
+                              color: unread ? '#8EE0B5' : palette.success,
+                              fontFamily: 'Inter_600SemiBold',
+                            }
                           : missedCall
-                            ? { color: palette.danger, fontFamily: 'Inter_600SemiBold' }
-                            : { color: palette.muted }
+                            ? {
+                                color: unread ? '#FFB3BE' : palette.danger,
+                                fontFamily: 'Inter_600SemiBold',
+                              }
+                            : { color: fg ?? palette.muted }
                       }
                     >
                       {waitingCall
@@ -159,16 +224,28 @@ function OnlineMessages({ userId }: { userId: string }) {
                     </Txt>
                   ) : (
                     <Txt
-                      className={`flex-1 text-[13px] leading-5 ${unread ? 'text-foreground' : 'text-muted'}`}
-                      style={unread ? { fontFamily: 'Inter_600SemiBold' } : undefined}
-                      numberOfLines={2}
+                      className={`flex-1 text-[13px] leading-5 ${unread ? '' : 'text-muted'}`}
+                      style={unread ? { fontFamily: 'Inter_600SemiBold', color: fg } : undefined}
+                      numberOfLines={1}
                     >
                       {item.last_sender_id === userId ? 'Ty: ' : ''}
-                      {item.last_body}
+                      {challengeText(item.last_body)}
                     </Txt>
                   )}
                 </View>
               </View>
+              {!unread && (
+                <QuickAction
+                  kind={
+                    missedCall
+                      ? callKind(item.last_body) === 'audio'
+                        ? 'audio'
+                        : 'video'
+                      : 'invite'
+                  }
+                  peerId={peerId}
+                />
+              )}
             </PressableFeedback>
           );
         }}
@@ -176,6 +253,8 @@ function OnlineMessages({ userId }: { userId: string }) {
           <OnlineGate>
             {query.loading ? (
               <LoadingRows />
+            ) : search.trim() ? (
+              <Txt className="text-muted mt-2 text-center">Nič sa nenašlo.</Txt>
             ) : !query.error ? (
               <Empty
                 chat

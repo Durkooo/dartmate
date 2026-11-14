@@ -75,7 +75,15 @@ import {
 } from '@/lib/online';
 
 export default function Conversation() {
-  const { id = '', autoJoin } = useLocalSearchParams<{ id?: string; autoJoin?: string }>();
+  const {
+    id = '',
+    autoJoin,
+    callBack,
+  } = useLocalSearchParams<{
+    id?: string;
+    autoJoin?: string;
+    callBack?: string;
+  }>();
   const userId = usePlayers((s) => s.session?.user.id);
   return (
     <ConversationContent
@@ -83,6 +91,7 @@ export default function Conversation() {
       id={id}
       userId={userId}
       autoJoin={autoJoin}
+      callBackKind={callBack === 'audio' || callBack === 'video' ? callBack : undefined}
     />
   );
 }
@@ -92,10 +101,13 @@ function ConversationContent({
   id,
   userId,
   autoJoin,
+  callBackKind,
 }: {
   id: string;
   userId: string | undefined;
   autoJoin?: string;
+  /** Zo Správ (rýchla akcia pri zmeškanom hovore): rovno zavolať späť. */
+  callBackKind?: CallKind;
 }) {
   const myNickname = usePlayers((s) => s.profile?.nickname ?? '');
   const key = userId && uuidPattern.test(id) ? `${userId}:${id}` : null;
@@ -374,6 +386,13 @@ function ConversationContent({
       active = false;
     };
   }, [autoJoin, callOpen, joined, id, query.data, userId, joinCall]);
+  // Rýchla akcia „zavolať späť“ zo zoznamu správ — raz, keď je konverzácia načítaná.
+  const calledBack = useRef(false);
+  useEffect(() => {
+    if (!callBackKind || calledBack.current || callOpen || !query.data || !userId) return;
+    calledBack.current = true;
+    callBack(callBackKind);
+  }, [callBackKind, callOpen, query.data, userId, callBack]);
   const startEdit = (item: DirectMessage) => {
     if (pending || item.id !== newestMineId || item.image_path) return;
     clearPhoto();

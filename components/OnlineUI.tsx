@@ -143,7 +143,7 @@ export function Presence({
   );
 }
 /** Blikajúca čierna obálka = neprečítaná správa od priateľa. */
-export function UnreadEnvelope() {
+export function UnreadEnvelope({ color = palette.ink }: { color?: string } = {}) {
   const [blink] = useState(() => new Animated.Value(1));
   useEffect(() => {
     const loop = Animated.loop(
@@ -157,7 +157,7 @@ export function UnreadEnvelope() {
   }, [blink]);
   return (
     <Animated.View style={{ opacity: blink }}>
-      <Mail size={16} color={palette.ink} strokeWidth={1.8} />
+      <Mail size={16} color={color} strokeWidth={1.8} />
     </Animated.View>
   );
 }
