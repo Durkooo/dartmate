@@ -216,7 +216,7 @@ export function PresenceAvatar({
       ? palette.training
       : online
         ? palette.success
-        : '#9AA3B2';
+        : palette.danger;
   return (
     <View>
       {avatarUrl ? (
