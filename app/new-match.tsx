@@ -413,11 +413,7 @@ export default function NewMatch() {
                     </Button>
                   ))}
                 </View>
-                <Txt className="text-muted mt-3 mb-7 text-[13px]">
-                  {doubleOut
-                    ? 'Posledná šípka musí trafiť double alebo bull za 50.'
-                    : 'Na výhru stačí znížiť skóre presne na nulu.'}
-                </Txt>
+                <View className="mb-7" />
                 {game && !replace ? (
                   <View className="gap-3">
                     <Txt>

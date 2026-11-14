@@ -113,11 +113,6 @@ export default function NewOnlineMatch() {
                     </Button>
                   ))}
                 </View>
-                <Txt className="text-muted mt-3 text-[13px]">
-                  {doubleOut
-                    ? 'Posledná šípka musí trafiť double alebo bull za 50.'
-                    : 'Na výhru stačí znížiť skóre presne na nulu.'}
-                </Txt>
                 <Txt className="text-muted mt-3 text-[13px] leading-5">
                   Kamera je voliteľná. Zapneš ju až v prijatom zápase.
                 </Txt>
