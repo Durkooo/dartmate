@@ -7,6 +7,7 @@ Skopíruj do Bilt chatu. Frontend je nasadený na `main` a bez tohto funguje ako
 
 Ahoj, do DartMate pridávam **zálohu lokálnych dát hráča** (offline zápasy, história a rekordy
 tréningov, lokálni hráči, nastavenia) k jeho účtu. Frontend volá:
+
 - `rpc('save_my_backup', { backup })` — `backup` je JSON (max ~3 MB), uloží/prepíše zálohu
   prihláseného hráča a vráti čas uloženia,
 - `rpc('get_my_backup')` → `[{ data, updated_at }]` — záloha prihláseného hráča (prázdne, ak nie je).

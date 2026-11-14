@@ -19,6 +19,7 @@ nastaviť backend. Ako to frontend používa:
 - Vlastný profil číta cez `player_profiles.select('*')`, takže musí vidieť `avatar_path`.
 
 Požiadavky na prístup:
+
 - nahrať, prepísať a zmazať súbor môže len jeho majiteľ (len vo svojom priečinku),
 - čítať (a teda podpísať odkaz) môže majiteľ a jeho priatelia — priateľstvo
   v `player_friends` (owner_id, friend_id) v ľubovoľnom smere,

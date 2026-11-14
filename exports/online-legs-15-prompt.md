@@ -8,6 +8,7 @@ Ahoj, v DartMate chcem pri online zápase povoliť **1 až 15 víťazných legov
 rovnako ako v offline zápase.
 
 Prosím:
+
 1. Nájdi, kde server obmedzuje `legs_to_win` na 1–9 — vo funkcii `public.invite_online_match`
    (kontrola parametra `legs_to_win`) a prípadne v CHECK obmedzení stĺpca
    `public.online_matches.legs_to_win` alebo v iných funkciách (`respond_online_match`,

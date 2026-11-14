@@ -1,16 +1,6 @@
 import { bilt } from './bilt';
 
-const BILT_URL = process.env.EXPO_PUBLIC_BILT_URL ?? '';
-const BILT_ANON = process.env.EXPO_PUBLIC_BILT_ANON_KEY ?? '';
-
-/**
- * Po úspešnom odoslaní správy požiada backend (edge funkcia `send-push`),
- * aby príjemcovi poslal Web Push notifikáciu. Fire-and-forget: chyba push
- * nesmie ovplyvniť odoslanú správu, preto sa volá bez čakania a potichu.
- *
- * Voláme priamy fetch na /functions/v1 (nie bilt.functions), aby hovor
- * fungoval aj keby wrapper klienta funkcie nevystavoval.
- */
+/** Request a push after saving a message; push failure must not undo the message. */
 export function notifyRecipient(
   recipientId: string,
   title: string,
@@ -19,22 +9,18 @@ export function notifyRecipient(
 ): void {
   void (async () => {
     try {
-      if (!BILT_URL || !BILT_ANON) return;
-      const session = await bilt.auth.getSession();
-      const token = session?.data?.session?.access_token;
-      if (!token) return;
       const snippet = body.length > 80 ? `${body.slice(0, 80)}…` : body;
-      await fetch(`${BILT_URL}/functions/v1/send-push`, {
-        method: 'POST',
-        headers: {
-          apikey: BILT_ANON,
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: recipientId, title, body: snippet, url }),
+      const { data, error } = await bilt.functions.invoke('send-push', {
+        body: { user_id: recipientId, title, body: snippet, url },
       });
-    } catch {
-      /* Push je bonus — správa už odišla. */
+      if (error) {
+        console.warn('Push request failed:', error.message);
+        return;
+      }
+      if (data?.attempted === 0 && !data?.skipped_in_match)
+        console.warn('Push recipient has no registered device.');
+    } catch (error) {
+      console.warn('Push request failed:', error instanceof Error ? error.message : String(error));
     }
   })();
 }

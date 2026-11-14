@@ -128,7 +128,7 @@ export async function swStatus(): Promise<{ registered: boolean; active: boolean
 export async function ensurePushSubscription(userId: string): Promise<PushResult> {
   const blocked = pushBlockReason();
   if (blocked) return { ok: false, reason: blocked };
-  if (Notification.permission === 'denied') return { ok: false, reason: 'denied' };
+  if (Notification.permission !== 'granted') return { ok: false, reason: 'denied' };
   try {
     const reg = await withTimeout(
       navigator.serviceWorker.ready,
@@ -148,8 +148,12 @@ export async function ensurePushSubscription(userId: string): Promise<PushResult
     }
     const json = sub.toJSON();
     if (!json.endpoint) return { ok: false, reason: 'Prehliadač nevrátil endpoint (2).' };
-    const cacheKey = SUB_SENT_KEY + userId + ':' + json.endpoint.slice(-32);
-    if (await AsyncStorage.getItem(cacheKey)) return { ok: true };
+    if (!json.keys?.p256dh || !json.keys.auth)
+      return {
+        ok: false,
+        reason: 'Prehliadač nevrátil kľúče upozornení. Skús ich vypnúť a zapnúť.',
+      };
+    // A local saved flag cannot prove the server still has this subscription.
     const { error } = await bilt.from('push_subscriptions').upsert(
       {
         user_id: userId,
@@ -160,7 +164,6 @@ export async function ensurePushSubscription(userId: string): Promise<PushResult
       { onConflict: 'endpoint' },
     );
     if (error) return { ok: false, reason: `Uloženie do databázy zlyhalo (3): ${error.message}` };
-    await AsyncStorage.setItem(cacheKey, '1');
     return { ok: true };
   } catch (e) {
     let extra = '';
@@ -243,8 +246,15 @@ export async function disablePushSubscription(userId: string): Promise<PushResul
       );
       const sub = await reg.pushManager.getSubscription();
       if (sub?.endpoint) {
-        await bilt.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
-        await sub.unsubscribe();
+        const { error } = await bilt
+          .from('push_subscriptions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('endpoint', sub.endpoint);
+        if (error) return { ok: false, reason: error.message };
+        const unsubscribed = await sub.unsubscribe();
+        if (!unsubscribed)
+          return { ok: false, reason: 'Upozornenia sa nepodarilo vypnúť. Skús to znova.' };
       }
     }
     const keys = await AsyncStorage.getAllKeys();

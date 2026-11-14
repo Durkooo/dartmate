@@ -8,6 +8,7 @@ Ahoj, v DartMate pridávam priateľom nový stav **„Trénuje“** (popri Onlin
 Existujúce funkcie (touch_presence, list_social_contacts, …) prosím nemeň — pridávam len nové.
 
 Frontend volá:
+
 - `rpc('set_training', { active: true })` každých ~20 s, kým má hráč otvorený rozohraný tréning,
   a `rpc('set_training', { active: false })` keď tréning zavrie,
 - `rpc('list_training_players')` → `[{ user_id }]` — kontakty prihláseného hráča, ktorí práve

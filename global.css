@@ -7,20 +7,20 @@
 @layer theme {
   :root {
     @variant light {
-      --background: #D2D7E0;
+      --background: #d2d7e0;
       --foreground: #213049;
-      --surface: #E9ECF1;
+      --surface: #e9ecf1;
       --surface-foreground: #213049;
-      --overlay: #E9ECF1;
+      --overlay: #e9ecf1;
       --overlay-foreground: #213049;
       --accent: oklch(0.867 0.154 91);
       --accent-foreground: #213049;
       --default: oklch(0.934 0.009 270);
       --default-foreground: #213049;
-      --muted: #5B6679;
+      --muted: #5b6679;
       --border: oklch(0.907 0.013 264);
       --separator: oklch(0.907 0.013 264);
-      --field-background: #E9ECF1;
+      --field-background: #e9ecf1;
       --field-foreground: #213049;
       --field-placeholder: oklch(0.546 0.032 260);
       --focus: oklch(0.546 0.032 260);
@@ -32,24 +32,24 @@
     }
     @variant dark {
       --background: #121927;
-      --foreground: #E6EAF2;
-      --surface: #1C2536;
-      --surface-foreground: #E6EAF2;
-      --overlay: #1C2536;
-      --overlay-foreground: #E6EAF2;
+      --foreground: #e6eaf2;
+      --surface: #1c2536;
+      --surface-foreground: #e6eaf2;
+      --overlay: #1c2536;
+      --overlay-foreground: #e6eaf2;
       --accent: oklch(0.867 0.154 91);
       --accent-foreground: #213049;
-      --default: #2A3447;
-      --default-foreground: #E6EAF2;
-      --muted: #A3ADBF;
-      --border: #2C374B;
-      --separator: #2C374B;
-      --field-background: #1C2536;
-      --field-foreground: #E6EAF2;
-      --field-placeholder: #A3ADBF;
-      --focus: #A3ADBF;
-      --danger: #FF7A86;
-      --success: #5FD38D;
+      --default: #2a3447;
+      --default-foreground: #e6eaf2;
+      --muted: #a3adbf;
+      --border: #2c374b;
+      --separator: #2c374b;
+      --field-background: #1c2536;
+      --field-foreground: #e6eaf2;
+      --field-placeholder: #a3adbf;
+      --focus: #a3adbf;
+      --danger: #ff7a86;
+      --success: #5fd38d;
       --color-accent-soft-foreground: #213049;
       --color-ink: #213049;
       --color-on-ink: oklch(0.827 0.03 264);

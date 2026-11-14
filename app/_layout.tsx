@@ -70,10 +70,33 @@ void SplashScreen.preventAutoHideAsync();
 function usePushRegistration() {
   const userId = usePlayers((s) => s.session?.user.id);
   useEffect(() => {
-    if (!userId || !pushSupported()) return;
-    // Len ak už povolenie udelil (cez PushNotice) – nepýtame sa tu.
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    void ensurePushSubscription(userId);
+    if (!userId || !pushSupported()) return undefined;
+    // Repair the server registration on login and when returning to the app.
+    // Permission is requested only by the explicit control in Friends.
+    let pending = false;
+    let disposed = false;
+    const registerPush = async () => {
+      if (pending || disposed || document.visibilityState === 'hidden') return;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      pending = true;
+      try {
+        const result = await ensurePushSubscription(userId);
+        if (!result.ok && !disposed) console.warn('Push registration failed:', result.reason);
+      } finally {
+        pending = false;
+      }
+    };
+    const onReturn = () => {
+      void registerPush();
+    };
+    onReturn();
+    window.addEventListener('focus', onReturn);
+    document.addEventListener('visibilitychange', onReturn);
+    return () => {
+      disposed = true;
+      window.removeEventListener('focus', onReturn);
+      document.removeEventListener('visibilitychange', onReturn);
+    };
   }, [userId]);
 }
 

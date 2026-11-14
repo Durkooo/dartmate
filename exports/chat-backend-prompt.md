@@ -6,12 +6,14 @@ Skopíruj do Bilt chatu. Frontend je už nasadený na `main` a funguje aj bez to
 ---
 
 Ahoj, potrebujem do DartMate backendu doplniť podporu pre:
+
 1. **prečítané správy** (✓✓) a **„píše…“** v chate,
 2. **reakcie** na správy (👍 ❤️ 😂 😮 😢 🎯 🔥, jedna reakcia na hráča a správu),
 3. **odpoveď na konkrétnu správu** (stĺpec `direct_messages.reply_to`),
 4. **rebríček priateľov** z dohraných online zápasov.
 
 Frontend volá presne tieto veci:
+
 - `rpc('mark_conversation_read', { peer, up_to })` — pri otvorenej konverzácii,
 - `rpc('set_typing', { peer })` — najviac raz za 3 s počas písania,
 - `rpc('conversation_state', { peer })` → `{ peer_last_read_id, peer_typing }`
