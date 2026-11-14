@@ -135,6 +135,14 @@ function removeElement(track: Track, element: HTMLMediaElement) {
   element.remove();
 }
 
+/** Prehliadač/telefón zamietol prístup (NotAllowedError, „Permission denied“). */
+function isPermissionDenied(e: unknown) {
+  const msg = e instanceof Error ? `${e.name} ${e.message}` : String(e);
+  return /notallowed|denied|permission/i.test(msg);
+}
+const MIC_BLOCKED =
+  'Mikrofón je zablokovaný, priateľ ťa nepočuje. Povoľ ho: Chrome → ikona vedľa adresy → Povolenia → Mikrofón (v appke na ploche: dlho podrž ikonu → Informácie → Povolenia). Potom zapni mikrofón tlačidlom nižšie.';
+
 export default function VideoCall({
   matchId,
   onLeave,
@@ -515,7 +523,13 @@ export default function VideoCall({
           setMicrophone(micRef.current);
           update();
         } catch (e) {
-          fail(e);
+          // Zamietnutý mikrofón (napr. Android „Permission denied“): hovor ide ďalej bez neho.
+          if (active && isPermissionDenied(e)) {
+            setMicrophone(false);
+            update();
+            setError(MIC_BLOCKED);
+            feedback.error();
+          } else fail(e);
         }
       } catch (e) {
         fail(e);
@@ -798,9 +812,11 @@ export default function VideoCall({
       setError(
         isCameraBusy(e)
           ? 'Kameru drží iná aplikácia alebo karta. Zavri ju a skús kameru zapnúť znova.'
-          : e instanceof Error
-            ? e.message
-            : 'Kamera alebo mikrofón nie sú dostupné.',
+          : isPermissionDenied(e)
+            ? 'Kamera alebo mikrofón je zablokovaný v prehliadači. Povoľ ich v nastaveniach stránky (ikona vedľa adresy → Povolenia) a skús znova.'
+            : e instanceof Error
+              ? e.message
+              : 'Kamera alebo mikrofón nie sú dostupné.',
       );
       feedback.error();
     } finally {

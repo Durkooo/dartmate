@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Button } from 'heroui-native';
 import { Delete, Undo2 } from 'lucide-react-native';
@@ -16,6 +17,8 @@ type NumberPadProps = {
   hideDigits?: boolean;
   /** id tlačidla „Zapísať“ (Enter z klávesnice ho stlačí). */
   submitId?: string;
+  /** Skratky skóre — medzi „Nahrané skóre“ a klávesnicou (ako v offline zápase). */
+  shortcuts?: ReactNode;
 };
 
 export function NumberPad({
@@ -27,6 +30,7 @@ export function NumberPad({
   pending = false,
   hideDigits = false,
   submitId,
+  shortcuts,
 }: NumberPadProps) {
   const locked = disabled || pending;
   const change = (next: string) => {
@@ -51,6 +55,7 @@ export function NumberPad({
           {value || '0'}
         </Txt>
       </View>
+      {shortcuts}
       {(hideDigits
         ? []
         : [

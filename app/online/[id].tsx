@@ -408,24 +408,29 @@ export default function OnlineGame() {
             (Klávesnica mimo ťahu je aj tak neaktívna, len by zavadzala.) */}
         {m.status === 'active' && mine && (
           <View className="gap-4">
-            {frequent.length > 0 && (
-              <View className="flex-row gap-2">
-                {frequent.map((n) => (
-                  <Button
-                    key={n}
-                    variant="tertiary"
-                    className="border-accent h-14 flex-1 rounded-xl border-2"
-                    onPress={() => quickSubmit(n)}
-                  >
-                    <Button.Label className="text-[22px]" style={{ fontFamily: 'Inter_700Bold' }}>
-                      {n}
-                    </Button.Label>
-                  </Button>
-                ))}
-              </View>
-            )}
             <NumberPad
               hideDigits={voiceOn && !(video && micWanted)}
+              shortcuts={
+                frequent.length > 0 ? (
+                  <View className="flex-row gap-2">
+                    {frequent.map((n) => (
+                      <Button
+                        key={n}
+                        variant="tertiary"
+                        className="border-accent h-14 flex-1 rounded-xl border-2"
+                        onPress={() => quickSubmit(n)}
+                      >
+                        <Button.Label
+                          className="text-[22px]"
+                          style={{ fontFamily: 'Inter_700Bold' }}
+                        >
+                          {n}
+                        </Button.Label>
+                      </Button>
+                    ))}
+                  </View>
+                ) : null
+              }
               submitId="score-submit-online"
               value={input}
               onChange={(v) => {
