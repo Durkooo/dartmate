@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
 import { router } from 'expo-router';
-import { Phone, Search, Swords, Trophy, Video, X } from 'lucide-react-native';
+import { Search, Swords, Trophy, X } from 'lucide-react-native';
 import { Avatar, Txt } from '@/components/DartsUI';
 import { feedback, palette } from '@/lib/darts';
 import { opponentName, respondMatch, type OnlineMatch } from '@/lib/online';
@@ -190,43 +190,6 @@ export function InboxSearch({ value, onChange }: { value: string; onChange: (v: 
         </PressableFeedback>
       )}
     </View>
-  );
-}
-
-/** Rýchla akcia na karte konverzácie: zavolať späť / pozvať na zápas. */
-export function QuickAction({
-  kind,
-  peerId,
-}: {
-  kind: 'video' | 'audio' | 'invite';
-  peerId: string;
-}) {
-  const Icon = kind === 'video' ? Video : kind === 'audio' ? Phone : Swords;
-  return (
-    <PressableFeedback
-      accessibilityRole="button"
-      accessibilityLabel={
-        kind === 'invite'
-          ? 'Pozvať na zápas'
-          : kind === 'video'
-            ? 'Zavolať späť videom'
-            : 'Zavolať späť'
-      }
-      onPress={() => {
-        feedback.selection();
-        if (kind === 'invite')
-          router.push({ pathname: '/online/new', params: { friendId: peerId } });
-        else
-          router.push({
-            pathname: '/conversation/[id]',
-            params: { id: peerId, callBack: kind },
-          });
-      }}
-      className="items-center justify-center rounded-full"
-      style={{ width: 40, height: 40, backgroundColor: palette.navy }}
-    >
-      <Icon size={18} color={palette.yellow} strokeWidth={1.8} />
-    </PressableFeedback>
   );
 }
 

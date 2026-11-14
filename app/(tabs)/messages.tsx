@@ -7,7 +7,7 @@ import { useDarts } from '@/lib/darts';
 import { palette } from '@/lib/darts';
 import { useCallback, useMemo, useState } from 'react';
 import { PenLine } from 'lucide-react-native';
-import { InboxSearch, PresenceAvatar, QuickAction, WaitingForYou } from '@/components/Inbox';
+import { InboxSearch, PresenceAvatar, WaitingForYou } from '@/components/Inbox';
 import { parseChallenge, TRAINING_TITLES } from '@/lib/challenge';
 
 import { usePlayers } from '@/lib/players';
@@ -234,18 +234,6 @@ function OnlineMessages({ userId }: { userId: string }) {
                   )}
                 </View>
               </View>
-              {!unread && (
-                <QuickAction
-                  kind={
-                    missedCall
-                      ? callKind(item.last_body) === 'audio'
-                        ? 'audio'
-                        : 'video'
-                      : 'invite'
-                  }
-                  peerId={peerId}
-                />
-              )}
             </PressableFeedback>
           );
         }}
