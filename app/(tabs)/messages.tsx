@@ -60,14 +60,13 @@ function OnlineMessages({ userId }: { userId: string }) {
       <FlatList
         data={useMemo(
           () =>
-            [...(query.data?.contacts.filter((c) => c.last_body) ?? [])].sort((a, b) => {
-              // Najprv neprečítané (abecedne), potom ostatné (abecedne).
-              const ua = hasUnread(a, userId, read) ? 0 : 1;
-              const ub = hasUnread(b, userId, read) ? 0 : 1;
-              if (ua !== ub) return ua - ub;
-              return (a.nickname ?? '').localeCompare(b.nickname ?? '', 'sk');
-            }),
-          [query.data, read, userId],
+            // Od najnovšej správy hore po najstaršiu.
+            [...(query.data?.contacts.filter((c) => c.last_body) ?? [])].sort(
+              (a, b) =>
+                (b.last_message_at ? Date.parse(b.last_message_at) : 0) -
+                (a.last_message_at ? Date.parse(a.last_message_at) : 0),
+            ),
+          [query.data],
         )}
         keyExtractor={(c) => c.user_id ?? ''}
         contentContainerStyle={{
@@ -186,9 +185,11 @@ function LocalMessages() {
   const messages = useDarts((s) => s.messages);
   const hydrated = useDarts((s) => s.hydrated);
   const insets = useSafeAreaInsets();
+  // Od najnovšej správy hore (správy sú uložené v poradí, v akom prišli).
   const conversations = friends
     .map((friend) => ({ friend, last: messages.filter((m) => m.friendId === friend.id).at(-1) }))
-    .filter((c) => c.last);
+    .filter((c) => c.last)
+    .sort((a, b) => messages.lastIndexOf(b.last!) - messages.lastIndexOf(a.last!));
   return (
     <View className="bg-background flex-1" style={{ paddingTop: insets.top }}>
       <FlatList
