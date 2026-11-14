@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { Button, PressableFeedback } from 'heroui-native';
-import { router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Send, Trophy } from 'lucide-react-native';
 import { ShareResult } from '@/components/ShareResult';
 import { localGameShare } from '@/lib/shareGame';
@@ -56,7 +56,10 @@ function OfflineMatchRow({ game }: { game: Game }) {
 }
 
 export default function Statistics() {
-  const userId = usePlayers((s) => s.session?.user.id);
+  // ?scope=offline — len offline zápasy (z Nového zápasu); inak offline + online.
+  const offlineOnly = useLocalSearchParams<{ scope?: string }>().scope === 'offline';
+  const signedInId = usePlayers((s) => s.session?.user.id);
+  const userId = offlineOnly ? undefined : signedInId;
   const ready = usePlayers((s) => s.ready);
   const localHistory = useDarts((s) => s.history);
   const hydrated = useDarts((s) => s.hydrated);
@@ -101,6 +104,7 @@ export default function Statistics() {
         }}
         ListHeaderComponent={
           <>
+            {offlineOnly && <Stack.Screen options={{ title: 'Offline štatistiky' }} />}
             <StorageNotice />
             <OnlineError error={query.error} retry={() => void query.refresh()} />
             {loading ? (
@@ -151,8 +155,10 @@ export default function Statistics() {
                 <StatsTrend points={advanced.trend} />
                 <Txt className="text-muted mt-4 text-[12px] leading-5">
                   Úspešnosť zatvorenia = zatvorené legy z hodov, keď ti ostávalo zatvorenie jednou
-                  šípkou (do 40 párne alebo 50), len pri double out. Dokončené online a uložené
-                  offline zápasy. Offline výsledky zostávajú na tomto zariadení.
+                  šípkou (do 40 párne alebo 50), len pri double out.{' '}
+                  {offlineOnly
+                    ? 'Len offline zápasy z tohto zariadenia.'
+                    : 'Dokončené online a uložené offline zápasy. Offline výsledky zostávajú na tomto zariadení.'}
                   {totals.solo > 0
                     ? ' Sólo hry sa rátajú do zápasov a priemeru, nie do výhier a prehier.'
                     : ''}
@@ -191,9 +197,15 @@ export default function Statistics() {
         }
         ListFooterComponent={
           <View className="mt-5 gap-3">
-            <Button variant="ghost" onPress={() => router.dismissTo('/account')}>
-              <Button.Label>Späť na môj účet</Button.Label>
-            </Button>
+            {offlineOnly ? (
+              <Button variant="ghost" onPress={() => router.back()}>
+                <Button.Label>Späť na nový zápas</Button.Label>
+              </Button>
+            ) : (
+              <Button variant="ghost" onPress={() => router.dismissTo('/account')}>
+                <Button.Label>Späť na môj účet</Button.Label>
+              </Button>
+            )}
           </View>
         }
       />
