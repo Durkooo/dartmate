@@ -79,6 +79,8 @@ export default function Home() {
   const cricketRunning = useExtraGames((s) => !!s.cricket);
   const hydrated = useDarts((s) => s.hydrated);
   const session = usePlayers((s) => s.session);
+  const nickname = usePlayers((s) => s.profile?.nickname);
+  const playersReady = usePlayers((s) => s.ready);
   const social = useOnlineQuery(
     session ? `home:${session.user.id}` : null,
     useCallback(async () => {
@@ -100,15 +102,31 @@ export default function Home() {
   return (
     <Page safeTop>
       <View className="mb-7 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <Target size={28} color={palette.ink} strokeWidth={1.8} />
-          <Txt className="text-[28px]" style={{ fontFamily: 'Inter_700Bold', letterSpacing: -1 }}>
-            DartMate
-          </Txt>
-        </View>
-        <Button variant="secondary" size="sm" onPress={() => router.push('/account')}>
-          <Button.Label>Môj účet</Button.Label>
-        </Button>
+        {/* Hore meno hráča; bez účtu / prihlásenia tlačidlo rovno na prihlásenie. */}
+        {session && nickname ? (
+          <View className="flex-1 flex-row items-center gap-2 pr-3">
+            <Target size={28} color={palette.ink} strokeWidth={1.8} />
+            <Txt
+              className="flex-1 text-[28px]"
+              numberOfLines={1}
+              style={{ fontFamily: 'Inter_700Bold', letterSpacing: -1 }}
+            >
+              {nickname}
+            </Txt>
+          </View>
+        ) : playersReady ? (
+          <Button size="sm" onPress={() => router.push('/account')}>
+            <Target size={18} color={palette.navy} strokeWidth={1.8} />
+            <Button.Label>{session ? 'Vybrať si nick' : 'Prihlásiť sa'}</Button.Label>
+          </Button>
+        ) : (
+          <View />
+        )}
+        {!!session && (
+          <Button variant="secondary" size="sm" onPress={() => router.push('/account')}>
+            <Button.Label>Môj účet</Button.Label>
+          </Button>
+        )}
       </View>
       <StorageNotice />
       {/* 1) PARTIA: online prví, potom podľa abecedy */}
